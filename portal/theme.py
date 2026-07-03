@@ -256,18 +256,18 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:{ACCENT} !
    collapses to a vertical column on narrow screens (media query below). */
 .bm-flow {{ display:grid; grid-template-columns:1fr auto 1fr auto 1fr auto 1fr auto 1fr auto 1fr;
     align-items:stretch; gap:0 4px; margin:18px 0 14px; }}
-.bm-flow-step {{ display:flex; flex-direction:column; align-items:center; text-align:center;
+.bm-flow-step {{ display:flex; flex-direction:column; align-items:flex-start; text-align:left;
     background:#fff; border:1px solid #e8edf3; border-radius:14px;
-    padding:22px 14px 16px; position:relative; box-shadow:0 1px 2px rgba(16,24,40,.05);
+    padding:22px 16px 16px; position:relative; box-shadow:0 1px 2px rgba(16,24,40,.05);
     transition:transform .15s ease, box-shadow .15s ease; }}
 .bm-flow-step:hover {{ transform:translateY(-2px); box-shadow:0 8px 20px rgba(2,76,161,.10); }}
-.bm-flow-step .num {{ position:absolute; top:-13px; left:50%; transform:translateX(-50%); width:26px; height:26px; border-radius:50%;
+.bm-flow-step .num {{ position:absolute; top:-12px; left:16px; width:26px; height:26px; border-radius:50%;
     background:{ACCENT}; color:#fff; font-size:12.5px; font-weight:700; display:flex; align-items:center;
     justify-content:center; box-shadow:0 2px 6px rgba(238,78,36,.35); }}
 .bm-flow-step .ic {{ width:38px; height:38px; border-radius:10px; background:{PRIMARY_SOFT}; color:{PRIMARY};
     display:flex; align-items:center; justify-content:center; margin:0 0 10px; }}
-.bm-flow-step h5 {{ margin:0 0 6px; font-size:13.5px; line-height:1.3; min-height:1.3em;
-    color:{PRIMARY_DARK}; font-weight:700; }}   /* one line (labels shortened to fit) */
+.bm-flow-step .bm-flow-t {{ margin:0 0 6px; font-size:14px; line-height:1.3;
+    color:{PRIMARY_DARK}; font-weight:700; }}   /* plain div (not <h5>) so Streamlit adds no anchor-link icon */
 .bm-flow-step p {{ margin:0; font-size:12.5px; color:{NEUTRAL}; line-height:1.45; }}
 /* arrow pinned to the icon row (align-self:start + padding) so 1..6 share one flow line */
 .bm-flow-arrow {{ align-self:start; padding-top:30px; display:flex; align-items:flex-start;
