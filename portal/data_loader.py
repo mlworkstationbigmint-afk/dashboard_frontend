@@ -17,6 +17,8 @@ Files (same layout in the private repo and the in-repo sample):
   calculators/HRC - Copy.csv             - calculators' dataset
 """
 import os
+import json
+import base64
 import tempfile
 from urllib.parse import quote
 import pandas as pd
@@ -267,3 +269,188 @@ def summary_row(summary: pd.DataFrame, ff_label: str):
     """Return the summary row (dict) for a product label, or None."""
     m = summary[summary["Product"].astype(str).str.strip() == ff_label]
     return m.iloc[0].to_dict() if not m.empty else None
+
+
+# ===========================================================================
+# ANALYST CALLS — editable content (text + PDF/PPT) stored in the private repo
+# ---------------------------------------------------------------------------
+# The Admin page writes `analyst_calls/calls.json` (the text) and uploads decks
+# to `analyst_calls/files/<id>/…` in the SAME private GitHub repo, via the
+# Contents API. Reading uses the read token; writing uses `github_write_token`
+# (or falls back to `github_token` if that one has write access). With no
+# secrets, the Analyst page shows SAMPLE_ANALYST_CALLS so the public app runs.
+# ===========================================================================
+ANALYST_JSON = "analyst_calls/calls.json"
+ANALYST_FILES_DIR = "analyst_calls/files"
+ANALYST_SECTIONS = ["Flats", "Longs", "Raw materials", "Imports & exports", "Outlook"]
+
+# Shown when no private store is configured/reachable (plain text — escaped at render).
+SAMPLE_ANALYST_CALLS = [
+    {"id": "2026-06", "month": "June 2026", "title": "Market outlook call",
+     "summary": "Flat-to-soft HRC into Q3; raw-material support easing as iron-ore and coking-coal cool.",
+     "sections": {"Flats": "HRC / CR / plate — sample commentary.",
+                  "Longs": "Rebar / wire rod / structurals — sample commentary.",
+                  "Raw materials": "Iron ore, coking coal & scrap — sample commentary.",
+                  "Imports & exports": "Trade flows and landed-cost parity — sample commentary.",
+                  "Outlook": "Near-term price direction — sample commentary."},
+     "pdf": "", "ppt": ""},
+    {"id": "2026-05", "month": "May 2026", "title": "Market outlook call",
+     "summary": "Rebar firm on monsoon-led restocking; scrap stable.",
+     "sections": {s: "" for s in ANALYST_SECTIONS}, "pdf": "", "ppt": ""},
+    {"id": "2026-04", "month": "April 2026", "title": "Market outlook call",
+     "summary": "Q1 review and forward view across flats and longs.",
+     "sections": {s: "" for s in ANALYST_SECTIONS}, "pdf": "", "ppt": ""},
+]
+
+
+def _read_token_cfg():
+    """(owner, repo, ref, read_token) from st.secrets['data'], or None."""
+    cfg = _data_cfg()
+    if not cfg:
+        return None
+    try:
+        return (cfg["github_owner"], cfg["github_repo"], cfg.get("github_ref", "main"), cfg["github_token"])
+    except Exception:
+        return None
+
+
+def _write_token_cfg():
+    """(owner, repo, ref, write_token) — prefers github_write_token, else github_token."""
+    cfg = _data_cfg()
+    if not cfg:
+        return None
+    token = cfg.get("github_write_token") or cfg.get("github_token")
+    if not token:
+        return None
+    try:
+        return (cfg["github_owner"], cfg["github_repo"], cfg.get("github_ref", "main"), token)
+    except Exception:
+        return None
+
+
+def can_admin_write() -> bool:
+    """True when write credentials are configured (enables the Admin save/upload)."""
+    return _write_token_cfg() is not None
+
+
+def data_sig() -> str:
+    """Cache key + spinner-free identifier for the current data source."""
+    tc = _read_token_cfg()
+    return f"{tc[0]}/{tc[1]}@{tc[2]}" if tc else "sample"
+
+
+def _gh_headers(token: str, raw: bool = False) -> dict:
+    return {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.raw" if raw else "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+
+
+def _gh_url(owner: str, repo: str, path: str) -> str:
+    return f"https://api.github.com/repos/{owner}/{repo}/contents/{quote(path)}"
+
+
+def _gh_get_bytes(path: str):
+    """Raw bytes of a repo file (read token), or None if missing/unconfigured."""
+    tc = _read_token_cfg()
+    if not tc:
+        return None
+    import requests
+    owner, repo, ref, token = tc
+    r = requests.get(f"{_gh_url(owner, repo, path)}?ref={ref}",
+                     headers=_gh_headers(token, raw=True), timeout=30)
+    if r.status_code == 404:
+        return None
+    r.raise_for_status()
+    return r.content
+
+
+@st.cache_data(show_spinner=False)
+def _read_calls_json(sig: str):
+    raw = _gh_get_bytes(ANALYST_JSON)
+    if not raw:
+        return None
+    try:
+        return json.loads(raw.decode("utf-8"))
+    except Exception:
+        return None
+
+
+def load_analyst_calls() -> list:
+    """List of analyst-call dicts from the private repo, else the bundled sample."""
+    if _read_token_cfg():
+        data = _read_calls_json(data_sig())
+        if data and isinstance(data.get("calls"), list):
+            return data["calls"]
+    return SAMPLE_ANALYST_CALLS
+
+
+@st.cache_data(show_spinner=False)
+def fetch_call_file(path: str, sig: str):
+    """Bytes of an uploaded deck (cached per path), or None."""
+    if not path:
+        return None
+    return _gh_get_bytes(path)
+
+
+def _gh_get_sha(path: str):
+    """Current blob sha of a file (needed to update), or None if it doesn't exist."""
+    wc = _write_token_cfg()
+    if not wc:
+        return None
+    import requests
+    owner, repo, ref, token = wc
+    r = requests.get(f"{_gh_url(owner, repo, path)}?ref={ref}",
+                     headers=_gh_headers(token), timeout=30)
+    if r.status_code == 404:
+        return None
+    r.raise_for_status()
+    return r.json().get("sha")
+
+
+def gh_put_file(path: str, content: bytes, message: str) -> None:
+    """Create or update a file in the private repo (Contents API)."""
+    wc = _write_token_cfg()
+    if not wc:
+        raise RuntimeError("No write token configured (github_write_token / github_token).")
+    import requests
+    owner, repo, ref, token = wc
+    body = {"message": message,
+            "content": base64.b64encode(content).decode("ascii"),
+            "branch": ref}
+    sha = _gh_get_sha(path)
+    if sha:
+        body["sha"] = sha
+    r = requests.put(_gh_url(owner, repo, path), headers=_gh_headers(token), json=body, timeout=30)
+    r.raise_for_status()
+
+
+def gh_delete_file(path: str, message: str) -> None:
+    """Delete a file from the private repo if it exists."""
+    wc = _write_token_cfg()
+    if not wc:
+        return
+    import requests
+    owner, repo, ref, token = wc
+    sha = _gh_get_sha(path)
+    if not sha:
+        return
+    r = requests.delete(_gh_url(owner, repo, path), headers=_gh_headers(token),
+                        json={"message": message, "sha": sha, "branch": ref}, timeout=30)
+    r.raise_for_status()
+
+
+def upload_call_file(call_id: str, filename: str, content: bytes) -> str:
+    """Upload a deck under analyst_calls/files/<id>/ and return its repo path."""
+    path = f"{ANALYST_FILES_DIR}/{call_id}/{filename}"
+    gh_put_file(path, content, f"Upload {filename} for {call_id}")
+    return path
+
+
+def save_analyst_calls(calls: list) -> None:
+    """Persist the calls list to analyst_calls/calls.json and refresh read caches."""
+    payload = json.dumps({"calls": calls}, ensure_ascii=False, indent=2).encode("utf-8")
+    gh_put_file(ANALYST_JSON, payload, "Update analyst calls content")
+    _read_calls_json.clear()
+    fetch_call_file.clear()

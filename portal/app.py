@@ -6,6 +6,8 @@ Run:  streamlit run portal/app.py     (from the dashboard base folder)
 """
 import os
 import sys
+import re
+import html
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
@@ -111,8 +113,12 @@ NAV = [
 
 
 def top_nav():
-    cols = st.columns([1, 1.35, 1.35, 1.3, 1.3, 1.4])
-    for i, (name, label, mi) in enumerate(NAV):
+    items = list(NAV)
+    if user.get("role") == "Admin":                       # Admin tab is admin-only
+        items.append(("Admin", "Admin", "admin_panel_settings"))
+    widths = [1] + [1.35] * (len(items) - 1)              # keep Home a touch narrower
+    cols = st.columns(widths)
+    for i, (name, label, mi) in enumerate(items):
         active = st.session_state.page == name
         if cols[i].button(f":material/{mi}: {label}", key=f"nav_{name}",
                           type="primary" if active else "secondary", use_container_width=True):
@@ -537,42 +543,156 @@ def page_forecasting():
 # ---------------------------------------------------------------------------
 # PAGE: ANALYST CALLS  (placeholder)
 # ---------------------------------------------------------------------------
+_PPT_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+
+
+def _deck_button(col, label, path, sig, mime, icon, key):
+    """A live download button for an uploaded deck, or a disabled button when absent."""
+    if not path:
+        col.button(label, key=key, disabled=True, icon=icon)
+        return
+    data = dl.fetch_call_file(path, sig)
+    if data is None:
+        col.button(label, key=key, disabled=True, icon=icon, help="File unavailable")
+        return
+    col.download_button(label, data=data, file_name=os.path.basename(path),
+                        mime=mime, key=key, icon=icon)
+
+
+def _render_call_card(call, sig):
+    """Render one analyst-call card (shared by the Analyst page and the Admin preview)."""
+    with st.container(border=True):
+        top = st.columns([5, 1])
+        top[0].markdown(f"**{html.escape(call.get('month', ''))} &mdash; "
+                        f"{html.escape(call.get('title', ''))}**", unsafe_allow_html=True)
+        top[1].markdown("<div style='text-align:right;color:#64748b;font-size:12px;'>PDF / PPT</div>",
+                        unsafe_allow_html=True)
+        if call.get("summary"):
+            st.markdown(f"<div class='bm-desc' style='font-size:13.5px;'>{html.escape(call['summary'])}</div>",
+                        unsafe_allow_html=True)
+        secs = call.get("sections", {})
+        rows = "".join(
+            f"<div class='bm-call-sec'><span class='bm-call-sec-l'>{html.escape(lbl)}</span>"
+            f"<span class='bm-call-sec-t'>{html.escape(secs.get(lbl, ''))}</span></div>"
+            for lbl in dl.ANALYST_SECTIONS if secs.get(lbl)
+        )
+        if rows:
+            st.markdown(f"<div class='bm-call-secs'>{rows}</div>", unsafe_allow_html=True)
+        cid = call.get("id", "x")
+        b1, b2, _ = st.columns([1, 1, 4])
+        _deck_button(b1, "Download PDF", call.get("pdf", ""), sig, "application/pdf",
+                     ":material/picture_as_pdf:", f"pdf_{cid}")
+        _deck_button(b2, "Download PPT", call.get("ppt", ""), sig, _PPT_MIME,
+                     ":material/slideshow:", f"ppt_{cid}")
+
+
 def page_analyst():
     st.markdown("## Analyst calls / meets")
-    st.info("Placeholder module - monthly call summaries and decks will be published here. "
-            "Content and uploads to be wired in a later phase.", icon=":material/info:")
-    placeholders = [
-        ("June 2026", "Market outlook call", "Flat-to-soft HRC into Q3; raw-material support easing as iron-ore and coking-coal cool."),
-        ("May 2026", "Market outlook call", "Rebar firm on monsoon-led restocking; scrap stable. Key insights and downloadable deck."),
-        ("April 2026", "Market outlook call", "Q1 review and forward view across flats and longs."),
-    ]
-    # detailed-summary sections (one line each). Placeholder copy for now — real per-call
-    # commentary to be supplied later.
-    CALL_SECTIONS = [
-        ("Flats", "HRC / CR / plate &mdash; placeholder one-line commentary."),
-        ("Longs", "Rebar / wire rod / structurals &mdash; placeholder one-line commentary."),
-        ("Raw materials", "Iron ore, coking coal &amp; scrap &mdash; placeholder one-line commentary."),
-        ("Imports &amp; exports", "Trade flows and landed-cost parity &mdash; placeholder one-line commentary."),
-        ("Outlook", "Near-term price direction &mdash; placeholder one-line commentary."),
-    ]
-    sections_html = "<div class='bm-call-secs'>" + "".join(
-        f"<div class='bm-call-sec'><span class='bm-call-sec-l'>{label}</span>"
-        f"<span class='bm-call-sec-t'>{text}</span></div>"
-        for label, text in CALL_SECTIONS
-    ) + "</div>"
-    for month, title, summary in placeholders:
-        with st.container(border=True):
-            top = st.columns([5, 1])
-            top[0].markdown(f"**{month} &mdash; {title}**", unsafe_allow_html=True)
-            top[1].markdown("<div style='text-align:right;color:#64748b;font-size:12px;'>PDF / PPT / Video</div>", unsafe_allow_html=True)
-            st.markdown(f"<div class='bm-desc' style='font-size:13.5px;'>{summary}</div>", unsafe_allow_html=True)
-            st.markdown(sections_html, unsafe_allow_html=True)
-            b1, b2, b3, _ = st.columns([1, 1, 1, 3])
-            b1.button("Download PDF", key=f"pdf_{month}", disabled=True, icon=":material/picture_as_pdf:")
-            b2.button("Download PPT", key=f"ppt_{month}", disabled=True, icon=":material/slideshow:")
-            b3.button("Download Video", key=f"vid_{month}", disabled=True, icon=":material/videocam:")
+    calls = dl.load_analyst_calls()
+    if not calls:
+        st.info("No analyst calls published yet.", icon=":material/info:")
+        theme.footer()
+        return
+    sig = dl.data_sig()
+    for call in calls:
+        _render_call_card(call, sig)
     if user["role"] == "Admin":
-        st.caption("Admin: upload workflow for new calls will appear here in a later phase.")
+        st.caption("You're an admin — use the **Admin** tab to add, edit or remove calls and upload decks.")
+    theme.footer()
+
+
+# ---------------------------------------------------------------------------
+# PAGE: ADMIN  (role-gated; edits the Analyst-calls content in the private repo)
+# ---------------------------------------------------------------------------
+def _slug(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.strip().lower()).strip("-") or "call"
+
+
+def page_admin():
+    if user["role"] != "Admin":
+        st.error("This page is for admins only.")
+        theme.footer()
+        return
+
+    st.markdown("## Admin — Analyst calls")
+    if not dl.can_admin_write():
+        st.warning("Saving is disabled — no write credentials found. Add a **`github_write_token`** "
+                   "(a fine-grained PAT with *Contents: Read & Write* on the data repo) to the `[data]` "
+                   "secrets, or give the existing `github_token` write access. See "
+                   "`.streamlit/secrets.toml.example`.", icon=":material/warning:")
+
+    calls = dl.load_analyst_calls()
+    labels = ["➕ New call"] + [f"{c.get('month', '?')} — {c.get('title', '')}" for c in calls]
+    choice = st.selectbox("Edit an existing call, or create a new one", labels, key="admin_pick")
+    editing = calls[labels.index(choice) - 1] if choice != labels[0] else None
+    ekey = editing["id"] if editing else "new"   # keys change with selection so fields reset
+
+    esecs = (editing or {}).get("sections", {})
+    with st.form(f"call_form_{ekey}"):
+        c1, c2 = st.columns(2)
+        month = c1.text_input("Month *", value=(editing or {}).get("month", ""),
+                              placeholder="e.g. July 2026", key=f"month_{ekey}")
+        title = c2.text_input("Title", value=(editing or {}).get("title", "Market outlook call"),
+                              key=f"title_{ekey}")
+        summary = st.text_area("Headline summary", value=(editing or {}).get("summary", ""),
+                               height=80, key=f"summary_{ekey}")
+        st.markdown("**Sections** (leave blank to hide a row)")
+        secvals = {lbl: st.text_input(lbl, value=esecs.get(lbl, ""), key=f"sec_{ekey}_{lbl}")
+                   for lbl in dl.ANALYST_SECTIONS}
+        u1, u2 = st.columns(2)
+        pdf_up = u1.file_uploader("PDF deck", type=["pdf"], key=f"pdf_up_{ekey}")
+        ppt_up = u2.file_uploader("PPT deck", type=["ppt", "pptx"], key=f"ppt_up_{ekey}")
+        if editing:
+            for kind, p in (("PDF", editing.get("pdf")), ("PPT", editing.get("ppt"))):
+                if p:
+                    st.caption(f"Current {kind}: `{os.path.basename(p)}` (upload a new file to replace it)")
+        saved = st.form_submit_button("Save call", type="primary", use_container_width=True,
+                                      disabled=not dl.can_admin_write())
+
+    if saved:
+        if not month.strip():
+            st.error("Month is required.")
+        else:
+            cid = (editing or {}).get("id") or _slug(month)
+            record = {
+                "id": cid, "month": month.strip(), "title": title.strip(),
+                "summary": summary.strip(),
+                "sections": {lbl: secvals[lbl].strip() for lbl in dl.ANALYST_SECTIONS},
+                "pdf": (editing or {}).get("pdf", ""), "ppt": (editing or {}).get("ppt", ""),
+            }
+            try:
+                if pdf_up is not None:
+                    record["pdf"] = dl.upload_call_file(cid, pdf_up.name, pdf_up.getvalue())
+                if ppt_up is not None:
+                    record["ppt"] = dl.upload_call_file(cid, ppt_up.name, ppt_up.getvalue())
+                if any(c.get("id") == cid for c in calls):
+                    new_calls = [record if c.get("id") == cid else c for c in calls]
+                else:
+                    new_calls = [record] + calls
+                dl.save_analyst_calls(new_calls)
+                st.success(f"Saved “{record['month']}”.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Save failed: {e}")
+
+    if editing and dl.can_admin_write():
+        st.divider()
+        if st.button("Delete this call", icon=":material/delete:", key=f"del_{ekey}"):
+            try:
+                for p in (editing.get("pdf"), editing.get("ppt")):
+                    if p:
+                        dl.gh_delete_file(p, f"Delete deck for {editing['id']}")
+                dl.save_analyst_calls([c for c in calls if c.get("id") != editing["id"]])
+                st.success("Deleted.")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Delete failed: {e}")
+
+    st.divider()
+    st.caption("Preview — exactly what analysts see on the Analyst calls tab:")
+    sig = dl.data_sig()
+    for call in calls:
+        _render_call_card(call, sig)
     theme.footer()
 
 
@@ -761,5 +881,6 @@ PAGES = {
     "Performance Dashboard": page_performance,
     "Calculators": page_calculators,
     "Methodology": page_methodology,
+    "Admin": page_admin,
 }
 PAGES.get(st.session_state.page, page_home)()
