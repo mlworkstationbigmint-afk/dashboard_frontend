@@ -676,12 +676,12 @@ def page_methodology():
 
     theme.section_title("The forecasting pipeline", theme.icon("trending"))
     steps = [
-        ("factory",  "Market data",          "Real-time trades, confirmed deals &amp; 15+ yrs of assessed prices."),
-        ("gauge",    "Signal engineering",   "Cost, supply&ndash;demand, global &amp; macro factors + sentiment."),
-        ("target",   "ML + sentiment",       "Multiple models predict each product; sentiment adjusts."),
-        ("trending", "Ensemble",             "Models blended into the headline Ensemble (Weighted Mean)."),
-        ("calendar", "12-week forecast",     "Forward price path with up / down / flat direction."),
-        ("notes",    "Accuracy tracking",    "Every forecast back-checked against realised spot."),
+        ("factory",  "Market data",        "Live trades, deals &amp; 15+ yrs of assessed prices."),
+        ("gauge",    "Signal engineering", "Cost, supply&ndash;demand, global &amp; macro signals."),
+        ("target",   "ML + sentiment",     "Multiple models per product, tuned by sentiment."),
+        ("trending", "Ensemble",           "Blended into the Weighted-Mean ensemble."),
+        ("calendar", "12-wk forecast",     "Forward path with up / down / flat calls."),
+        ("notes",    "Accuracy tracking",  "Each forecast back-checked vs realised spot."),
     ]
     # One continuous left-to-right pipeline (6 steps, arrows between). Rendered as a
     # CSS grid (card / arrow / card / …) so it never wraps into the awkward 3+3
