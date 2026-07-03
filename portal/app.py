@@ -683,16 +683,17 @@ def page_methodology():
         ("calendar", "12-week forecast",     "Forward price path with up / down / flat direction."),
         ("notes",    "Accuracy tracking",    "Every forecast back-checked against realised spot."),
     ]
-    flow = ""
-    for r0 in range(0, len(steps), 3):                 # 3 steps per row -> balanced 3 + 3
-        chunk = steps[r0:r0 + 3]
-        flow += "<div class='bm-flow'>"
-        for j, (ic, title, desc) in enumerate(chunk):
-            flow += (f"<div class='bm-flow-step'><div class='num'>{r0 + j + 1}</div>"
-                     f"<div class='ic'>{theme.icon(ic, 24)}</div><h5>{title}</h5><p>{desc}</p></div>")
-            if j < len(chunk) - 1:
-                flow += "<div class='bm-flow-arrow'>&rarr;</div>"
-        flow += "</div>"
+    # One continuous left-to-right pipeline (6 steps, arrows between). Rendered as a
+    # CSS grid (card / arrow / card / …) so it never wraps into the awkward 3+3
+    # diagonal jump; it collapses to a single vertical column on narrow screens
+    # (see .bm-flow in theme.py).
+    flow = "<div class='bm-flow'>"
+    for j, (ic, title, desc) in enumerate(steps):
+        flow += (f"<div class='bm-flow-step'><div class='num'>{j + 1}</div>"
+                 f"<div class='ic'>{theme.icon(ic, 22)}</div><h5>{title}</h5><p>{desc}</p></div>")
+        if j < len(steps) - 1:
+            flow += "<div class='bm-flow-arrow'>&rarr;</div>"
+    flow += "</div>"
     st.markdown(flow, unsafe_allow_html=True)
 
     st.write("")
