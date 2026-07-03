@@ -127,7 +127,9 @@ st.write("")
 # ---------------------------------------------------------------------------
 # CHART HELPERS
 # ---------------------------------------------------------------------------
-HIST_WEEKS = 26   # weeks of history shown in the forecast chart AND the historical table (kept in sync)
+# The forecast chart and historical table show the FULL available spot history
+# (no fixed window) so nothing earlier than the most recent months is trimmed off.
+# The chart's rangeslider + zoom buttons let the user narrow the view when they want to.
 
 
 def _style_fig(fig, height=430, money=True):
@@ -205,7 +207,7 @@ def _render_with_highlighter(fig, height=430, dom_id="chart"):
 def forecast_chart(acc, fwd):
     """Light-blue actual spot (soft area fill) + bold red dashed forecast, with a dotted
     divider and a faint shaded band marking the 12-week-ahead region."""
-    hist = acc.dropna(subset=["Actual"]).tail(HIST_WEEKS).copy()
+    hist = acc.dropna(subset=["Actual"]).copy()
     if hist.empty:
         st.info("No historical spot series available for this product.")
         return
@@ -487,7 +489,7 @@ def page_forecasting():
         # One continuous table: history (actual+forecast+delta, blank direction) flows into
         # the 12-week-ahead forecast (forecast+direction, blank actual+delta).
         theme.section_title("Actual vs forecast (history &rarr; 12-week ahead)", theme.icon("calendar"))
-        hist_t = acc_hist.dropna(subset=["Actual"]).tail(HIST_WEEKS)
+        hist_t = acc_hist.dropna(subset=["Actual"])
         body = ""
         for r in hist_t.itertuples():
             fc = f"Rs.{r.Forecast:,.0f}" if pd.notna(r.Forecast) else ""
