@@ -1,50 +1,110 @@
 """
-Static-snapshot data loader for the BigMint - AI Labs portal.
+Data loader for the BigMint - AI Labs portal.
 
-Reads the dashboard's existing files ONCE (cached) and reshapes the messy
-multi-header sheets into tidy per-product frames. No live connection: the
-@st.cache_data layer means each file is read a single time per session.
+Reshapes the messy multi-header forecast/accuracy sheets into tidy per-product
+frames, cached so each file is read once per session (@st.cache_data).
 
-Data lives entirely IN THIS REPO (no private folders, no network fetch):
-  dashboard/accuracy_tables/forecast_forward.xlsx  - summary + 12-week forward path
-  dashboard/accuracy_tables/Accuracy_Table_6.xlsx  - week-wise actual/forecast
-  portal/calculators/HRC - Copy.csv                - calculators' dataset
+DATA SOURCE (public code, private data):
+  * If st.secrets['data'] is set, the real files are pulled at runtime from a
+    PRIVATE GitHub repo (see _fetch_private_data_dir) into a temp dir — nothing
+    private is committed to this (public) repo.
+  * With no secrets, it falls back to the bundled in-repo SAMPLE so the public
+    code still runs. See .streamlit/secrets.toml.example.
 
-Each file is re-read whenever it changes on disk (the @st.cache_data layer is keyed
-on the file's modification time), so updating a data file + a rerun shows the new data.
+Files (same layout in the private repo and the in-repo sample):
+  accuracy_tables/forecast_forward.xlsx  - summary + 12-week forward path
+  accuracy_tables/Accuracy_Table_6.xlsx  - week-wise actual/forecast
+  calculators/HRC - Copy.csv             - calculators' dataset
 """
 import os
+import tempfile
+from urllib.parse import quote
 import pandas as pd
 import streamlit as st
 
-BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # .../dashboard
-PORTAL_DIR = os.path.dirname(os.path.abspath(__file__))              # .../dashboard/portal
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # repo root
+PORTAL_DIR = os.path.dirname(os.path.abspath(__file__))              # <repo>/portal
 
-# --- Data location ---------------------------------------------------------
-# The app reads ONLY the in-repo data folders (dashboard/accuracy_tables +
-# portal/calculators) — so editing those files and rerunning shows the change.
-# There is deliberately NO $PORTAL_DATA_DIR override and NO st.secrets['data']
-# network download: nothing private or external is consulted.
-USING_PRIVATE_DATA = False   # kept for backwards-compat; the app never uses private data
+# Data files as relative paths (identical in the private repo and the in-repo sample).
+FF_NAME = "forecast_forward.xlsx"
+ACC_FILES = {"6-week": "Accuracy_Table_6.xlsx"}   # 16-week retired; app runs off Table_6
+HEADLINE_SHEET = "Ensemble_WgtMean"               # headline forecast line shown to Adani
+
+
+# --- Data location: private GitHub repo (via st.secrets) or in-repo sample -----
+def _data_cfg():
+    """The [data] secrets block, or None when it isn't configured."""
+    try:
+        cfg = st.secrets.get("data", None)
+    except Exception:
+        cfg = None
+    return cfg if cfg else None
+
+
+@st.cache_resource(show_spinner="Loading data…")
+def _fetch_private_data_dir(owner: str, repo: str, ref: str, token: str) -> str:
+    """Download the private data files from a GitHub repo into a temp dir (once per
+    deploy) and return its path. Uses the Contents API with the raw media type, so a
+    fine-grained token with read-only 'Contents' access to just that repo is enough.
+    This function body is the single swap-point for another backend (S3/GCS/etc.)."""
+    import requests
+    dest = tempfile.mkdtemp(prefix="bm_data_")
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.raw",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
+    rels = (f"accuracy_tables/{FF_NAME}",
+            *[f"accuracy_tables/{fn}" for fn in ACC_FILES.values()],
+            "calculators/HRC - Copy.csv")
+    for rel in rels:
+        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{quote(rel)}?ref={ref}"
+        resp = requests.get(url, headers=headers, timeout=30)
+        resp.raise_for_status()
+        out = os.path.join(dest, rel.replace("/", os.sep))
+        os.makedirs(os.path.dirname(out), exist_ok=True)
+        with open(out, "wb") as fh:
+            fh.write(resp.content)
+    return dest
+
+
+@st.cache_resource(show_spinner=False)
+def _data_root() -> str:
+    """Folder that holds accuracy_tables/ and calculators/: the fetched private-repo
+    temp dir when secrets are set, else the repo root (in-repo sample). Cached so the
+    fetch (and any fallback warning) happens once per deploy."""
+    cfg = _data_cfg()
+    if cfg:
+        try:
+            return _fetch_private_data_dir(
+                cfg["github_owner"], cfg["github_repo"],
+                cfg.get("github_ref", "main"), cfg["github_token"])
+        except Exception:
+            st.warning("Private data fetch failed — showing the bundled sample instead.")
+    return BASE
 
 
 def acc_dir() -> str:
-    """Folder holding the accuracy/forecast xlsx files (in-repo)."""
-    return os.path.join(BASE, "accuracy_tables")
+    """Folder holding the accuracy/forecast xlsx files."""
+    return os.path.join(_data_root(), "accuracy_tables")
 
 
 def calculators_csv(name: str = "HRC - Copy.csv") -> str:
-    """Path to a calculators dataset CSV (in-repo)."""
-    return os.path.join(PORTAL_DIR, "calculators", name)
+    """Path to a calculators dataset CSV."""
+    root = _data_root()
+    # in-repo sample keeps the CSV under portal/calculators; the private repo puts it at calculators/
+    base = PORTAL_DIR if root == BASE else root
+    return os.path.join(base, "calculators", name)
 
 
-ACC_DIR = acc_dir()
-FF_PATH = os.path.join(ACC_DIR, "forecast_forward.xlsx")
-ACC_PATHS = {
-    "6-week":  os.path.join(ACC_DIR, "Accuracy_Table_6.xlsx"),
-    # "16-week" (Accuracy_Table_16.xlsx) retired — the whole app now runs off Table_6.
-}
-HEADLINE_SHEET = "Ensemble_WgtMean"   # headline forecast line shown to Adani
+def ff_path() -> str:
+    """Absolute path to forecast_forward.xlsx (private temp dir or in-repo)."""
+    return os.path.join(acc_dir(), FF_NAME)
+
+
+def acc_path(window: str) -> str:
+    """Absolute path to an accuracy table (private temp dir or in-repo)."""
+    return os.path.join(acc_dir(), ACC_FILES[window])
 
 # display name -> sheet/label used in the source files
 STEEL_PRODUCTS = {
@@ -90,7 +150,7 @@ def _mtime(path: str) -> float:
 
 def data_files() -> tuple:
     """Every data file the app reads. Used for change-detection + the sidebar caption."""
-    return (FF_PATH, *ACC_PATHS.values(), calculators_csv())
+    return (ff_path(), *[acc_path(w) for w in ACC_FILES], calculators_csv())
 
 
 def data_signature() -> float:
@@ -110,7 +170,8 @@ def _read_summary(path: str, mtime: float) -> pd.DataFrame:
 
 def load_summary() -> pd.DataFrame:
     """Forecast_forward 'Summary' sheet (already tidy). Re-read when the file changes."""
-    return _read_summary(FF_PATH, _mtime(FF_PATH))
+    p = ff_path()
+    return _read_summary(p, _mtime(p))
 
 
 @st.cache_data(show_spinner=False)
@@ -131,7 +192,8 @@ def _read_forward(path: str, ff_sheet: str, mtime: float) -> pd.DataFrame:
 def load_forward(ff_sheet: str) -> pd.DataFrame:
     """12-week forward path for one product. Returns Date, Week, Forecast, Delta, Direction.
     Re-read when the file changes."""
-    return _read_forward(FF_PATH, ff_sheet, _mtime(FF_PATH))
+    p = ff_path()
+    return _read_forward(p, ff_sheet, _mtime(p))
 
 
 @st.cache_data(show_spinner=False)
@@ -166,7 +228,7 @@ def load_accuracy(window: str, acc_label: str) -> pd.DataFrame:
     Returns Date, Actual, Forecast, Delta, DeltaPct, PredDir, ActualDir, Hit.
     Re-read when the file changes.
     """
-    path = ACC_PATHS[window]
+    path = acc_path(window)
     return _read_accuracy(path, acc_label, _mtime(path))
 
 
