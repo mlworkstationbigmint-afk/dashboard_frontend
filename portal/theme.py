@@ -265,9 +265,12 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:{ACCENT} !
     justify-content:center; box-shadow:0 2px 6px rgba(238,78,36,.35); }}
 .bm-flow-step .ic {{ width:38px; height:38px; border-radius:10px; background:{PRIMARY_SOFT}; color:{PRIMARY};
     display:flex; align-items:center; justify-content:center; margin:2px 0 10px; }}
-.bm-flow-step h5 {{ margin:0 0 4px; font-size:14px; color:{PRIMARY_DARK}; font-weight:700; }}
+.bm-flow-step h5 {{ margin:0 0 6px; font-size:14px; line-height:1.3; min-height:2.6em;
+    color:{PRIMARY_DARK}; font-weight:700; }}   /* reserve 2 lines so all descriptions align */
 .bm-flow-step p {{ margin:0; font-size:12.5px; color:{NEUTRAL}; line-height:1.45; }}
-.bm-flow-arrow {{ display:flex; align-items:center; justify-content:center; color:{ACCENT}; font-size:18px; font-weight:700; }}
+/* arrow pinned to the icon row (align-self:start + padding) so 1..6 share one flow line */
+.bm-flow-arrow {{ align-self:start; padding-top:30px; display:flex; align-items:flex-start;
+    justify-content:center; color:{ACCENT}; font-size:18px; font-weight:700; }}
 /* factor grid */
 .bm-factor-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:6px 0; }}
 .bm-factor {{ display:flex; gap:12px; align-items:flex-start; background:#fff; border:1px solid #e8edf3;
@@ -290,7 +293,7 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:{ACCENT} !
     /* pipeline: single row -> vertical column, arrows rotate to point downward */
     .bm-flow {{ grid-template-columns:1fr; }}
     .bm-flow-step {{ margin:0 0 4px; }}
-    .bm-flow-arrow {{ transform:rotate(90deg); margin:3px 0; }}
+    .bm-flow-arrow {{ transform:rotate(90deg); margin:3px 0; padding-top:0; align-self:center; }}
 }}
 @media (max-width:760px) {{
     .bm-stat-row, .bm-factor-grid, .bm-horizon-grid {{ grid-template-columns:1fr 1fr; }}
