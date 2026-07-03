@@ -716,7 +716,7 @@ def page_methodology():
     st.write("")
     theme.section_title("Forecast horizons", theme.icon("clock"))
     horizons = [
-        ("Weekly",      "Week-ahead", "Next-week price moves, updated every week."),
+        ("Near term",   "Weekly",     "Next-week price moves, updated every week."),
         ("Short term",  "Monthly",    "Near-term month-ahead outlook."),
         ("Medium term", "Quarterly",  "Quarterly view, refreshed monthly."),
         ("Long term",   "Annual",     "Annual view, refreshed quarterly."),
@@ -735,7 +735,8 @@ def page_methodology():
     tcol[0].markdown(
         "<div class='bm-card'><h4>Explainable by design</h4>"
         "<div class='bm-desc'>Every forecast ships with a <b>rationale</b> &mdash; a breakdown of the key "
-        "factors behind the move &mdash; so the logic behind each price shift is transparent, not a black box.</div></div>",
+        "cost, supply&ndash;demand and sentiment factors behind the move &mdash; so the logic behind each "
+        "price shift is transparent and auditable, not a black box.</div></div>",
         unsafe_allow_html=True)
     tcol[1].markdown(
         "<div class='bm-card'><h4>IOSCO-aligned</h4>"
