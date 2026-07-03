@@ -1,0 +1,28 @@
+# =============================================================================
+# This is a PUBLIC repo. Real/proprietary data must NOT be committed here.
+# Keep the real data OUTSIDE this repo (see portal/data_loader.py _private_data_root):
+#   1. set $PORTAL_DATA_DIR to a private folder, or
+#   2. clone your private data repo as a sibling folder named  dashboard-data
+# The bundled sample under accuracy_tables/ + portal/calculators/*.csv stays
+# tracked on purpose so the public code still runs as a demo.
+# =============================================================================
+
+# Private data repo, if ever cloned/placed INSIDE this repo tree by mistake
+/dashboard-data/
+dashboard-data/
+
+# Streamlit secrets / any dotenv files (may hold PORTAL_DATA_DIR or credentials)
+.streamlit/secrets.toml
+*.env
+.env
+.env.*
+
+# Python caches / build junk
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db

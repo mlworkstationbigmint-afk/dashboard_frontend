@@ -1,0 +1,7 @@
+streamlit>=1.30
+pandas
+numpy
+openpyxl
+plotly
+scikit-learn
+fpdf2
