@@ -91,12 +91,14 @@ def _password_problem(p1: str, p2: str):
 
 
 def login_screen():
-    theme.render_topbar(None)
+    # Deliberately no topbar / footer here — a clean, generic sign-in page.
+    st.write("")
+    st.write("")
     cols = st.columns([1, 1.5, 1])
     with cols[1]:
         with st.container(border=True):
             st.markdown("### Sign in")
-            st.caption("Price Forecasting: Steel")
+            st.caption("Enter your credentials to continue.")
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
             if st.button("Sign in", use_container_width=True, type="primary"):
@@ -111,12 +113,13 @@ def login_screen():
                     st.error("This account is disabled. Contact an administrator.")
                 else:
                     st.error("Invalid username or password.")
-    theme.footer()
     st.stop()
 
 
 def force_password_change():
-    theme.render_topbar(st.session_state.user)
+    # Same clean, generic chrome as the sign-in page (no topbar / footer).
+    st.write("")
+    st.write("")
     cols = st.columns([1, 1.5, 1])
     with cols[1]:
         with st.container(border=True):
@@ -134,7 +137,6 @@ def force_password_change():
                     # set_password revoked old sessions; mint + queue a fresh one.
                     _start_session({**st.session_state.user, "must_reset": False})
                     st.rerun()
-    theme.footer()
     st.stop()
 
 
