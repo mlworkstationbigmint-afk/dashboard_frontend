@@ -79,7 +79,9 @@ def _read_cookie_token():
     except Exception:
         pass
     try:
-        return (cookie_manager.get_all() or {}).get(auth.COOKIE_NAME)
+        # cookie_manager.cookies is populated by CookieManager.__init__'s getAll
+        # (no second component). It's {} on the very first render, then filled.
+        return (cookie_manager.cookies or {}).get(auth.COOKIE_NAME)
     except Exception:
         return None
 
@@ -155,6 +157,21 @@ if "user" not in st.session_state:
     if _restored:
         st.session_state.user = _restored
         st.session_state._auth_token = _tok
+    elif not st.session_state.get("_cookie_probed"):
+        # First render after a refresh: the cookie component hasn't reported its
+        # value yet, so we can't tell "logged out" from "cookie not delivered
+        # yet". Show a brief loading state (NOT the login form) and let the
+        # component's automatic rerun deliver the cookie on the next run. This
+        # removes the flash of the login screen before auto-login.
+        st.session_state["_cookie_probed"] = True
+        theme.render_topbar(None)
+        _pcols = st.columns([1, 1.5, 1])
+        with _pcols[1]:
+            with st.container(border=True):
+                st.markdown("### Loading…")
+                st.caption("Restoring your session.")
+        theme.footer()
+        st.stop()
 
 # Opt-in diagnostics: append ?authdebug=1 to the URL to see cookie state.
 if st.query_params.get("authdebug") == "1":
