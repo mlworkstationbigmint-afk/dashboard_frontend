@@ -8,6 +8,7 @@ import os
 import sys
 import re
 import html
+import datetime as dt
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
@@ -31,12 +32,54 @@ theme.inject_css()
 # ---------------------------------------------------------------------------
 # LOGIN
 # ---------------------------------------------------------------------------
-# A single cookie manager for the whole run. The browser cookie holds a signed
-# session token so a page refresh (which clears st.session_state) can restore
-# the login. get_all() returns {} on the very first render, then the component
-# reruns with the real cookies.
+# The browser cookie holds a signed session token so a refresh (which clears
+# st.session_state) can restore the login. Two details make this reliable on
+# Streamlit Cloud:
+#   * READ from st.context.cookies — the HTTP request carries the cookie, so it
+#     is available on the very first run after a refresh with no component
+#     round-trip and no login flash.
+#   * WRITE / CLEAR are DEFERRED to the next run. st.rerun() discards the
+#     current run's frontend output, which would drop the cookie component's
+#     browser-side write (the cause of "refresh logs me out" and the logout
+#     KeyError). We queue the mutation in session_state and perform it on the
+#     following run, which renders a full page and is NOT followed by st.rerun().
 cookie_manager = stx.CookieManager(key="portal_cm")
-_cookies = cookie_manager.get_all() or {}
+
+_pending_write = st.session_state.pop("_cookie_write", None)
+if _pending_write is not None:
+    _name, _val, _exp = _pending_write
+    try:
+        cookie_manager.set(_name, _val, expires_at=_exp, key="cm_set")
+    except Exception:
+        pass
+elif st.session_state.pop("_cookie_clear", False):
+    # Delete by overwriting with an already-expired empty cookie (avoids the
+    # library's delete() KeyError when its in-memory view lacks the cookie).
+    try:
+        cookie_manager.set(auth.COOKIE_NAME, "",
+                           expires_at=db.utcnow() - dt.timedelta(days=1), key="cm_clear")
+    except Exception:
+        pass
+
+
+def _read_cookie_token():
+    """Read the session cookie from the request (authoritative on refresh)."""
+    try:
+        return st.context.cookies.get(auth.COOKIE_NAME)
+    except Exception:
+        # Older Streamlit without st.context.cookies — fall back to the component.
+        try:
+            return (cookie_manager.get_all() or {}).get(auth.COOKIE_NAME)
+        except Exception:
+            return None
+
+
+def _start_session(profile):
+    """Mint a session, store it in session_state, and queue the cookie write."""
+    token, expires = auth.create_session(profile["username"])
+    st.session_state.user = profile
+    st.session_state._auth_token = token
+    st.session_state["_cookie_write"] = (auth.COOKIE_NAME, token, expires)
 
 
 def _password_problem(p1: str, p2: str):
@@ -59,11 +102,7 @@ def login_screen():
             if st.button("Sign in", use_container_width=True, type="primary"):
                 profile, status = auth.authenticate(username, password)
                 if status == "ok":
-                    token, expires = auth.create_session(profile["username"])
-                    cookie_manager.set(auth.COOKIE_NAME, token,
-                                       expires_at=expires, key="cm_login_set")
-                    st.session_state.user = profile
-                    st.session_state._auth_token = token
+                    _start_session(profile)
                     st.session_state.page = "Home"
                     st.rerun()
                 elif status == "locked":
@@ -92,11 +131,8 @@ def force_password_change():
                 else:
                     uname = st.session_state.user["username"]
                     auth.set_password(uname, p1, must_reset=False)
-                    token, expires = auth.create_session(uname)
-                    cookie_manager.set(auth.COOKIE_NAME, token,
-                                       expires_at=expires, key="cm_reset_set")
-                    st.session_state.user = {**st.session_state.user, "must_reset": False}
-                    st.session_state._auth_token = token
+                    # set_password revoked old sessions; mint + queue a fresh one.
+                    _start_session({**st.session_state.user, "must_reset": False})
                     st.rerun()
     theme.footer()
     st.stop()
@@ -104,7 +140,7 @@ def force_password_change():
 
 # Restore a prior login from the cookie if session_state was cleared (refresh).
 if "user" not in st.session_state:
-    _tok = _cookies.get(auth.COOKIE_NAME)
+    _tok = _read_cookie_token()
     _restored = auth.resolve_session(_tok) if _tok else None
     if _restored:
         st.session_state.user = _restored
@@ -126,9 +162,9 @@ with hcol1:
 with hcol2:
     if st.button("Log out", key="logout_top", type="primary", use_container_width=True, icon=":material/logout:"):
         auth.logout(st.session_state.get("_auth_token"))
-        cookie_manager.delete(auth.COOKIE_NAME, key="cm_logout_del")
         for k in ("user", "_auth_token", "nav", "calc", "page"):
             st.session_state.pop(k, None)
+        st.session_state["_cookie_clear"] = True   # cleared on the next (login) render
         st.rerun()
 
 # data controls (collapsed sidebar): which folder the app reads, the data 'as of'
