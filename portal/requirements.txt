@@ -6,3 +6,10 @@ plotly
 scikit-learn
 fpdf2
 requests
+
+# Auth: self-managed user store in Neon Postgres (db.py, auth.py)
+argon2-cffi>=23.1                    # argon2id password hashing
+SQLAlchemy>=2.0                      # DB access layer over the Neon Postgres user store
+psycopg[binary]>=3.1                 # Postgres driver used by SQLAlchemy (Neon)
+PyJWT>=2.8                           # signs the session cookie so it survives page refresh
+extra-streamlit-components>=0.1.71   # browser cookie manager for persistent sessions
