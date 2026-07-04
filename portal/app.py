@@ -49,29 +49,39 @@ _pending_write = st.session_state.pop("_cookie_write", None)
 if _pending_write is not None:
     _name, _val, _exp = _pending_write
     try:
-        cookie_manager.set(_name, _val, expires_at=_exp, key="cm_set")
+        # max_age (relative seconds) is timezone-proof; expires_at is a fallback
+        # for browsers that prefer an absolute date.
+        cookie_manager.set(_name, _val, expires_at=_exp,
+                           max_age=auth.SESSION_TTL_HOURS * 3600, key="cm_set")
     except Exception:
         pass
 elif st.session_state.pop("_cookie_clear", False):
-    # Delete by overwriting with an already-expired empty cookie (avoids the
+    # Delete by overwriting with an immediately-expired empty cookie (avoids the
     # library's delete() KeyError when its in-memory view lacks the cookie).
     try:
-        cookie_manager.set(auth.COOKIE_NAME, "",
+        cookie_manager.set(auth.COOKIE_NAME, "", max_age=0,
                            expires_at=db.utcnow() - dt.timedelta(days=1), key="cm_clear")
     except Exception:
         pass
 
 
 def _read_cookie_token():
-    """Read the session cookie from the request (authoritative on refresh)."""
+    """Read the session cookie from two sources for reliability on refresh.
+
+    1) st.context.cookies — the HTTP request; present on a genuine page reload.
+    2) the cookie component's live read — authoritative for cookies set
+       client-side this session (may need one extra rerun to populate).
+    """
     try:
-        return st.context.cookies.get(auth.COOKIE_NAME)
+        tok = st.context.cookies.get(auth.COOKIE_NAME)
+        if tok:
+            return tok
     except Exception:
-        # Older Streamlit without st.context.cookies — fall back to the component.
-        try:
-            return (cookie_manager.get_all() or {}).get(auth.COOKIE_NAME)
-        except Exception:
-            return None
+        pass
+    try:
+        return (cookie_manager.get_all() or {}).get(auth.COOKIE_NAME)
+    except Exception:
+        return None
 
 
 def _start_session(profile):
@@ -91,14 +101,12 @@ def _password_problem(p1: str, p2: str):
 
 
 def login_screen():
-    # Deliberately no topbar / footer here — a clean, generic sign-in page.
-    st.write("")
-    st.write("")
+    theme.render_topbar(None)
     cols = st.columns([1, 1.5, 1])
     with cols[1]:
         with st.container(border=True):
             st.markdown("### Sign in")
-            st.caption("Enter your credentials to continue.")
+            st.caption("Price Forecasting: Steel")
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
             if st.button("Sign in", use_container_width=True, type="primary"):
@@ -113,13 +121,12 @@ def login_screen():
                     st.error("This account is disabled. Contact an administrator.")
                 else:
                     st.error("Invalid username or password.")
+    theme.footer()
     st.stop()
 
 
 def force_password_change():
-    # Same clean, generic chrome as the sign-in page (no topbar / footer).
-    st.write("")
-    st.write("")
+    theme.render_topbar(st.session_state.user)
     cols = st.columns([1, 1.5, 1])
     with cols[1]:
         with st.container(border=True):
@@ -137,6 +144,7 @@ def force_password_change():
                     # set_password revoked old sessions; mint + queue a fresh one.
                     _start_session({**st.session_state.user, "must_reset": False})
                     st.rerun()
+    theme.footer()
     st.stop()
 
 
@@ -147,6 +155,27 @@ if "user" not in st.session_state:
     if _restored:
         st.session_state.user = _restored
         st.session_state._auth_token = _tok
+
+# Opt-in diagnostics: append ?authdebug=1 to the URL to see cookie state.
+if st.query_params.get("authdebug") == "1":
+    _ctx_keys, _comp_keys = [], []
+    try:
+        _ctx_keys = list(st.context.cookies.keys())
+    except Exception as _e:
+        _ctx_keys = [f"<err: {_e}>"]
+    try:
+        _comp_keys = list((cookie_manager.get_all() or {}).keys())
+    except Exception as _e:
+        _comp_keys = [f"<err: {_e}>"]
+    _dbg_tok = _read_cookie_token()
+    st.warning(
+        "AUTH DEBUG\n\n"
+        f"- request cookies: `{_ctx_keys}`\n"
+        f"- component cookies: `{_comp_keys}`\n"
+        f"- `{auth.COOKIE_NAME}` found: **{bool(_dbg_tok)}**\n"
+        f"- token resolves to a user: **{bool(auth.resolve_session(_dbg_tok)) if _dbg_tok else False}**\n"
+        f"- logged in this run: **{'user' in st.session_state}**"
+    )
 
 if "user" not in st.session_state:
     login_screen()
