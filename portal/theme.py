@@ -68,6 +68,33 @@ header[data-testid="stHeader"] {{ background: transparent; height: 0; }}
 #MainMenu, footer {{ visibility: hidden; }}
 section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display: none !important; }}
 
+/* ---------- translucent loading overlay (auto, shown while rerunning) ----------
+   Streamlit keeps stStatusWidget in the DOM only while the script is running, so
+   :has() lets us fade in a full-screen scrim + spinner during page switches or
+   any slow rerun. Pure CSS via ::before/::after — no JS, no extra DOM node. */
+@keyframes bm-spin {{ to {{ transform: rotate(360deg); }} }}
+[data-testid="stApp"]::before {{
+    content: ""; position: fixed; inset: 0; z-index: 99990;
+    background: rgba(244,246,250,0.55);
+    -webkit-backdrop-filter: blur(1.5px); backdrop-filter: blur(1.5px);
+    opacity: 0; visibility: hidden; transition: opacity .18s ease;
+}}
+[data-testid="stApp"]::after {{
+    content: ""; position: fixed; top: 50%; left: 50%;
+    width: 54px; height: 54px; margin: -27px 0 0 -27px; z-index: 99991;
+    border-radius: 50%; border: 5px solid rgba(2,76,161,0.15);
+    border-top-color: {ACCENT}; border-right-color: {PRIMARY};
+    opacity: 0; visibility: hidden;
+    animation: bm-spin .85s linear infinite;
+}}
+[data-testid="stApp"]:has([data-testid="stStatusWidget"])::before,
+[data-testid="stApp"]:has([data-testid="stStatusWidget"])::after {{
+    opacity: 1; visibility: visible;
+}}
+@media (prefers-reduced-motion: reduce) {{
+    [data-testid="stApp"]::after {{ animation-duration: 2s; }}
+}}
+
 /* ---------- top brand bar ---------- */
 .bm-topbar {{
     background: {PRIMARY}; border-radius: 12px; padding: 13px 22px;
