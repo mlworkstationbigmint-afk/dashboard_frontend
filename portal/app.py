@@ -167,27 +167,6 @@ if "user" not in st.session_state:
         theme.loading_screen()
         st.stop()
 
-# Opt-in diagnostics: append ?authdebug=1 to the URL to see cookie state.
-if st.query_params.get("authdebug") == "1":
-    _ctx_keys, _comp_keys = [], []
-    try:
-        _ctx_keys = list(st.context.cookies.keys())
-    except Exception as _e:
-        _ctx_keys = [f"<err: {_e}>"]
-    try:
-        _comp_keys = list((cookie_manager.get_all() or {}).keys())
-    except Exception as _e:
-        _comp_keys = [f"<err: {_e}>"]
-    _dbg_tok = _read_cookie_token()
-    st.warning(
-        "AUTH DEBUG\n\n"
-        f"- request cookies: `{_ctx_keys}`\n"
-        f"- component cookies: `{_comp_keys}`\n"
-        f"- `{auth.COOKIE_NAME}` found: **{bool(_dbg_tok)}**\n"
-        f"- token resolves to a user: **{bool(auth.resolve_session(_dbg_tok)) if _dbg_tok else False}**\n"
-        f"- logged in this run: **{'user' in st.session_state}**"
-    )
-
 if "user" not in st.session_state:
     login_screen()
 

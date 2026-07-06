@@ -363,8 +363,6 @@ def icon(name: str, size: int = 18) -> str:
 
 def render_topbar(user: dict | None = None):
     right = ""
-    if user:
-        right = f"Signed in as <b>{user['name']}</b><br>{user['role']} access"
     st.markdown(
         f"<div class='bm-topbar'>"
         f"<div class='bm-topbar-l'>{_logo_html()}"
