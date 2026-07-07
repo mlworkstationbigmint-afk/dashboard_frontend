@@ -66,18 +66,6 @@ Single deployment; the logged-in user's `role` selects everything at render time
   insensitive) — a dev-controlled behaviour flag, not a runtime knob. This is the staging ground for
   the eventual Adani cut-over: **promote by adding `"adani"` to `GROUPED_FORECASTING_ROLES`** (and, if
   desired later, fold the flag into `theme.ROLE_PROFILES`). Non-grouped roles are unaffected.
-- **Forecasting view switch (2026-07-07, all roles):** the Graphical/Tabular pair is now a **modern
-  sliding switch that glides slowly** — a full-capsule track with a white capsule knob that eases
-  between the two positions (~.6s). Implemented by wrapping the `st.tabs` call in
-  `st.container(key="fc_view_toggle")` and adding a **scoped** CSS block in `theme.py` (so only this
-  pair changes; Calculators / other tab strips keep the default segmented pill). Applies to both the
-  grouped and flat layouts. See the handoff changelog for the CSS mechanics.
-
-- **Deploy fix (2026-07-07):** the `Revert "New Dashboard Frontend"` commits left unresolved git
-  conflict markers committed in `theme.py` (line 567), breaking the Streamlit Cloud deploy with a
-  `SyntaxError`. Resolved toward the revert side (markers + the now-unused `loading_screen()`
-  removed); see the handoff changelog. NB: those reverts also rolled back some 2026-07-07 UI work
-  (cookie splash, segmented-control slider restyle) — not re-applied.
 
 ## Known limitation
 `.streamlit/config.toml` `primaryColor` is a build-time global, so native Streamlit widgets (default

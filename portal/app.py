@@ -8,13 +8,16 @@ import os
 import sys
 import re
 import html
+import datetime as dt
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
+import extra_streamlit_components as stx
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import theme
 import auth
+import db
 import data_loader as dl
 from calculators import calc_import_price, calc_cost, calc_elasticity
 
@@ -26,9 +29,137 @@ st.set_page_config(
 theme.inject_css()
 
 
+@st.cache_resource(show_spinner=False)
+def _ensure_db_schema():
+    """Create any missing tables once per process (idempotent CREATE IF NOT EXISTS).
+    The app historically relied on seed_users.py to run init_db(), so new tables
+    (e.g. role_commodities) must be ensured here for already-seeded deployments."""
+    db.init_db()
+    return True
+
+
+_ensure_db_schema()
+
+
 # ---------------------------------------------------------------------------
 # LOGIN
 # ---------------------------------------------------------------------------
+# The browser cookie holds a signed session token so a refresh (which clears
+# st.session_state) can restore the login. Two details make this reliable on
+# Streamlit Cloud:
+#   * READ from st.context.cookies — the HTTP request carries the cookie, so it
+#     is available on the very first run after a refresh with no component
+#     round-trip and no login flash.
+#   * WRITE / CLEAR are DEFERRED to the next run. st.rerun() discards the
+#     current run's frontend output, which would drop the cookie component's
+#     browser-side write (the cause of "refresh logs me out" and the logout
+#     KeyError). We queue the mutation in session_state and perform it on the
+#     following run, which renders a full page and is NOT followed by st.rerun().
+cookie_manager = stx.CookieManager(key="portal_cm")
+
+_pending_write = st.session_state.pop("_cookie_write", None)
+if _pending_write is not None:
+    _name, _val, _exp = _pending_write
+    try:
+        # max_age (relative seconds) is timezone-proof; expires_at is a fallback
+        # for browsers that prefer an absolute date.
+        cookie_manager.set(_name, _val, expires_at=_exp,
+                           max_age=auth.SESSION_TTL_HOURS * 3600, key="cm_set")
+    except Exception:
+        pass
+elif st.session_state.pop("_cookie_clear", False):
+    # Delete by overwriting with an immediately-expired empty cookie (avoids the
+    # library's delete() KeyError when its in-memory view lacks the cookie).
+    try:
+        cookie_manager.set(auth.COOKIE_NAME, "", max_age=0,
+                           expires_at=db.utcnow() - dt.timedelta(days=1), key="cm_clear")
+    except Exception:
+        pass
+
+
+def _read_cookie_token():
+    """Read the session cookie from two sources for reliability on refresh.
+
+    1) st.context.cookies — the HTTP request; present on a genuine page reload.
+    2) the cookie component's live read — authoritative for cookies set
+       client-side this session (may need one extra rerun to populate).
+    """
+    try:
+        tok = st.context.cookies.get(auth.COOKIE_NAME)
+        if tok:
+            return tok
+    except Exception:
+        pass
+    try:
+        # cookie_manager.cookies is populated by CookieManager.__init__'s getAll
+        # (no second component). It's {} on the very first render, then filled.
+        return (cookie_manager.cookies or {}).get(auth.COOKIE_NAME)
+    except Exception:
+        return None
+
+
+def _start_session(profile):
+    """Mint a session, store it in session_state, and queue the cookie write."""
+    token, expires = auth.create_session(profile["username"])
+    st.session_state.user = profile
+    st.session_state._auth_token = token
+    st.session_state["_cookie_write"] = (auth.COOKIE_NAME, token, expires)
+
+
+def _password_problem(p1: str, p2: str):
+    if p1 != p2:
+        return "The two passwords don't match."
+    if len(p1) < 10:
+        return "Use at least 10 characters."
+    return None
+
+
+# ---------------------------------------------------------------------------
+# PER-ROLE ACCESS (commodities + analyst-call audience)
+# ---------------------------------------------------------------------------
+def allowed_products(role):
+    """The `dl.STEEL_PRODUCTS` subset a role may see. Admins and any role with no
+    saved config see all (order preserved). Set per role from the Admin tab."""
+    if role == "Admin":
+        return dl.STEEL_PRODUCTS
+    allow = db.get_role_commodities(role)
+    if not allow:                       # unconfigured => all
+        return dl.STEEL_PRODUCTS
+    return {k: v for k, v in dl.STEEL_PRODUCTS.items() if k in allow}
+
+
+def _call_visible(call, role):
+    """Deny-by-default: a call is visible to a (non-admin) role only if that role is
+    explicitly in its audience. Untagged calls (empty audience) are 'unassigned' and
+    show to admins only — the admin picks each call's audience. Admins bypass this
+    (see page_analyst)."""
+    return role in (call.get("audiences") or [])
+
+
+def known_roles():
+    """Built-in roles (`auth.ROLES`) plus any custom role already assigned to a user,
+    so a role the admin created at runtime appears in every role picker. Built-ins
+    first, insertion order preserved."""
+    roles = list(auth.ROLES)
+    for u in auth.list_users():
+        if u["role"] not in roles:
+            roles.append(u["role"])
+    return roles
+
+
+def _resolve_new_role(custom, picked):
+    """Resolve the add-user role: a non-blank custom name wins over the dropdown.
+    A custom name matching an existing role case-insensitively reuses that role's
+    exact casing so we don't fork 'Adani' vs 'adani'."""
+    custom = (custom or "").strip()
+    if not custom:
+        return picked
+    for r in known_roles():
+        if r.lower() == custom.lower():
+            return r
+    return custom
+
+
 def login_screen():
     theme.render_topbar(None)
     cols = st.columns([1, 1.5, 1])
@@ -39,21 +170,73 @@ def login_screen():
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
             if st.button("Sign in", use_container_width=True, type="primary"):
-                profile = auth.authenticate(username, password)
-                if profile:
-                    st.session_state.user = profile
+                profile, status = auth.authenticate(username, password)
+                if status == "ok":
+                    _start_session(profile)
                     st.session_state.page = "Home"
                     st.rerun()
+                elif status == "locked":
+                    st.error("Too many failed attempts. Try again in a few minutes.")
+                elif status == "disabled":
+                    st.error("This account is disabled. Contact an administrator.")
                 else:
                     st.error("Invalid username or password.")
     theme.footer()
     st.stop()
 
 
+def force_password_change():
+    theme.render_topbar(st.session_state.user)
+    cols = st.columns([1, 1.5, 1])
+    with cols[1]:
+        with st.container(border=True):
+            st.markdown("### Set a new password")
+            st.caption("Your account requires a new password before you continue.")
+            p1 = st.text_input("New password", type="password", key="reset_p1")
+            p2 = st.text_input("Confirm new password", type="password", key="reset_p2")
+            if st.button("Set password", use_container_width=True, type="primary"):
+                problem = _password_problem(p1, p2)
+                if problem:
+                    st.error(problem)
+                else:
+                    uname = st.session_state.user["username"]
+                    auth.set_password(uname, p1, must_reset=False)
+                    # set_password revoked old sessions; mint + queue a fresh one.
+                    _start_session({**st.session_state.user, "must_reset": False})
+                    st.rerun()
+    theme.footer()
+    st.stop()
+
+
+# Restore a prior login from the cookie if session_state was cleared (refresh).
+if "user" not in st.session_state:
+    _tok = _read_cookie_token()
+    _restored = auth.resolve_session(_tok) if _tok else None
+    if _restored:
+        st.session_state.user = _restored
+        st.session_state._auth_token = _tok
+    elif not st.session_state.get("_cookie_probed"):
+        # First render after a refresh: the cookie component hasn't reported its
+        # value yet, so we can't tell "logged out" from "cookie not delivered
+        # yet". Show a full-screen loading animation (NOT the login form) and let
+        # the component's automatic rerun deliver the cookie on the next run.
+        # This removes the flash of the login screen before auto-login.
+        st.session_state["_cookie_probed"] = True
+        theme.loading_screen()
+        st.stop()
+
 if "user" not in st.session_state:
     login_screen()
 
 user = st.session_state.user
+if user.get("must_reset"):
+    force_password_change()
+
+# Re-brand the app for this user's role (topbar + all custom surfaces). inject_css()
+# already seeded the BigMint defaults for the login screen.
+_profile = theme.profile_for(user.get("role"))
+theme.apply_role_theme(_profile)
+
 st.session_state.setdefault("page", "Home")
 
 # header: brand bar + a primary "Log out" button (same design as Sign in) pinned top-right
@@ -62,7 +245,11 @@ with hcol1:
     theme.render_topbar(user)
 with hcol2:
     if st.button("Log out", key="logout_top", type="primary", use_container_width=True, icon=":material/logout:"):
-        auth.logout()
+        auth.logout(st.session_state.get("_auth_token"))
+        for k in ("user", "_auth_token", "nav", "calc", "page"):
+            st.session_state.pop(k, None)
+        st.session_state["_cookie_clear"] = True   # cleared on the next (login) render
+        st.rerun()
 
 # data controls (collapsed sidebar): which folder the app reads, the data 'as of'
 # date, and a manual refresh. Data files are re-read automatically whenever they
@@ -113,7 +300,8 @@ NAV = [
 
 
 def top_nav():
-    items = list(NAV)
+    allowed = set(theme.profile_for(user.get("role"))["pages"])   # role-visible pages
+    items = [it for it in NAV if it[0] in allowed]
     if user.get("role") == "Admin":                       # Admin tab is admin-only
         items.append(("Admin", "Admin", "admin_panel_settings"))
     widths = [1] + [1.35] * (len(items) - 1)              # keep Home a touch narrower
@@ -210,9 +398,12 @@ def _render_with_highlighter(fig, height=430, dom_id="chart"):
     components.html(html, height=height + 12)
 
 
-def forecast_chart(acc, fwd):
+def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=False):
     """Light-blue actual spot (soft area fill) + bold red dashed forecast, with a dotted
-    divider and a faint shaded band marking the 12-week-ahead region."""
+    divider and a faint shaded band marking the 12-week-ahead region.
+    legend_inside places the legend inside the plot (white region); year_labels adds the
+    short year to the x-axis date ticks; compact shrinks the height + top margin and pulls
+    the zoom buttons up (all used by the grouped adani_dev layout, no scroll needed)."""
     hist = acc.dropna(subset=["Actual"]).copy()
     if hist.empty:
         st.info("No historical spot series available for this product.")
@@ -267,12 +458,17 @@ def forecast_chart(acc, fwd):
             return dict(count=min(n * 7 + fc_span, all_days), step="day",
                         stepmode="backward", label=label)
 
-        fig = _style_fig(fig, height=560)
+        h = 620 if compact else 560
+        top_m = 18 if compact else 82            # compact: buttons sit INSIDE the plot, tiny margin
+        rs_y = 0.98 if compact else 1.18         # inside the plot (top) when compact, else above it
+        rs_ya = "top" if compact else "bottom"
+        rs_x = 0.01 if compact else 0
+        fig = _style_fig(fig, height=h)
         fig.update_xaxes(
             # exact range (no autorange padding) so the backward zoom anchors on the last forecast date
             range=[_dt(start_all), _dt(last_fc)], autorange=False,
             # weekly grid for week-by-week reading: faint weekly minor lines + month-ish major ticks
-            showgrid=True, gridcolor="#e8eef5", tickformat="%d %b",
+            showgrid=True, gridcolor="#e8eef5", tickformat=("%d %b %y" if year_labels else "%d %b"),
             minor=dict(dtick=7 * 86400000, tick0=_dt(last_actual), showgrid=True, gridcolor="#f3f6fa"),
             rangeslider=dict(visible=True, thickness=0.10, bgcolor="#f1f5f9",
                              bordercolor="#e2e8f0", borderwidth=1,
@@ -284,16 +480,24 @@ def forecast_chart(acc, fwd):
                     dict(count=1, label="YTD", step="year", stepmode="todate"),
                     dict(count=all_days, label="ALL", step="day", stepmode="backward"),
                 ],
-                x=0, xanchor="left", y=1.18, yanchor="bottom",
+                x=rs_x, xanchor="left", y=rs_y, yanchor=rs_ya,
                 bgcolor="#eef2f7", activecolor=theme.ACCENT,
                 bordercolor="#e2e8f0", borderwidth=1,
                 font=dict(size=11.5, color="#1f2937"),
             ),
         )
-        # raise the top margin to clear the zoom buttons; move the legend to the top-right
-        fig.update_layout(margin=dict(l=14, r=22, t=82, b=18),
-                          legend=dict(x=1, xanchor="right", y=1.18, yanchor="bottom"))
-        _render_with_highlighter(fig, height=560, dom_id="fc_chart")
+        # raise the top margin to clear the zoom buttons. legend_inside places the legend inside
+        # the plot's white region (the top-right slot is taken by the location dropdown in the
+        # grouped layout); otherwise keep it at the top-right above the chart.
+        if legend_inside:
+            ly = 0.86 if compact else 0.99       # compact: sit below the inside zoom buttons
+            legend = dict(orientation="h", x=0.012, xanchor="left", y=ly, yanchor="top",
+                          bgcolor="rgba(255,255,255,0.74)", bordercolor="#e2e8f0", borderwidth=1,
+                          font=dict(size=11.5))
+        else:
+            legend = dict(x=1, xanchor="right", y=1.18, yanchor="bottom")
+        fig.update_layout(margin=dict(l=14, r=22, t=top_m, b=18), legend=legend)
+        _render_with_highlighter(fig, height=h, dom_id="fc_chart")
     except Exception:
         h = hist.set_index("Date")[["Actual", "Forecast"]]
         f = fwd.set_index("Date")[["Forecast"]].rename(columns={"Forecast": "Forecast (12-wk)"})
@@ -386,8 +590,12 @@ def directional_accuracy_bar(view):
 # PAGE: HOME
 # ---------------------------------------------------------------------------
 def page_home():
+    products = allowed_products(user["role"])          # role-scoped commodities
+    n_products = len(products)
+    allowed_pages = set(theme.profile_for(user.get("role"))["pages"])
     st.markdown("## Price Forecasting: Steel")
-    st.markdown(f"Welcome, **{user['name']}**. Six steel products, 12-week Ensemble forecasts and week-wise accuracy.")
+    st.markdown(f"Welcome, **{user['name']}**. {n_products} steel "
+                f"product{'s' if n_products != 1 else ''}, 12-week Ensemble forecasts and week-wise accuracy.")
     st.write("")
 
     # "Last updated on" = the newest date an ACTUAL spot exists, read from the accuracy
@@ -396,7 +604,7 @@ def page_home():
     last_update = last_actual.strftime("%d %b %Y") if last_actual is not None else "-"
     mapas = []
     n_weeks = 0
-    for _, meta in dl.STEEL_PRODUCTS.items():
+    for _, meta in products.items():
         acc = dl.load_accuracy("6-week", meta["acc"]).dropna(subset=["Actual", "Forecast"])
         n_weeks = max(n_weeks, len(acc))
         k = dl.accuracy_kpis(acc)
@@ -405,7 +613,7 @@ def page_home():
     avg_mapa = sum(mapas) / len(mapas) if mapas else None
 
     s1, s2, s3, s4 = st.columns(4)
-    s1.markdown(theme.kpi_card("Steel products", "6", "tracked weekly", theme.icon("factory")), unsafe_allow_html=True)
+    s1.markdown(theme.kpi_card("Steel products", str(n_products), "tracked weekly", theme.icon("factory")), unsafe_allow_html=True)
     s2.markdown(theme.kpi_card("Forecast horizon", "12 wk", "Ensemble Wgt-Mean", theme.icon("trending")), unsafe_allow_html=True)
     s3.markdown(theme.kpi_card("Avg absolute accuracy", f"{avg_mapa:.1f}%" if avg_mapa else "-", f"MAPA, {n_weeks}-wk avg", theme.icon("target")), unsafe_allow_html=True)
     s4.markdown(theme.kpi_card("Last updated on", last_update, "latest actual spot date", theme.icon("calendar")), unsafe_allow_html=True)
@@ -413,25 +621,28 @@ def page_home():
     st.write("")
     theme.section_title("Modules", theme.icon("home"))
     modules = [
-        ("Price forecasting", "Spot vs 12-week Ensemble forecast for the six steel products.", "trending_up", "Price Forecasting"),
+        ("Price forecasting", "Spot vs 12-week Ensemble forecast for the steel products.", "trending_up", "Price Forecasting"),
         ("Analyst calls", "Monthly market-outlook calls, key insights and downloadable decks.", "campaign", "Analyst Calls"),
         ("Performance", "Week-wise accuracy: spot vs forecast, weekly delta, MAPA and directional hit-rate.", "insights", "Performance Dashboard"),
         ("Calculators", "Import vs landed-cost, production cost & margin, and price-elasticity tools.", "calculate", "Calculators"),
     ]
-    for col, (title, desc, mi, target) in zip(st.columns(4), modules):
-        with col:
-            # whole card is one clickable button (styled via .st-key-homemod_* in theme.py)
-            # label = **title** (strong/block) + brief (p text) + *Open ->* (em/block CTA)
-            if st.button(f"**{title}** {desc} *Open →*", key=f"homemod_{target.replace(' ', '_')}",
-                         icon=f":material/{mi}:", use_container_width=True):
-                st.session_state.page = target
-                st.rerun()
+    modules = [m for m in modules if m[3] in allowed_pages]   # only role-visible modules
+    if modules:
+        for col, (title, desc, mi, target) in zip(st.columns(len(modules)), modules):
+            with col:
+                # whole card is one clickable button (styled via .st-key-homemod_* in theme.py)
+                # label = **title** (strong/block) + brief (p text) + *Open ->* (em/block CTA)
+                if st.button(f"**{title}** {desc} *Open →*", key=f"homemod_{target.replace(' ', '_')}",
+                             icon=f":material/{mi}:", use_container_width=True):
+                    st.session_state.page = target
+                    st.rerun()
 
-    # full-width banner button spanning the four module cards -> Methodology
-    if st.button("**Methodology** — how the forecasts are built: data, models, ensemble & accuracy. *View →*",
-                 key="home_methodology", icon=":material/schema:", use_container_width=True):
-        st.session_state.page = "Methodology"
-        st.rerun()
+    # full-width banner button spanning the module cards -> Methodology (if visible to this role)
+    if "Methodology" in allowed_pages:
+        if st.button("**Methodology** — how the forecasts are built: data, models, ensemble & accuracy. *View →*",
+                     key="home_methodology", icon=":material/schema:", use_container_width=True):
+            st.session_state.page = "Methodology"
+            st.rerun()
     theme.footer()
 
 
@@ -453,43 +664,128 @@ RATIONALES = {
 # ---------------------------------------------------------------------------
 # PAGE: PRICE FORECASTING
 # ---------------------------------------------------------------------------
+# Top-level commodity groups for the grouped forecasting layout. Within a group a
+# top-right dropdown picks the specific location/full name; a group appears only if
+# it has ≥1 allowed member.
+FORECAST_GROUP_ORDER = ["HRC", "HR Plate", "Rebar", "Structure"]
+
+# Roles that get the grouped forecasting UI (group selector at top + per-group location
+# dropdown in the old legend slot + in-chart legend + short year in the x-axis labels).
+# Case-insensitive. When adani_dev is promoted onto the live Adani role, add "adani" here.
+GROUPED_FORECASTING_ROLES = {"adani_dev"}
+
+
+def _grouped_forecasting(role):
+    return (role or "").strip().lower() in GROUPED_FORECASTING_ROLES
+
+
+def _product_group(name):
+    """Map a STEEL_PRODUCTS key to its top-level group; unknown products form their own group."""
+    n = (name or "").strip().lower()
+    if n.startswith("hr plate") or n.startswith("hrplate"):
+        return "HR Plate"
+    if n.startswith("hrc"):
+        return "HRC"
+    if n.startswith("rebar"):
+        return "Rebar"
+    if n.startswith("structure"):
+        return "Structure"
+    return name
+
+
+def _grouped_products(products):
+    """{group: {product_name: meta}} ordered by FORECAST_GROUP_ORDER; only non-empty groups."""
+    groups = {}
+    for name, meta in products.items():
+        groups.setdefault(_product_group(name), {})[name] = meta
+    ordered = {g: groups[g] for g in FORECAST_GROUP_ORDER if g in groups}
+    for g, mem in groups.items():
+        ordered.setdefault(g, mem)
+    return ordered
+
+
+def _location_label(group, name):
+    """Short location label for a product within its group (strip the group prefix), else the
+    full name — 'Rebar IF Raipur'→'IF Raipur', 'Structure (IF Raipur)'→'IF Raipur', 'HRC'→'HRC'."""
+    if name.lower().startswith(group.lower()):
+        rest = name[len(group):].strip(" -–—()")
+        if rest:
+            return rest
+    return name
+
+
 def page_forecasting():
     st.markdown("## Price forecasting")
-    product = st.segmented_control("Product", list(dl.STEEL_PRODUCTS.keys()),
-                                   default="HRC", key="fc_prod", label_visibility="collapsed")
-    product = product or "HRC"
-    meta = dl.STEEL_PRODUCTS[product]
+    products = allowed_products(user["role"])
+    if not products:
+        st.info("No commodities are enabled for your account yet. Please contact an administrator.",
+                icon=":material/info:")
+        theme.footer()
+        return
+    grouped = _grouped_forecasting(user["role"])
+    loc_labels = loc_key = None
+    if grouped:
+        groups = _grouped_products(products)
+        gkeys = list(groups.keys())
+        group = st.segmented_control("Commodity group", gkeys, default=gkeys[0],
+                                     key="fc_group", label_visibility="collapsed")
+        group = group if group in groups else gkeys[0]
+        loc_map = {_location_label(group, n): n for n in groups[group]}   # label -> product key
+        loc_labels = sorted(loc_map)
+        loc_key = f"fc_loc_{group.replace(' ', '_')}"
+        if st.session_state.get(loc_key) not in loc_labels:   # default/sanitise before the widget
+            st.session_state[loc_key] = loc_labels[0]
+        product = loc_map[st.session_state[loc_key]]
+    else:
+        keys = list(products.keys())
+        default = keys[0]
+        product = st.segmented_control("Product", keys, default=default, key="fc_prod",
+                                       label_visibility="collapsed")
+        product = product if product in products else default
+    meta = products[product]
     summary = dl.load_summary()
     row = dl.summary_row(summary, meta["ff"])
     fwd = dl.load_forward(meta["ff"])
     acc_hist = dl.load_accuracy("6-week", meta["acc"])   # Accuracy_Table_6 (Table_16 retired)
 
-    if row:
+    def price_cards():
+        if not row:
+            return
         last_actual = row.get("Last actual (Rs./ton)", row.get("Last actual (₹/ton)"))
         last_date = pd.to_datetime(row.get("Last actual date"), errors="coerce")
         ld = last_date.strftime("%d %b %Y") if pd.notna(last_date) else "-"
         nextwk = row.get("Next-wk forecast")
         p12 = row.get("+12wk forecast")
-
         nextwk_dir = dl.direction_flag(nextwk - last_actual) if (pd.notna(nextwk) and pd.notna(last_actual)) else row.get("Next-wk dir", "")
         p12_dir = dl.direction_flag(p12 - last_actual) if (pd.notna(p12) and pd.notna(last_actual)) else row.get("+12wk dir", "")
-
         k1, k2, k3 = st.columns(3)
         k1.markdown(theme.kpi_card("Last actual spot", f"Rs.{last_actual:,.0f}", ld, theme.icon("rupee")), unsafe_allow_html=True)
         k2.markdown(theme.kpi_card("Next-week forecast", f"Rs.{nextwk:,.0f}", theme.direction_chip(nextwk_dir), theme.icon("clock")), unsafe_allow_html=True)
         k3.markdown(theme.kpi_card("+12-week forecast", f"Rs.{p12:,.0f}", theme.direction_chip(p12_dir), theme.icon("trending")), unsafe_allow_html=True)
-    else:
-        last_actual, last_date = None, None
 
-    st.write("")
+    # Default layout: price cards above the tabs. Grouped (adani_dev): the graph goes on top
+    # (right after the group tabs) and the cards drop below the tab block (rendered after it).
+    if not grouped:
+        price_cards()
+        st.write("")
+    else:
+        # Shared location dropdown ABOVE the view tabs (left-aligned) so it can be changed in
+        # both the Graphical and Tabular views without switching back to the graph.
+        with st.container(key="fc_loc_box"):
+            st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
+
     tab_graph, tab_table = st.tabs(["Graphical view", "Tabular view"])
 
     with tab_graph:
-        theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
-        forecast_chart(acc_hist, fwd)
-        st.markdown("<div class='bm-footnote'>Light blue = actual spot. Red dashed = model forecast "
-                    "(historical fit + 12-week ahead). Hover any point for its price.</div>",
-                    unsafe_allow_html=True)
+        if grouped:
+            # No section title; the zoom (week) buttons live INSIDE the plot now (compact mode).
+            forecast_chart(acc_hist, fwd, legend_inside=True, year_labels=True, compact=True)
+        else:
+            theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
+            forecast_chart(acc_hist, fwd)
+            st.markdown("<div class='bm-footnote'>Light blue = actual spot. Red dashed = model forecast "
+                        "(historical fit + 12-week ahead). Hover any point for its price.</div>",
+                        unsafe_allow_html=True)
 
     with tab_table:
         # One continuous table: history (actual+forecast+delta, blank direction) flows into
@@ -526,6 +822,10 @@ def page_forecasting():
                     "(same window as the chart); shaded rows = 12-week-ahead forecast (no actuals yet). "
                     "&Delta; = actual &minus; forecast. Headline line = Ensemble (Weighted Mean).</div>",
                     unsafe_allow_html=True)
+
+    if grouped:                                   # adani_dev: price cards below the graph/table tabs
+        st.write("")
+        price_cards()
 
     # ---- Forecast rationale (placeholder; real analyst commentary supplied later) ----
     st.write("")
@@ -589,15 +889,18 @@ def _render_call_card(call, sig):
 def page_analyst():
     st.markdown("## Analyst calls / meets")
     calls = dl.load_analyst_calls()
+    if user["role"] != "Admin":                       # admins see every call; others see their audience
+        calls = [c for c in calls if _call_visible(c, user["role"])]
     if not calls:
-        st.info("No analyst calls published yet.", icon=":material/info:")
+        st.info("No analyst calls published for your account yet.", icon=":material/info:")
         theme.footer()
         return
     sig = dl.data_sig()
     for call in calls:
         _render_call_card(call, sig)
     if user["role"] == "Admin":
-        st.caption("You're an admin — use the **Admin** tab to add, edit or remove calls and upload decks.")
+        st.caption("You're an admin — use the **Admin** tab to add, edit or remove calls, set each "
+                   "call's audience, and upload decks.")
     theme.footer()
 
 
@@ -608,11 +911,137 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.strip().lower()).strip("-") or "call"
 
 
+def _admin_users_panel():
+    """Self-service user administration: create, disable, reset, re-role, delete."""
+    with st.expander("User management", icon=":material/group:"):
+        users = auth.list_users()
+        active_admins = [u["username"] for u in users
+                         if u["role"] == "Admin" and u["is_active"]]
+
+        st.dataframe(
+            [{"username": u["username"], "name": u["name"], "role": u["role"],
+              "active": bool(u["is_active"]),
+              "locked": u["locked_until"] is not None} for u in users],
+            hide_index=True, use_container_width=True,
+        )
+
+        st.markdown("**Add a user**")
+        with st.form("add_user_form", clear_on_submit=True):
+            a1, a2, a3 = st.columns(3)
+            new_username = a1.text_input("Username")
+            new_name = a2.text_input("Full name")
+            new_role_pick = a3.selectbox("Role", known_roles())
+            new_role_custom = st.text_input(
+                "…or create a new role (leave blank to use the dropdown)",
+                key="add_user_new_role",
+                help="A new role starts with the default branding and access to all commodities, "
+                     "and sees no analyst calls until you tag some for it. Set its commodity access "
+                     "in the Commodity-access panel and tag its calls in the call editor; for custom "
+                     "branding a developer adds a profile in theme.ROLE_PROFILES.")
+            add = st.form_submit_button("Create user", type="primary")
+        if add:
+            uname = (new_username or "").strip().lower()
+            role = _resolve_new_role(new_role_custom, new_role_pick)
+            if not uname or not new_name.strip():
+                st.error("Username and full name are both required.")
+            elif not role:
+                st.error("Pick a role from the dropdown or type a new one.")
+            elif db.get_user(uname) is not None:
+                st.error(f"User '{uname}' already exists.")
+            else:
+                temp = auth.generate_temp_password()
+                auth.create_user(uname, new_name.strip(), role, temp, must_reset=True)
+                st.success(f"Created '{uname}' with role **{role}**. Share this one-time password — "
+                           "they'll set their own on first login:")
+                st.code(temp, language=None)
+
+        if not users:
+            return
+        st.markdown("**Manage a user**")
+        sel = st.selectbox("Select user", [u["username"] for u in users],
+                           key="admin_user_sel")
+        selrow = next(u for u in users if u["username"] == sel)
+        is_self = sel == user["username"]
+        last_admin = sel in active_admins and len(active_admins) == 1
+
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            _roles = known_roles()
+            role_idx = _roles.index(selrow["role"]) if selrow["role"] in _roles else 0
+            new_r = st.selectbox("Role", _roles, index=role_idx, key=f"role_{sel}")
+            if st.button("Apply role", key=f"applyrole_{sel}", use_container_width=True):
+                if last_admin and new_r != "Admin":
+                    st.error("Can't demote the last active admin.")
+                else:
+                    auth.set_role(sel, new_r)
+                    st.rerun()
+        with m2:
+            if selrow["is_active"]:
+                if st.button("Disable", key=f"dis_{sel}", use_container_width=True,
+                             disabled=is_self or last_admin,
+                             help="You can't disable yourself or the last admin."):
+                    auth.set_active(sel, False)
+                    st.rerun()
+            else:
+                if st.button("Enable", key=f"en_{sel}", use_container_width=True):
+                    auth.set_active(sel, True)
+                    st.rerun()
+        with m3:
+            if st.button("Reset password", key=f"rst_{sel}", use_container_width=True):
+                temp = auth.generate_temp_password()
+                auth.set_password(sel, temp, must_reset=True)
+                st.session_state["_admin_last_temp"] = (sel, temp)
+                st.rerun()
+        with m4:
+            if st.button("Delete", key=f"del_{sel}", use_container_width=True,
+                         disabled=is_self or last_admin,
+                         help="You can't delete yourself or the last admin."):
+                auth.delete_user(sel)
+                st.session_state.pop("_admin_last_temp", None)
+                st.rerun()
+
+        last_temp = st.session_state.get("_admin_last_temp")
+        if last_temp and last_temp[0] == sel:
+            st.info(f"One-time password for '{sel}' (they must change it on next login):")
+            st.code(last_temp[1], language=None)
+
+
+def _admin_access_panel():
+    """Per-role commodity access: which commodities each user type sees on
+    Forecasting / Performance / Home. Stored in Neon (`db.role_commodities`)."""
+    with st.expander("Commodity access (per user type)", icon=":material/tune:"):
+        st.caption("Pick which commodities each user type sees on Forecasting, Performance and Home. "
+                   "A user type with nothing saved sees **all** commodities; save a subset to restrict it. "
+                   "Admins always see everything.")
+        roles = [r for r in known_roles() if r != "Admin"]
+        role = st.selectbox("User type", roles, key="access_role_sel")
+        all_products = list(dl.STEEL_PRODUCTS.keys())
+        current = db.get_role_commodities(role)
+        chosen = st.multiselect("Commodities this user type can see", all_products,
+                                default=(current or all_products), key=f"access_ms_{role}")
+        if current:
+            st.caption(f"Currently restricted to **{len(current)}** of {len(all_products)}: "
+                       f"{', '.join(current)}.")
+        else:
+            st.caption("Currently unconfigured → this user type sees **all** commodities.")
+        if st.button("Save access", type="primary", key=f"access_save_{role}"):
+            if not chosen:
+                st.error("Select at least one commodity — an empty set isn't allowed (it would leave an "
+                         "empty dashboard). To hide the whole page for a role, edit its profile in `theme.py`.")
+            else:
+                db.set_role_commodities(role, chosen)
+                st.success(f"Saved commodity access for **{role}**: {', '.join(chosen)}.")
+                st.rerun()
+
+
 def page_admin():
     if user["role"] != "Admin":
         st.error("This page is for admins only.")
         theme.footer()
         return
+
+    _admin_users_panel()
+    _admin_access_panel()
 
     st.markdown("## Admin — Analyst calls")
     if not dl.can_admin_write():
@@ -639,6 +1068,12 @@ def page_admin():
         st.markdown("**Sections** (leave blank to hide a row)")
         secvals = {lbl: st.text_input(lbl, value=esecs.get(lbl, ""), key=f"sec_{ekey}_{lbl}")
                    for lbl in dl.ANALYST_SECTIONS}
+        aud_opts = [r for r in known_roles() if r != "Admin"]
+        aud_default = [r for r in (editing or {}).get("audiences", []) if r in aud_opts]
+        audiences = st.multiselect("Audience — user types who see this call", aud_opts,
+                                   default=aud_default, key=f"aud_{ekey}",
+                                   help="Pick who sees this call. Leave empty = unassigned "
+                                        "(admins only — no other role sees it). Admins always see all calls.")
         u1, u2 = st.columns(2)
         pdf_up = u1.file_uploader("PDF deck", type=["pdf"], key=f"pdf_up_{ekey}")
         ppt_up = u2.file_uploader("PPT deck", type=["ppt", "pptx"], key=f"ppt_up_{ekey}")
@@ -659,6 +1094,7 @@ def page_admin():
                 "summary": summary.strip(),
                 "sections": {lbl: secvals[lbl].strip() for lbl in dl.ANALYST_SECTIONS},
                 "pdf": (editing or {}).get("pdf", ""), "ppt": (editing or {}).get("ppt", ""),
+                "audiences": audiences,   # [] = visible to all
             }
             try:
                 if pdf_up is not None:
@@ -701,10 +1137,18 @@ def page_admin():
 # ---------------------------------------------------------------------------
 def page_performance():
     st.markdown("## Performance dashboard")
-    product = st.segmented_control("Product", list(dl.STEEL_PRODUCTS.keys()),
-                                   default="HRC", key="perf_prod", label_visibility="collapsed")
-    product = product or "HRC"
-    meta = dl.STEEL_PRODUCTS[product]
+    products = allowed_products(user["role"])
+    if not products:
+        st.info("No commodities are enabled for your account yet. Please contact an administrator.",
+                icon=":material/info:")
+        theme.footer()
+        return
+    keys = list(products.keys())
+    default = keys[0]
+    product = st.segmented_control("Product", keys, default=default, key="perf_prod",
+                                   label_visibility="collapsed")
+    product = product if product in products else default
+    meta = products[product]
 
     df = dl.load_accuracy("6-week", meta["acc"])   # Accuracy_Table_6 only (window toggle removed)
     if df.empty:
@@ -883,4 +1327,11 @@ PAGES = {
     "Methodology": page_methodology,
     "Admin": page_admin,
 }
+# Gate the current page by the role's profile (fall back to Home for a hidden page,
+# e.g. a stale st.session_state.page after a role change). Home is in every profile.
+_allowed_pages = set(theme.profile_for(user.get("role"))["pages"])
+if user.get("role") == "Admin":
+    _allowed_pages.add("Admin")
+if st.session_state.page not in _allowed_pages:
+    st.session_state.page = "Home"
 PAGES.get(st.session_state.page, page_home)()

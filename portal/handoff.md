@@ -11,41 +11,45 @@ conda activate neuralforecast
 streamlit run portal/app.py
 ```
 Env = conda **`neuralforecast`**. Needs: streamlit, plotly, fpdf2, scikit-learn, openpyxl, pandas, numpy
-(kaleido only for static PNG export). Console needs `PYTHONUTF8=1` for ₹ glyphs.
+(kaleido only for static PNG export), plus the **auth stack**: `SQLAlchemy`, `psycopg[binary]`, `argon2-cffi`, `PyJWT`, `extra-streamlit-components`. Console needs `PYTHONUTF8=1` for ₹ glyphs.
 `.claude/launch.json` runs the same command on **port 8501** (`--server.headless true`); `.devcontainer/` runs it for Codespaces.
 
 **Data location:** public code, **private data**. If `st.secrets['data']` is set, `data_loader.py` pulls the real files at runtime from a **private GitHub repo** (via the Contents API) into a temp dir; with no secrets it falls back to the bundled **in-repo sample** so the public code still runs. No `$PORTAL_DATA_DIR`, no sibling folder. See the **2026-07-03** changelog + `.streamlit/secrets.toml.example`.
 
+**Auth store:** production, **self-managed users in Neon Postgres** (no longer in-repo). `db.py` reads **`database_url`** + **`session_signing_key`** from `st.secrets` (falling back to env vars, then `.streamlit/secrets.toml`, for CLI scripts/tests). `auth.py` does argon2id hashing, lockout, and JWT cookie sessions; `seed_users.py` seeds the first accounts. **Both secrets are required** — without them `db.database_url()` / `db.signing_key()` raise on first use (the "database_url is not set" error). Use Neon's **pooled** connection string. See the **2026-07-06** changelog.
+
 ## Deploy (Streamlit Community Cloud)
-1. **Deploy**: on share.streamlit.io, deploy from this repo, main file = **`portal/app.py`**, Python 3.11/3.12. Deps come from the root **`requirements.txt`** (`streamlit==1.58.0` pinned; `portal/requirements.txt` is an older unpinned copy).
+1. **Deploy**: on share.streamlit.io, deploy from this repo, main file = **`portal/app.py`**, Python 3.11/3.12. Deps come from the root **`requirements.txt`** (`streamlit==1.58.0` pinned; now also includes the auth stack — `SQLAlchemy` / `psycopg[binary]` / `argon2-cffi` / `PyJWT` / `extra-streamlit-components`. `portal/requirements.txt` mirrors these).
 2. **Private data**: create a *private* GitHub repo (e.g. `dashboard-data`) laid out as `accuracy_tables/forecast_forward.xlsx`, `accuracy_tables/Accuracy_Table_6.xlsx`, `calculators/HRC - Copy.csv`. Make a **fine-grained PAT** scoped to only that repo with **read-only Contents**. In *Manage app → Settings → Secrets*, add a `[data]` block (`github_owner` / `github_repo` / `github_ref` / `github_token`) — see `.streamlit/secrets.toml.example`. The app then fetches the real data at runtime (`data_loader._fetch_private_data_dir`, `@st.cache_resource` → downloaded once per deploy); with no `[data]`, it shows the sample.
 3. **Admin writes (optional)**: to let the Admin tab save analyst-call text + upload PDF/PPT decks, add **`github_write_token`** to `[data]` — a PAT with **Contents: Read & Write** on the data repo (or give `github_token` write access and skip it). Admin writes go to `analyst_calls/calls.json` + `analyst_calls/files/<id>/…` in that repo. Without it, the Admin tab is read-only (save disabled).
-4. **Auth**: logins are defined **in `auth.py`** (`USERS` dict, SHA-256 hashes) — no secrets override. To change credentials, edit `USERS` and redeploy. (Only `[data]` is read from secrets; there is no `[auth]` block.)
+4. **Auth (required)**: add two **top-level** secrets — **`database_url`** (a Neon Postgres **pooled** connection string: host contains `-pooler`, ends `?sslmode=require`) and **`session_signing_key`** (32+ random bytes, e.g. `python -c "import secrets;print(secrets.token_hex(32))"`, signs the session cookie). Then **seed the first users once**: `python portal/seed_users.py` — creates adani/admin/analyst with random temp passwords + `must_reset=True`, written to the git-ignored `.streamlit/seed_credentials.txt`. Tables (`users`/`sessions`/`audit_log`) are auto-created by `db.init_db()` (the seed script calls it). Users live in Neon, **not** in `auth.py`; manage them at runtime via the **Admin tab → User management**. There is no `[auth]` secrets block. (`db._config()` also reads these from env vars / `.streamlit/secrets.toml` when run outside Streamlit.)
 - **Backend swap**: to move data to S3/GCS instead of GitHub, replace the body of `_fetch_private_data_dir()` (reads) + `gh_put_file`/`gh_delete_file` (Admin writes).
 - **⚠ History was scrubbed (2026-07-03):** the real data files were removed from git history + force-pushed (`git filter-repo`); backup bundle at `../dashboard_frontend_PRESCRUB_backup.bundle`. **No in-repo sample data remains** — with no `[data]` secrets the forecast/accuracy readers will error, so the app must run with secrets (or add a small dummy sample back). The Analyst page still works sample-less via `SAMPLE_ANALYST_CALLS`.
 
-## Demo logins (per-user, SHA-256 hashed in auth.py — demo-grade only)
-| User | Password | Role |
-|------|----------|------|
-| adani | Adani@2026 | Adani |
-| admin | Admin@2026 | Admin |
-| analyst | Analyst@2026 | Analyst |
+## Logins (production auth — Neon Postgres + argon2id)
+Users live in the **Neon `users` table**, not in code. Passwords are **argon2id**-hashed; a login mints a **signed JWT** stored in the `portal_session` cookie, backed by a server-side row in `sessions` (so logout / disable / password-change **revoke** it). Seed the initial accounts once with `python portal/seed_users.py` → creates **adani** (Adani), **admin** (Admin), **analyst** (Analyst) with **random one-time passwords** (written to the git-ignored `.streamlit/seed_credentials.txt`) and `must_reset=True`, so each user is forced to set their own password on first login. Thereafter add / disable / reset / re-role / delete users from the **Admin tab → User management**. Policy: **5** failed attempts → **15 min** lockout; sessions last **12 h** (`MAX_ATTEMPTS` / `LOCKOUT_MINUTES` / `SESSION_TTL_HOURS` in `auth.py`).
+
+> ⚠ The old demo passwords (`Adani@2026` etc.) and their SHA-256 hashes still exist in **git history** (pre-2026-07-06 `auth.py`). They no longer work, but treat them as burned — don't reuse them.
 
 ## Locked decisions
-- Streamlit UI-only prototype; per-user login; **12-week** horizon.
+- Streamlit UI-only prototype; **per-user login backed by Neon Postgres (argon2id + JWT cookie sessions)**; **12-week** horizon.
 - Headline forecast line = **Ensemble (Weighted Mean)**.
-- Title: plain-text "Price Forecasting: Steel" (browser tab / login caption / Home H2). The **topbar heading** reads "BIGMINT `|` ADANI `|` STEEL GCP - AI LABS : Steel Prices Forecasting Model" (BigMint logo · pipe · Adani chip · pipe · title text — separators are pipes, not `×`); the "BigMint × Adani" text was removed everywhere else. Brand name is **BigMint** (never "Bigmint").
+- Title: plain-text "Price Forecasting: Steel" (browser tab / login caption / Home H2). The **topbar heading** is now **per-role** (see the 2026-07-07 changelog): the **Adani/default** profile reads "BIGMINT `|` ADANI `|` STEEL GCP - AI LABS : Steel Prices Forecasting Model" (BigMint logo · pipe · Adani chip · pipe · title — separators are pipes, not `×`); internal **Analyst/Admin** profiles drop the Adani chip (BigMint-only). Brand name is **BigMint** (never "Bigmint").
+- **Per-role white-label dashboards (2026-07-07):** one deployment; each `auth.ROLES` value gets its own static branding (`theme.ROLE_PROFILES`) + admin-controlled commodity access (`db.role_commodities`) + analyst-call audience. See `portal/PLAN_per_role_dashboards.md`.
 - Static snapshot data (no live connection).
 
-## Six steel products (fixed)
+## Six steel products (catalog)
 HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Structure (IF Raipur)
+> Full catalog in `data_loader.STEEL_PRODUCTS`. Since 2026-07-07 each **role** sees an admin-chosen subset (Admin tab → Commodity access); a role with nothing saved sees all six. Admins always see all.
 
 ## File map  (everything under `dashboard/portal/`)
 | File | What it does |
 |------|--------------|
 | `app.py` | Entry: page config, auth gate, top nav, 5 pages, chart helpers |
-| `theme.py` | Brand palette, CSS, icons, topbar, KPI/card/table helpers |
-| `auth.py` | Demo users + `authenticate()` / `logout()` |
+| `theme.py` | Brand palette, CSS (themeable via `--bm-*` vars), icons, topbar, KPI/card/table helpers; **per-role branding** (`ROLE_PROFILES`/`profile_for`/`apply_role_theme`) |
+| `auth.py` | Auth core (UI-agnostic, no users in-file): argon2id verify + lockout, JWT cookie sessions (`create_session`/`resolve_session`/`logout`), user CRUD helpers |
+| `db.py` | Neon Postgres layer (SQLAlchemy): schema (`users`/`sessions`/`audit_log`/`role_commodities`) + queries + config resolution (`database_url` / `session_signing_key`) |
+| `seed_users.py` | One-time seeder: creates the first users with random temp passwords → git-ignored `.streamlit/seed_credentials.txt` (`--force` to reset) |
 | `data_loader.py` | Cached readers for forecast_forward + accuracy tables |
 | `calculators/calc_import_price.py` | Import vs Landed Cost (HRC) |
 | `calculators/calc_cost.py` | Production Cost & Margin |
@@ -55,12 +59,12 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 | `assets/adani_logo.png` | Co-brand Adani logo, white chip in topbar (auto-trimmed from `_orig`, 1020×364; fallback chain: this → `adani_logo_orig.png` → gradient-text 'adani') |
 | `assets/adani_logo_orig.png` | Untrimmed original Adani logo (1402×854). **Source for the trimmed `adani_logo.png` AND its runtime fallback — do NOT delete.** |
 | `../.streamlit/config.toml` | Streamlit theme (primaryColor #EE4E24 — orange accent for buttons/tabs; **now tracked** so it deploys) |
-| `../requirements.txt` | pip deps for Streamlit Cloud (**streamlit==1.58.0** pinned). Root copy is canonical; `portal/requirements.txt` is an older unpinned duplicate |
-| `../.streamlit/secrets.toml.example` | Template for the **`[data]`** block (private-data GitHub repo + fine-grained PAT) that `data_loader` reads. No `[auth]` block (logins are in `auth.py`). Real `secrets.toml` is git-ignored |
+| `../requirements.txt` | pip deps for Streamlit Cloud (**streamlit==1.58.0** pinned; + auth stack: SQLAlchemy / psycopg[binary] / argon2-cffi / PyJWT / extra-streamlit-components). Root copy is canonical; `portal/requirements.txt` mirrors it |
+| `../.streamlit/secrets.toml.example` | Template for the **`[data]`** block (private-data GitHub repo + fine-grained PAT). **Also needs `database_url` + `session_signing_key`** for auth (top-level). Real `secrets.toml` is git-ignored |
 
 ## Modules
 - **Home** — overview stats + 4 module cards + a full-width **Methodology banner** button below them.
-- **Price forecasting** — Steel only: product selector + KPI strip, then a **Graphical view / Tabular view** tab pair (Graphical = spot-vs-forecast chart; Tabular = one continuous *Actual vs Forecast* table, history flowing into the 12-wk-ahead forecast), then a **Forecast rationale** section (placeholder, per-product via `RATIONALES`). (Raw-material tab removed earlier.)
+- **Price forecasting** — Steel only: product selector + KPI strip, then a **Graphical view / Tabular view** tab pair (Graphical = spot-vs-forecast chart; Tabular = one continuous *Actual vs Forecast* table, history flowing into the 12-wk-ahead forecast), then a **Forecast rationale** section (placeholder, per-product via `RATIONALES`). (Raw-material tab removed earlier.) **The `adani_dev` role instead sees a *grouped* layout** — a top HRC/HR Plate/Rebar/Structure group tab-strip, then a left-aligned location dropdown (above the view tabs, usable in both views), then the graph on top (week/zoom buttons inside the plot, in-chart legend, year-stamped x-axis labels), then the 3 price cards below the tabs (see the 2026-07-07 changelog + `GROUPED_FORECASTING_ROLES`).
 - **Analyst calls** — cards driven by **editable content** (`data_loader.load_analyst_calls()` → `analyst_calls/calls.json` in the private repo, else `SAMPLE_ANALYST_CALLS`): each card = month, title, headline summary, a one-line sectioned breakdown (Flats/Longs/Raw materials/Imports & exports/Outlook), and **live Download PDF / PPT** buttons (fetch the deck bytes from the private repo). No video. Managed via the Admin tab.
 - **Admin** *(role = Admin only)* — content manager for the Analyst-calls page (`page_admin()`): add / edit / delete calls (text + sections), upload PDF/PPT decks, live preview. Saves to the private repo via the GitHub Contents API (`save_analyst_calls` / `upload_call_file` / `gh_delete_file`), needs `github_write_token` (or a write-capable `github_token`); shows a warning + disables saving when absent.
 - **Performance dashboard** — product selector only (window toggle removed); reads **all rows** of `Accuracy_Table_6`. MAPA / directional / avg-delta KPIs, actual-vs-forecast chart + weekly-delta (Rs.) bars + **weekly accuracy % line** + **weekly directional-accuracy bars** + week-wise table.
@@ -68,19 +72,27 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **Methodology** — general (not per-product) infographic page: gradient hero + stat strip (~98% accuracy / 15+ yrs / 1–2% delta / IOSCO) + a 6-step **pipeline flow** (data → signals → ML+sentiment → ensemble → 12-wk forecast → accuracy) + 6 **key-factor** cards + 3 **horizon** cards + transparency/governance cards + disclaimer. Content sourced/generalised from bigmint.co forecasting methodology. All built with HTML/CSS (`.bm-meth-*`, `.bm-flow*`, `.bm-factor*`, `.bm-horizon*` in `theme.py`).
 
 ## "Edit X → go here"
-- Brand colours/logo → `theme.py` palette + `.streamlit/config.toml`; co-brand logos → `theme.py` `_logo_html` / `_adani_logo_html` (+ `ADANI_LOGO_CANDIDATES` fallback list) + `render_topbar`; topbar heading text/pipes → `render_topbar()` + `.bm-portal-title` CSS
+- **Per-role branding (logo/co-brand/title/colors/visible pages)** → `theme.ROLE_PROFILES` (+ `DEFAULT_PROFILE`); resolved by `theme.profile_for(role)`; applied per session by `theme.apply_role_theme()` (called in `app.py` after login) + `render_topbar(user)`. Themeable colors are CSS vars (`--bm-primary`/`--bm-primary-dark`/`--bm-primary-soft`/`--bm-accent`) seeded on `:root` in `inject_css()`. **Add a new client:** add role to `auth.ROLES`, drop its logo in `assets/`, add a `ROLE_PROFILES` entry, then set access from the Admin tab.
+- **Which commodities a role sees** → **Admin tab → Commodity access** (`app.py` `_admin_access_panel()`) → `db.role_commodities` (`db.get_role_commodities`/`set_role_commodities`); read via `app.py` `allowed_products(role)` (empty config or Admin ⇒ all)
+- **Which analyst calls a role sees** → each call's **Audience** multiselect in the Admin call editor (`page_admin`), stored as `audiences` on the call; filtered by `app.py` `_call_visible(call, role)` in `page_analyst` (**deny-by-default**: a non-admin role sees a call only if it's in the audience; empty audience = unassigned ⇒ admins only; admins always see all)
+- Brand colours/logo (defaults) → `theme.py` palette + `.streamlit/config.toml`; co-brand logos → `theme.py` `_cobrand_logo_html` (+ `ADANI_LOGO_CANDIDATES` fallback) + `render_topbar`; topbar heading text/pipes → `render_topbar()` + `.bm-portal-title` CSS
 - Tab + segmented-selector accent (orange) → `theme.py` `inject_css()` tab/segmented CSS block (overrides primaryColor for those elements only)
-- Nav items / page wiring → `app.py` `NAV` list + `PAGES` dict (`top_nav()` appends an **Admin** item + widens the column list when `user["role"] == "Admin"`)
+- Nav items / page wiring → `app.py` `NAV` list + `PAGES` dict. `top_nav()` shows only the pages in the role's `theme.profile_for(...)["pages"]` (+ appends **Admin** for admins); the dispatch guard (bottom of `app.py`) resets a hidden `st.session_state.page` back to Home. Change which pages a role sees → that role's `pages` in `theme.ROLE_PROFILES`
 - Home module cards (clickable) → `app.py` `page_home()` `modules` list + `theme.py` `.st-key-homemod_*` CSS
 - Home Methodology banner (full-width) → `app.py` `page_home()` `home_methodology` button + `theme.py` `.st-key-home_methodology` CSS
 - Log out button (header top-right, primary) → `app.py` header `st.columns([6,1])` block (key `logout_top`)
 - Chart look / lines / hover ball → `app.py` `_style_fig`, `_spot_trace`, `forecast_chart`, `perf_chart`, `delta_bar`, `accuracy_chart`, `directional_accuracy_bar`, `_render_with_highlighter`; colours in `theme.py` (`SPOT_LINE`, `FORECAST_LINE`, `FORECAST_HALO`)
-- Products → `data_loader.py` `STEEL_PRODUCTS`
-- Users → `auth.py` `USERS` dict (SHA-256 hashes; **in-repo only, no secrets override**) + `DEMO_CREDENTIALS` (documents the plaintext + the hash-generating one-liner). `authenticate()` accepts a `hash` or plaintext `password` per user
+- Products (catalog) → `data_loader.py` `STEEL_PRODUCTS`; per-role visible subset → `app.py` `allowed_products()` + `db.role_commodities` (Admin tab)
+- Users → **Admin tab → User management** (`app.py` `_admin_users_panel()`) at runtime, or `python portal/seed_users.py` to seed. Stored in the Neon `users` table; helpers in `auth.py` (`create_user`/`upsert_user`/`set_password`/`set_active`/`set_role`/`delete_user`/`list_users`) over `db.py`. `authenticate()` returns `(user, status)` — argon2id verify + lockout
+- Roles → `auth.ROLES` are the built-in roles, but an admin can **create a new role** in the Add-user form (free-text field). The role list shown in every picker (add-user, Apply-role, Commodity-access, call Audience) is `app.py` `known_roles()` = `auth.ROLES` **∪ roles already assigned to a user**, so a runtime-created role auto-appears everywhere. A new role gets `DEFAULT_PROFILE` branding + all commodities (unconfigured) + no calls (deny-by-default) until configured; **custom branding still needs a dev to add a `theme.ROLE_PROFILES` entry**
+- Session / cookie behaviour (login persists across refresh, logout, forced first-login reset) → `app.py` cookie block (`cookie_manager`, `_read_cookie_token`, `_start_session`, deferred `_cookie_write`/`_cookie_clear`, `force_password_change`) + `auth.create_session`/`resolve_session`/`logout`. Signed JWT in the `portal_session` cookie; server rows in `sessions`
+- Post-refresh full-screen splash (while the cookie is read) → `theme.loading_screen()`; in-app **translucent** loading overlay (page switches / slow reruns) → `inject_css()` `[data-testid="stApp"]::before/::after` gated by `:has([data-testid="stStatusWidget"])`
+- DB connection / auth secrets (`database_url`, `session_signing_key`) → `db.py` `_config()` (st.secrets → env → `.streamlit/secrets.toml`); `db.py` rewrites `postgresql://` → `postgresql+psycopg://` for SQLAlchemy
 - Analyst content → **Admin tab** (`app.py` `page_admin()`, admins only). Data lives in `analyst_calls/calls.json` + `analyst_calls/files/<id>/…` in the private repo; read via `data_loader.load_analyst_calls()` / `fetch_call_file()`, written via `save_analyst_calls()` / `upload_call_file()` / `gh_delete_file()`. Card render shared by `page_analyst()` + the Admin preview (`_render_call_card`). Fallback = `data_loader.SAMPLE_ANALYST_CALLS`; sections list = `ANALYST_SECTIONS`. Write needs `github_write_token`
 - Methodology page content (pipeline steps, factors, horizons, stats) → `app.py` `page_methodology()` (`steps`/`factors` lists + inline HTML); infographic styling → `theme.py` `.bm-meth-*`/`.bm-flow*`/`.bm-factor*`/`.bm-horizon*`
 - Forecast rationale text → `app.py` `RATIONALES` dict (add a key per product name; `_default` is the placeholder shown until then)
 - Forecasting Graphical/Tabular tabs → `app.py` `page_forecasting()` `st.tabs([...])` block
+- **Grouped forecasting layout (adani_dev)** — group tabs (HRC/HR Plate/Rebar/Structure) → left-aligned location dropdown (above the view tabs, shared across Graphical+Tabular) → graph on top (no title, week/zoom buttons INSIDE the plot + in-chart legend + short year in x-axis labels) → price cards below the tabs → `app.py` `page_forecasting()` grouped branch + helpers `_grouped_forecasting` / `_product_group` / `_grouped_products` / `_location_label` + `FORECAST_GROUP_ORDER` + nested `price_cards()`; which roles get it → `app.py` `GROUPED_FORECASTING_ROLES`; the chart's legend-position / year-label / compact-size (buttons-inside + h=620) toggles → `forecast_chart(legend_inside=…, year_labels=…, compact=…)`; the dropdown's border/tint + left-aligned placement → `theme.py` `.st-key-fc_loc_box` (container key set in `app.py`)
 - Forecast chart time slider + Zoom buttons (1W/4W/8W/12W/26W/YTD/ALL) → `app.py` `forecast_chart()` `rangeslider`/`rangeselector` block (end of the function, before `_render_with_highlighter`)
 - History shown in chart + historical table → **full available history, no window/trim**. `forecast_chart()` and the tabular block both use `dropna(subset=["Actual"])` with no `.tail()`; the old `HIST_WEEKS` constant was removed (2026-07-03)
 - Data parsing → `data_loader.py`
@@ -100,9 +112,108 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - Forecast chart = light-blue actual + **red dashed** forecast (history fit + 12-wk) with red ball+pink halo. Colours: `SPOT_LINE #5E92D6`, `FORECAST_LINE #E12B20`.
 - **Calculators**: each exposes `render()`; their CSS had `div.stButton>button` overrides removed so they don't clobber nav buttons; PDF export uses `_pdf_bytes()` (fpdf/fpdf2-safe); a malformed `header{...}` CSS block was fixed.
 - Logo blue is `#024CA1` (= theme PRIMARY) so it blends into the bar.
+- **Auth store is Neon Postgres, not `auth.py`** — `database_url` + `session_signing_key` MUST be in secrets or the app errors on first DB call ("database_url is not set"). Use Neon's **pooled** string (`-pooler` host) — the direct one exhausts connections under Streamlit reruns. `db.py` rewrites `postgresql://` → `postgresql+psycopg://` for SQLAlchemy. On Streamlit Cloud, `secrets.toml` is **not** deployed — the pasted secrets are the only source (a common failure is pasting the keys **under** a `[section]` header, which makes them non-top-level and invisible).
+- **Cookie writes must be DEFERRED, never in the same run as `st.rerun()`** — `st.rerun()` discards the current run's frontend deltas, so an `extra_streamlit_components` `cookie_manager.set()`/`delete()` right before it never reaches the browser (this caused "refresh logs me out" + a logout `KeyError`). Pattern: queue the mutation in `st.session_state` (`_cookie_write` / `_cookie_clear`) and perform it on the **next** run (a full render NOT followed by a rerun). Logout clears the cookie by overwriting it **expired** (avoids the library's `delete()` `KeyError`, which does `del self.cookies[name]`).
+- **Cookie read** — prefer `st.context.cookies` (from the HTTP request; present on a genuine refresh) and fall back to `cookie_manager.cookies` (the component's async read, populated after one extra rerun). Because that fallback is async, the first render after a refresh can't distinguish "logged out" from "cookie not delivered yet" → we show `theme.loading_screen()` once (guarded by `_cookie_probed`) instead of flashing the login form. (The temporary `?authdebug=1` readout was removed on 2026-07-06 once cookie persistence was confirmed on Cloud.)
+- **Loading overlay via `:has()`** — the translucent in-app overlay keys off `[data-testid="stStatusWidget"]` (Streamlit's running indicator, in the DOM only mid-rerun), toggled with a pure-CSS `:has()` rule + `::before/::after` on `[data-testid="stApp"]` (no JS, no extra DOM node, no layout shift). Needs a `:has()`-capable browser (all current evergreens). If a Streamlit upgrade renames that testid, re-grep the static JS — verified against **1.58**. The full-screen splash uses z-index `2147483647`; the translucent overlay `99990/99991`. **Show-delay (2026-07-06):** the overlay only appears after a rerun has lasted **>.4s** — the `:has(...)` (visible) rule carries `transition: opacity .18s .4s, visibility 0s .4s`, while the base rule hides promptly (no delay). Fast reruns (e.g. moving between the login username/password fields, each of which fires a quick rerun) finish before the delay elapses, so the overlay no longer flashes; slow reruns (page switches, chart loads) still show it. **Keep the delay only on the `:has` rule** — putting it on the base rule would delay hiding and make the overlay linger.
 - **Accent = orange**: `primaryColor` is now `#EE4E24` (ACCENT orange) in config.toml — it natively drives **primary buttons (Sign in / Log out / active nav) + tab highlights + segmented selected state** orange. The **brand topbar stays blue** because it uses the `PRIMARY` (#024CA1) constant in `theme.py` CSS, *not* `primaryColor`. **Tabs** are a **sliding segmented switch**: `div[data-baseweb="tab-highlight"]` is *repurposed* from baseweb's bottom underline into a full-height **white pill** (`top/bottom:5px; height:auto; border-radius; bg #fff`) — baseweb (Streamlit 1.58) repositions it with **`transform: translateX(...)`** (NOT `left`) and updates `width` when you switch tabs, so the pill **slides only if the `transition` targets `transform`** (`transition:transform .28s, width .28s`). **Verified live (2026-06-30):** at 0.28s the highlight's `translateX` eases smoothly between tab positions (e.g. 5px↔149px). Tab buttons sit above it (`z-index:1`, transparent bg) with orange active text; `tab-border` is hidden; the grey track is `div[data-baseweb="tab-list"]` (`position:relative` anchors the pill). Do **not** re-hide `tab-highlight`, and **keep the transition on `transform`** — a `transition:left/width` (the old value) never fires because baseweb moves the pill via `transform`, so the pill snaps instead of sliding. The segmented selector (Product) gets orange via `stBaseButton-segmented_controlActive`. If tabs look wrong after a Streamlit upgrade, re-check the `data-baseweb="tab*"` selectors. (Was previously blue buttons + orange underline-tabs; accent flipped + tabs → sliding pill 2026-06-26.)
 
 ## Changelog (prototype iterations)
+### 2026-07-07 — Per-role white-label dashboards + admin-managed access (in progress)
+> Feature plan: `portal/PLAN_per_role_dashboards.md`. Turns the app into a per-role white-label
+> dashboard on a single deployment: each role gets its own branding (dev-configured, static), and the
+> Admin controls which commodities + which analyst calls each role sees (runtime). Landing task-by-task.
+- **adani_dev — grouped forecasting layout (group tabs → graph on top → price cards; styled location
+  dropdown; in-chart legend; year labels)** — the `adani_dev` role sees a restructured **Price
+  forecasting** page. Layout order: a top **commodity-group** segmented control (**HRC / HR Plate /
+  Rebar / Structure**, derived from the role's allowed products via `_product_group` /
+  `_grouped_products`) → a **left-aligned location dropdown** → the **Graphical/Tabular tabs** (so the
+  **graph sits at the top**) → the **3 price KPI cards** (moved *below* the tab block) → rationale. Within a
+  group a **location / full-name dropdown** (`_location_label` strips the group prefix — Rebar →
+  *BF Mumbai / IF Mumbai / IF Raipur*; single-member groups show their one name), sorted
+  **alphabetically**, defaulting to the first. The dropdown is **left-aligned and sits ABOVE the
+  Graphical/Tabular tabs** (`st.container(key="fc_loc_box")`, styled in `theme.py` with a **coloured
+  border + soft tint**, accent on hover) so it can be changed in **both** views without switching back
+  to the graph. **No section title** on the Graphical tab; the **week/zoom buttons live INSIDE the
+  plot** (top-left) and the Plotly **legend sits inside just below them**; the x-axis date ticks gain
+  the **short year** (`%d %b %y`). The grouped chart runs via `forecast_chart(compact=True)` — a
+  **taller plot (h=620)** with the zoom buttons moved inside (`rangeselector` y≈0.98 top-left) so the
+  **top margin drops to 18** (buttons no longer float above) and the plot is bigger; the colour-legend
+  footnote is dropped for this layout (the in-chart legend covers it). Selection persists per group via
+  `st.session_state["fc_loc_<slug>"]` (resolved at the top, so graph, table and cards all follow it).
+  All gated by `app.py` `GROUPED_FORECASTING_ROLES` (case-insensitive; currently just `adani_dev`) via
+  `_grouped_forecasting(role)`; **other roles keep the existing flat layout** (cards above the tabs,
+  section title + footnote present, full-height chart). `forecast_chart()` gained `legend_inside` /
+  `year_labels` / `compact` kwargs (default off — no change for non-grouped roles); the price-card block
+  was refactored into a nested `price_cards()` so it can render above or below the tabs. **Promotion to
+  Adani:** add `"adani"` to `GROUPED_FORECASTING_ROLES`. → `app.py`, `theme.py`.
+- **theme.py — per-role branding profiles + CSS-variable theming (task 1/5)** — the 4 themeable colors
+  (`PRIMARY`/`PRIMARY_DARK`/`PRIMARY_SOFT`/`ACCENT`) in `inject_css()` are now driven by CSS custom
+  properties (`--bm-primary` / `--bm-primary-dark` / `--bm-primary-soft` / `--bm-accent`) seeded with
+  the BigMint defaults on `:root`. New **`ROLE_PROFILES`** / **`DEFAULT_PROFILE`** dicts (keyed by
+  `auth.ROLES` values) hold each role's co-brand logo/label, topbar title, colors and visible `pages`;
+  **`profile_for(role)`** merges over the default; **`apply_role_theme(profile)`** emits a tiny
+  `<style>:root{…}</style>` override so the topbar + all custom surfaces re-brand per session (call it
+  from `app.py` after login — wired in task 4). **`render_topbar(user)`** now builds the bar from the
+  role profile (BigMint logo · optional co-brand chip · title); `cobrand_logo=None` hides the chip +
+  one pipe (internal Analyst/Admin = BigMint-only). New `_cobrand_logo_html(profile)` generalises the
+  old `_adani_logo_html` (kept, unused). Added `import html`. **Limitation:** `config.toml`
+  `primaryColor` is a build-time global, so native Streamlit primary buttons/tabs keep the global
+  orange for all roles; only the brand topbar + custom-CSS surfaces follow the role. → `theme.py`.
+- **db.py — `role_commodities` table + accessors (task 2/5)** — new table `role_commodities(role,
+  commodity, PK(role,commodity))` added to `_DDL`. **NB:** the app never called `init_db()` before
+  (it relied on `seed_users.py`), so task 4 adds a cached `_ensure_db_schema()` in `app.py` that runs
+  `db.init_db()` once per process — this creates `role_commodities` on already-seeded deployments with
+  no manual migration. `get_role_commodities(role)` returns the allowed list (**empty = unconfigured ⇒ app treats
+  as all**); `set_role_commodities(role, list)` replaces a role's set atomically (DELETE then INSERT,
+  bound params). Admins bypass this in the app layer (always all). → `db.py`.
+- **data_loader.py — `audiences` on sample calls (task 3/5)** — each `SAMPLE_ANALYST_CALLS` entry gains
+  `"audiences": []` (empty/missing ⇒ **unassigned: admins only** — see the deny-by-default update
+  below). `load_analyst_calls` /
+  `save_analyst_calls` are generic dict (de)serializers, so real calls in `calls.json` carry the field
+  through unchanged once the Admin sets it (task 4). → `data_loader.py`.
+- **app.py — per-role filtering, page-gating, apply theme, admin access panel (task 4/5)** — new
+  helpers `allowed_products(role)` (role's `STEEL_PRODUCTS` subset; Admin + unconfigured roles = all)
+  and `_call_visible(call, role)` (audience filter). After login, `theme.apply_role_theme(profile_for(
+  user.role))` re-brands the session. **Product filtering** applied in `page_forecasting` /
+  `page_performance` (segmented control built from `allowed_products`, empty-state message) and
+  `page_home` (product count/KPI/MAPA loop + welcome text). **`page_analyst`** filters calls by audience
+  (admins see all). **Page-gating:** `top_nav` shows only the role's profile `pages` (+ Admin item for
+  admins); the dispatch guard resets a hidden `st.session_state.page` to Home; Home module cards +
+  Methodology banner are filtered to visible pages. **Admin call form** gained an *Audience* multiselect
+  (`audiences` saved on the record). New **`_admin_access_panel()`** in `page_admin` (expander →
+  select role → multiselect commodities → save to `db.set_role_commodities`; rejects an empty set).
+  Also added a cached **`_ensure_db_schema()`** (runs `db.init_db()` once per process) so the new
+  table exists at runtime without a manual migration. → `app.py`.
+- **Verified (task 5/5)** — `py_compile` on all four modules; a smoke test against **live Neon**
+  confirmed `init_db()` creates `role_commodities` and `get/set_role_commodities` round-trip (test rows
+  restored afterwards, DB left clean); `profile_for()` returns distinct branding per role (Adani =
+  co-brand + steel title; Analyst/Admin = no co-brand + "AI LABS" title); `_call_visible` filters by
+  audience correctly. The login screen renders the new profile-driven topbar with no console/render
+  errors. **Not yet screenshotted in-app per role** — that needs a login (all seeded accounts are
+  `must_reset` / use owner-set passwords); left for the owner or a throwaway test account.
+- **Analyst-call audience is now DENY-BY-DEFAULT (post-review change)** — flipped `_call_visible`: an
+  untagged call (empty `audiences`) is **no longer visible to everyone** — it's *unassigned* and shows
+  to **admins only**; a non-admin role sees a call only when its role is explicitly in the call's
+  audience. (Previously empty = all, which meant `analyst`/`adani` saw every untagged call.) The admin
+  call editor's Audience help text + the `SAMPLE_ANALYST_CALLS`/`data_loader` comments were updated.
+  **⚠ Migration:** any existing call in `calls.json` with no `audiences` becomes admin-only until an
+  admin opens it and picks its audience — go tag existing calls after deploying this. → `app.py`,
+  `data_loader.py`.
+- **Admin can create new roles from the Add-user form (post-review change)** — the add-user Role
+  dropdown gained a "…or create a new role" free-text field; a non-blank value wins (case-insensitively
+  reusing an existing role's casing to avoid `Adani`/`adani` dupes — `_resolve_new_role`). All role
+  pickers (add-user, Apply-role, Commodity access, call Audience) now build from **`known_roles()`** =
+  `auth.ROLES` ∪ roles already on a user, so a runtime-created role appears everywhere without editing
+  `auth.ROLES`. A new role starts with `DEFAULT_PROFILE` branding + all commodities + no calls; a dev
+  adds a `theme.ROLE_PROFILES` entry for custom branding. → `app.py`.
+- **Removed the `?authdebug=1` diagnostic panel** — cookie persistence is confirmed solid on Cloud, so the temporary opt-in debug block (request-vs-component cookie readout) was deleted from `app.py`. The cookie read path (`st.context.cookies` → `cookie_manager` fallback + `_cookie_probed` loading splash) is unchanged. Clears auth follow-up (1). → `app.py`.
+- **Auth replaced: production self-managed user store in Neon Postgres (supersedes the 2026-07-03 "Auth is now IN-FILE ONLY" entry)** — the SHA-256 `USERS` dict in `auth.py` is gone. New **`db.py`** (SQLAlchemy over a Neon Postgres **pooled** connection) owns three tables — `users` (argon2id `password_hash`, `role`, `is_active`, `must_reset`, `failed_attempts`, `locked_until`), `sessions` (SHA-256 of an opaque session id + `expires_at`; server-side revocable), `audit_log` — created by `db.init_db()`. **`auth.py`** rewritten UI-agnostic: `authenticate() → (user, status)` (`ok`/`invalid`/`locked`/`disabled`) with argon2id verify, failure counting + **lockout (5 tries / 15 min)** and a dummy-hash timing guard; `create_session()` / `resolve_session()` / `logout()` mint/validate/revoke a **signed JWT** carried in the `portal_session` cookie (12 h TTL); user-management helpers (`create_user`/`upsert_user`/`set_password`/`set_active`/`set_role`/`delete_user`/`list_users`). New **`seed_users.py`** seeds adani/admin/analyst with random temp passwords + `must_reset=True` → git-ignored `.streamlit/seed_credentials.txt`. Secrets now require **`database_url`** + **`session_signing_key`** (top-level; `db._config()` reads st.secrets → env → secrets.toml). Deps added to both `requirements.txt` files: `argon2-cffi`, `SQLAlchemy`, `psycopg[binary]`, `PyJWT`, `extra-streamlit-components`. `.gitignore` now ignores `.streamlit/seed_credentials.txt` + `*.local`. → `db.py`, `auth.py`, `seed_users.py`, `requirements.txt`, `portal/requirements.txt`, `.gitignore`.
+- **Login flow rewired for cookie-backed sessions + forced first-login reset** — `app.py`: `login_screen()` calls the new `authenticate()`, surfaces locked/disabled/invalid messages, and on success `_start_session()` (mint session + **queue** the cookie write). `force_password_change()` gates any `must_reset` user before the app. On refresh, session is restored from the `portal_session` cookie (`_read_cookie_token` → `resolve_session`). **Cookie writes are deferred** to the next run (`_cookie_write`/`_cookie_clear`) because `st.rerun()` discards same-run component output — this fixed "refresh logs me out" and a logout `KeyError`. Cookie read prefers `st.context.cookies`, falls back to the component; a one-shot loading splash (`_cookie_probed` → `theme.loading_screen()`) hides the login flash while the cookie is fetched. Logout revokes the server session, clears the cookie, wipes session_state. Added `?authdebug=1` diagnostics. → `app.py`.
+- **Admin tab → User management panel** — `_admin_users_panel()` (admins only): users table + **add user** (generates a one-time password, `must_reset=True`) + per-user **change role / enable-disable / reset password / delete**, guarded against disabling/deleting **yourself** or the **last active admin**. → `app.py` `page_admin()`.
+- **Full-screen splash + translucent in-app loading overlay** — `theme.loading_screen()` paints an opaque brand-spinner splash (all Streamlit chrome hidden) for the single probe render after a refresh (removes the login flash). Separately, `inject_css()` adds a **translucent** overlay (scrim + blur + spinner) via `[data-testid="stApp"]::before/::after` gated by `:has([data-testid="stStatusWidget"])`, so any page switch / slow rerun shows a loading state automatically — pure CSS, no JS, no extra DOM. → `theme.py`, `app.py`.
+- **Login page chrome — removed then restored** — briefly stripped the topbar/footer for a "generic" login, then reverted per request: `login_screen()` + `force_password_change()` keep the normal topbar + footer and the "Price Forecasting: Steel" caption. → `app.py`.
+
 ### 2026-07-03
 - **Admin tab — editable Analyst-calls content (text + PDF/PPT uploads)** — new **role-gated** page `page_admin()` (nav item shown only when `user["role"] == "Admin"`; `top_nav()` now builds its columns dynamically). Admin can add / edit / delete calls (month, title, summary, 5 sections) and upload PDF/PPT decks. Content persists to the **private data repo** via the GitHub Contents API: `analyst_calls/calls.json` (text) + `analyst_calls/files/<id>/…` (decks), written by `data_loader.save_analyst_calls` / `upload_call_file` / `gh_delete_file` using a new **`github_write_token`** secret (falls back to `github_token` if it has write access; save disabled + warned if neither can write). `page_analyst()` was rewritten to render from `load_analyst_calls()` with **live Download PDF/PPT** buttons (deck bytes fetched via `fetch_call_file`, cached) — no video. With no secrets it shows `SAMPLE_ANALYST_CALLS` so the public app still runs. All admin-entered text is `html.escape`d at render. Added `import requests` usage; the read path stays read-only. → `app.py` (`page_admin`, `page_analyst`, `_render_call_card`, `_deck_button`, `top_nav`, `PAGES`), `data_loader.py` (analyst-calls section), `.streamlit/secrets.toml.example`.
 - **Git history scrubbed** — removed `accuracy_tables/*.xlsx` + `portal/calculators/HRC - Copy.csv` from all 8 commits with `git filter-repo` and force-pushed `origin/main` (verified: no data files anywhere in local or remote history). Pre-scrub backup bundle saved outside the repo. Note: GitHub may still cache old commit SHAs — purge via GitHub Support if needed; treat previously-public data as exposed.
@@ -173,3 +284,4 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - Analyst Calls: real summaries + PPT/PDF/**video** + upload workflow (PDF/PPT/Video buttons exist but are disabled placeholders).
 - Horizon tabs (Short/Medium/Long/Weekly) from the reference — NOT added (locked to 12-wk).
 - Calculators' inner styling still original (lighter look than the rest).
+- **Auth follow-ups:** (1) ~~Remove the `?authdebug=1` panel from `app.py`~~ **DONE 2026-07-06** — the diagnostic block was removed from `app.py`. (2) Consider scrubbing the old demo passwords/hashes from git history (they're in pre-2026-07-06 `auth.py`). (3) Neon free tier scales to zero → first query after idle has a cold-start (~1–2 s); a keepalive/paid tier would remove it. (4) Delete `.streamlit/seed_credentials.txt` after distributing the temp passwords. (5) `.streamlit/secrets.toml.example` documents `database_url` + `session_signing_key` as of 2026-07-06 — keep it in sync if the auth secrets change.
