@@ -53,6 +53,14 @@ Single deployment; the logged-in user's `role` selects everything at render time
   via `known_roles()`. Then set its commodity access + tag its calls in the Admin tab. For **custom
   branding** (logo/title/colors/pages) a **dev** drops a logo in `portal/assets/` and adds a
   `theme.ROLE_PROFILES` entry; until then the new role uses `DEFAULT_PROFILE`.
+- **Per-role forecasting layout (adani_dev, 2026-07-07):** beyond branding/access, a role can get a
+  different **Price-forecasting UI**. `adani_dev` uses a **grouped** layout — a top HRC/HR Plate/Rebar/
+  Structure group selector, the 3 price cards after it, a top-right per-group location/full-name
+  dropdown (in the old legend slot, sorted alphabetically, defaulting to the first), an in-chart
+  legend, and year-stamped x-axis labels. Gated by `app.py` `GROUPED_FORECASTING_ROLES` (case-
+  insensitive) — a dev-controlled behaviour flag, not a runtime knob. This is the staging ground for
+  the eventual Adani cut-over: **promote by adding `"adani"` to `GROUPED_FORECASTING_ROLES`** (and, if
+  desired later, fold the flag into `theme.ROLE_PROFILES`). Non-grouped roles are unaffected.
 
 ## Known limitation
 `.streamlit/config.toml` `primaryColor` is a build-time global, so native Streamlit widgets (default

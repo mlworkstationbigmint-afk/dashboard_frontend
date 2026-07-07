@@ -398,9 +398,11 @@ def _render_with_highlighter(fig, height=430, dom_id="chart"):
     components.html(html, height=height + 12)
 
 
-def forecast_chart(acc, fwd):
+def forecast_chart(acc, fwd, legend_inside=False, year_labels=False):
     """Light-blue actual spot (soft area fill) + bold red dashed forecast, with a dotted
-    divider and a faint shaded band marking the 12-week-ahead region."""
+    divider and a faint shaded band marking the 12-week-ahead region.
+    legend_inside places the legend inside the plot (white region); year_labels adds the
+    short year to the x-axis date ticks (both used by the grouped adani_dev layout)."""
     hist = acc.dropna(subset=["Actual"]).copy()
     if hist.empty:
         st.info("No historical spot series available for this product.")
@@ -460,7 +462,7 @@ def forecast_chart(acc, fwd):
             # exact range (no autorange padding) so the backward zoom anchors on the last forecast date
             range=[_dt(start_all), _dt(last_fc)], autorange=False,
             # weekly grid for week-by-week reading: faint weekly minor lines + month-ish major ticks
-            showgrid=True, gridcolor="#e8eef5", tickformat="%d %b",
+            showgrid=True, gridcolor="#e8eef5", tickformat=("%d %b %y" if year_labels else "%d %b"),
             minor=dict(dtick=7 * 86400000, tick0=_dt(last_actual), showgrid=True, gridcolor="#f3f6fa"),
             rangeslider=dict(visible=True, thickness=0.10, bgcolor="#f1f5f9",
                              bordercolor="#e2e8f0", borderwidth=1,
@@ -478,9 +480,16 @@ def forecast_chart(acc, fwd):
                 font=dict(size=11.5, color="#1f2937"),
             ),
         )
-        # raise the top margin to clear the zoom buttons; move the legend to the top-right
-        fig.update_layout(margin=dict(l=14, r=22, t=82, b=18),
-                          legend=dict(x=1, xanchor="right", y=1.18, yanchor="bottom"))
+        # raise the top margin to clear the zoom buttons. legend_inside places the legend inside
+        # the plot's white region (the top-right slot is taken by the location dropdown in the
+        # grouped layout); otherwise keep it at the top-right above the chart.
+        if legend_inside:
+            legend = dict(orientation="h", x=0.012, xanchor="left", y=0.99, yanchor="top",
+                          bgcolor="rgba(255,255,255,0.74)", bordercolor="#e2e8f0", borderwidth=1,
+                          font=dict(size=11.5))
+        else:
+            legend = dict(x=1, xanchor="right", y=1.18, yanchor="bottom")
+        fig.update_layout(margin=dict(l=14, r=22, t=82, b=18), legend=legend)
         _render_with_highlighter(fig, height=560, dom_id="fc_chart")
     except Exception:
         h = hist.set_index("Date")[["Actual", "Forecast"]]
@@ -648,6 +657,56 @@ RATIONALES = {
 # ---------------------------------------------------------------------------
 # PAGE: PRICE FORECASTING
 # ---------------------------------------------------------------------------
+# Top-level commodity groups for the grouped forecasting layout. Within a group a
+# top-right dropdown picks the specific location/full name; a group appears only if
+# it has ≥1 allowed member.
+FORECAST_GROUP_ORDER = ["HRC", "HR Plate", "Rebar", "Structure"]
+
+# Roles that get the grouped forecasting UI (group selector at top + per-group location
+# dropdown in the old legend slot + in-chart legend + short year in the x-axis labels).
+# Case-insensitive. When adani_dev is promoted onto the live Adani role, add "adani" here.
+GROUPED_FORECASTING_ROLES = {"adani_dev"}
+
+
+def _grouped_forecasting(role):
+    return (role or "").strip().lower() in GROUPED_FORECASTING_ROLES
+
+
+def _product_group(name):
+    """Map a STEEL_PRODUCTS key to its top-level group; unknown products form their own group."""
+    n = (name or "").strip().lower()
+    if n.startswith("hr plate") or n.startswith("hrplate"):
+        return "HR Plate"
+    if n.startswith("hrc"):
+        return "HRC"
+    if n.startswith("rebar"):
+        return "Rebar"
+    if n.startswith("structure"):
+        return "Structure"
+    return name
+
+
+def _grouped_products(products):
+    """{group: {product_name: meta}} ordered by FORECAST_GROUP_ORDER; only non-empty groups."""
+    groups = {}
+    for name, meta in products.items():
+        groups.setdefault(_product_group(name), {})[name] = meta
+    ordered = {g: groups[g] for g in FORECAST_GROUP_ORDER if g in groups}
+    for g, mem in groups.items():
+        ordered.setdefault(g, mem)
+    return ordered
+
+
+def _location_label(group, name):
+    """Short location label for a product within its group (strip the group prefix), else the
+    full name — 'Rebar IF Raipur'→'IF Raipur', 'Structure (IF Raipur)'→'IF Raipur', 'HRC'→'HRC'."""
+    if name.lower().startswith(group.lower()):
+        rest = name[len(group):].strip(" -–—()")
+        if rest:
+            return rest
+    return name
+
+
 def page_forecasting():
     st.markdown("## Price forecasting")
     products = allowed_products(user["role"])
@@ -656,11 +715,26 @@ def page_forecasting():
                 icon=":material/info:")
         theme.footer()
         return
-    keys = list(products.keys())
-    default = keys[0]
-    product = st.segmented_control("Product", keys, default=default, key="fc_prod",
-                                   label_visibility="collapsed")
-    product = product if product in products else default
+    grouped = _grouped_forecasting(user["role"])
+    loc_labels = loc_key = None
+    if grouped:
+        groups = _grouped_products(products)
+        gkeys = list(groups.keys())
+        group = st.segmented_control("Commodity group", gkeys, default=gkeys[0],
+                                     key="fc_group", label_visibility="collapsed")
+        group = group if group in groups else gkeys[0]
+        loc_map = {_location_label(group, n): n for n in groups[group]}   # label -> product key
+        loc_labels = sorted(loc_map)
+        loc_key = f"fc_loc_{group}"
+        if st.session_state.get(loc_key) not in loc_labels:   # default/sanitise before the widget
+            st.session_state[loc_key] = loc_labels[0]
+        product = loc_map[st.session_state[loc_key]]
+    else:
+        keys = list(products.keys())
+        default = keys[0]
+        product = st.segmented_control("Product", keys, default=default, key="fc_prod",
+                                       label_visibility="collapsed")
+        product = product if product in products else default
     meta = products[product]
     summary = dl.load_summary()
     row = dl.summary_row(summary, meta["ff"])
@@ -688,8 +762,15 @@ def page_forecasting():
     tab_graph, tab_table = st.tabs(["Graphical view", "Tabular view"])
 
     with tab_graph:
-        theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
-        forecast_chart(acc_hist, fwd)
+        if grouped:
+            tcol, dcol = st.columns([3, 1.4], vertical_alignment="center")
+            with tcol:
+                theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
+            with dcol:                                    # top-right dropdown (old legend slot)
+                st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
+        else:
+            theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
+        forecast_chart(acc_hist, fwd, legend_inside=grouped, year_labels=grouped)
         st.markdown("<div class='bm-footnote'>Light blue = actual spot. Red dashed = model forecast "
                     "(historical fit + 12-week ahead). Hover any point for its price.</div>",
                     unsafe_allow_html=True)

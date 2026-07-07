@@ -64,7 +64,7 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 
 ## Modules
 - **Home** — overview stats + 4 module cards + a full-width **Methodology banner** button below them.
-- **Price forecasting** — Steel only: product selector + KPI strip, then a **Graphical view / Tabular view** tab pair (Graphical = spot-vs-forecast chart; Tabular = one continuous *Actual vs Forecast* table, history flowing into the 12-wk-ahead forecast), then a **Forecast rationale** section (placeholder, per-product via `RATIONALES`). (Raw-material tab removed earlier.)
+- **Price forecasting** — Steel only: product selector + KPI strip, then a **Graphical view / Tabular view** tab pair (Graphical = spot-vs-forecast chart; Tabular = one continuous *Actual vs Forecast* table, history flowing into the 12-wk-ahead forecast), then a **Forecast rationale** section (placeholder, per-product via `RATIONALES`). (Raw-material tab removed earlier.) **The `adani_dev` role instead sees a *grouped* layout** — a top HRC/HR Plate/Rebar/Structure group selector + a top-right per-group location dropdown + in-chart legend + year-stamped x-axis labels (see the 2026-07-07 changelog + `GROUPED_FORECASTING_ROLES`).
 - **Analyst calls** — cards driven by **editable content** (`data_loader.load_analyst_calls()` → `analyst_calls/calls.json` in the private repo, else `SAMPLE_ANALYST_CALLS`): each card = month, title, headline summary, a one-line sectioned breakdown (Flats/Longs/Raw materials/Imports & exports/Outlook), and **live Download PDF / PPT** buttons (fetch the deck bytes from the private repo). No video. Managed via the Admin tab.
 - **Admin** *(role = Admin only)* — content manager for the Analyst-calls page (`page_admin()`): add / edit / delete calls (text + sections), upload PDF/PPT decks, live preview. Saves to the private repo via the GitHub Contents API (`save_analyst_calls` / `upload_call_file` / `gh_delete_file`), needs `github_write_token` (or a write-capable `github_token`); shows a warning + disables saving when absent.
 - **Performance dashboard** — product selector only (window toggle removed); reads **all rows** of `Accuracy_Table_6`. MAPA / directional / avg-delta KPIs, actual-vs-forecast chart + weekly-delta (Rs.) bars + **weekly accuracy % line** + **weekly directional-accuracy bars** + week-wise table.
@@ -92,6 +92,7 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - Methodology page content (pipeline steps, factors, horizons, stats) → `app.py` `page_methodology()` (`steps`/`factors` lists + inline HTML); infographic styling → `theme.py` `.bm-meth-*`/`.bm-flow*`/`.bm-factor*`/`.bm-horizon*`
 - Forecast rationale text → `app.py` `RATIONALES` dict (add a key per product name; `_default` is the placeholder shown until then)
 - Forecasting Graphical/Tabular tabs → `app.py` `page_forecasting()` `st.tabs([...])` block
+- **Grouped forecasting layout (adani_dev)** — group selector (HRC/HR Plate/Rebar/Structure) + per-group location dropdown (old legend slot) + in-chart legend + short year in x-axis labels → `app.py` `page_forecasting()` grouped branch + helpers `_grouped_forecasting` / `_product_group` / `_grouped_products` / `_location_label` + `FORECAST_GROUP_ORDER`; which roles get it → `app.py` `GROUPED_FORECASTING_ROLES`; the chart's legend-position + year-label toggles → `forecast_chart(legend_inside=…, year_labels=…)`
 - Forecast chart time slider + Zoom buttons (1W/4W/8W/12W/26W/YTD/ALL) → `app.py` `forecast_chart()` `rangeslider`/`rangeselector` block (end of the function, before `_render_with_highlighter`)
 - History shown in chart + historical table → **full available history, no window/trim**. `forecast_chart()` and the tabular block both use `dropna(subset=["Actual"])` with no `.tail()`; the old `HIST_WEEKS` constant was removed (2026-07-03)
 - Data parsing → `data_loader.py`
@@ -122,6 +123,21 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 > Feature plan: `portal/PLAN_per_role_dashboards.md`. Turns the app into a per-role white-label
 > dashboard on a single deployment: each role gets its own branding (dev-configured, static), and the
 > Admin controls which commodities + which analyst calls each role sees (runtime). Landing task-by-task.
+- **adani_dev — grouped forecasting layout (group selector + location dropdown + in-chart legend +
+  year labels)** — the `adani_dev` role now sees a restructured **Price forecasting** page: a top
+  **commodity-group** segmented control (**HRC / HR Plate / Rebar / Structure**, derived from the
+  role's allowed products via `_product_group` / `_grouped_products`) replaces the flat 6-product
+  selector, and the **3 price KPI cards** follow it. Within a group a **top-right dropdown** (sitting
+  in the old legend slot, inside the Graphical tab) picks the specific **location / full name**
+  (`_location_label` strips the group prefix — Rebar → *BF Mumbai / IF Mumbai / IF Raipur*;
+  single-member groups show their one name), sorted **alphabetically**, defaulting to the first. The
+  Plotly **legend moves inside the plot** (white region) and the x-axis date ticks gain the **short
+  year** (`%d %b %y`). Selection persists per group via `st.session_state["fc_loc_<group>"]` (read
+  before the cards, so cards + both tabs follow it). All gated by `app.py` `GROUPED_FORECASTING_ROLES`
+  (case-insensitive; currently just `adani_dev`) via `_grouped_forecasting(role)`; **other roles keep
+  the existing flat layout**. `forecast_chart()` gained `legend_inside` / `year_labels` kwargs (default
+  off — no change for non-grouped roles). **Promotion to Adani:** add `"adani"` to
+  `GROUPED_FORECASTING_ROLES`. → `app.py`.
 - **theme.py — per-role branding profiles + CSS-variable theming (task 1/5)** — the 4 themeable colors
   (`PRIMARY`/`PRIMARY_DARK`/`PRIMARY_SOFT`/`ACCENT`) in `inject_css()` are now driven by CSS custom
   properties (`--bm-primary` / `--bm-primary-dark` / `--bm-primary-soft` / `--bm-accent`) seeded with
