@@ -374,11 +374,9 @@ button[data-testid="stBaseButton-segmented_controlActive"] {{
 }}
 button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-accent) !important; }}
 /* grouped-forecasting location dropdown (adani_dev) -> make it stand out: coloured border + tint */
-/* right-align it and pull it down over the chart's top band so it lines up with the zoom
-   buttons (on the left) and reclaims the vertical space — floats above the chart via z-index */
+/* left-aligned, sits above the Graphical/Tabular tabs (shared across both views) */
 .st-key-fc_loc_box {{
-    width:250px; margin-left:auto; margin-bottom:-68px;
-    position:relative; z-index:6;
+    width:250px; margin-bottom:4px;
 }}
 .st-key-fc_loc_box div[data-baseweb="select"] > div {{
     border:1.6px solid var(--bm-primary) !important; background:var(--bm-primary-soft) !important;

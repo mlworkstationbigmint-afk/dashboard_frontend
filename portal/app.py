@@ -459,8 +459,10 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
                         stepmode="backward", label=label)
 
         h = 620 if compact else 560
-        top_m = 54 if compact else 82
-        rs_y = 1.05 if compact else 1.18
+        top_m = 18 if compact else 82            # compact: buttons sit INSIDE the plot, tiny margin
+        rs_y = 0.98 if compact else 1.18         # inside the plot (top) when compact, else above it
+        rs_ya = "top" if compact else "bottom"
+        rs_x = 0.01 if compact else 0
         fig = _style_fig(fig, height=h)
         fig.update_xaxes(
             # exact range (no autorange padding) so the backward zoom anchors on the last forecast date
@@ -478,7 +480,7 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
                     dict(count=1, label="YTD", step="year", stepmode="todate"),
                     dict(count=all_days, label="ALL", step="day", stepmode="backward"),
                 ],
-                x=0, xanchor="left", y=rs_y, yanchor="bottom",
+                x=rs_x, xanchor="left", y=rs_y, yanchor=rs_ya,
                 bgcolor="#eef2f7", activecolor=theme.ACCENT,
                 bordercolor="#e2e8f0", borderwidth=1,
                 font=dict(size=11.5, color="#1f2937"),
@@ -488,7 +490,8 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
         # the plot's white region (the top-right slot is taken by the location dropdown in the
         # grouped layout); otherwise keep it at the top-right above the chart.
         if legend_inside:
-            legend = dict(orientation="h", x=0.012, xanchor="left", y=0.99, yanchor="top",
+            ly = 0.86 if compact else 0.99       # compact: sit below the inside zoom buttons
+            legend = dict(orientation="h", x=0.012, xanchor="left", y=ly, yanchor="top",
                           bgcolor="rgba(255,255,255,0.74)", bordercolor="#e2e8f0", borderwidth=1,
                           font=dict(size=11.5))
         else:
@@ -765,16 +768,17 @@ def page_forecasting():
     if not grouped:
         price_cards()
         st.write("")
+    else:
+        # Shared location dropdown ABOVE the view tabs (left-aligned) so it can be changed in
+        # both the Graphical and Tabular views without switching back to the graph.
+        with st.container(key="fc_loc_box"):
+            st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
 
     tab_graph, tab_table = st.tabs(["Graphical view", "Tabular view"])
 
     with tab_graph:
         if grouped:
-            # No section title. The dropdown floats top-right, pulled down over the chart so it
-            # lines up with the zoom buttons on the left (positioned via .st-key-fc_loc_box in
-            # theme.py); the compact chart fits without scrolling.
-            with st.container(key="fc_loc_box"):
-                st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
+            # No section title; the zoom (week) buttons live INSIDE the plot now (compact mode).
             forecast_chart(acc_hist, fwd, legend_inside=True, year_labels=True, compact=True)
         else:
             theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
