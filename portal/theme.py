@@ -373,6 +373,18 @@ button[data-testid="stBaseButton-segmented_controlActive"] {{
     background-color:rgba(238,78,36,0.10) !important;
 }}
 button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-accent) !important; }}
+/* grouped-forecasting location dropdown (adani_dev) -> make it stand out: coloured border + tint */
+.st-key-fc_loc_box div[data-baseweb="select"] > div {{
+    border:1.6px solid var(--bm-primary) !important; background:var(--bm-primary-soft) !important;
+    border-radius:9px !important; box-shadow:0 1px 4px rgba(2,76,161,.12) !important;
+}}
+.st-key-fc_loc_box div[data-baseweb="select"] > div:hover {{
+    border-color:var(--bm-accent) !important;
+}}
+.st-key-fc_loc_box div[data-baseweb="select"] div[value], .st-key-fc_loc_box [data-baseweb="select"] span {{
+    color:var(--bm-primary-dark) !important; font-weight:700 !important;
+}}
+.st-key-fc_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
 
 /* ---------- methodology infographics ---------- */
 .bm-meth-hero {{ background:linear-gradient(120deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%); color:#fff;

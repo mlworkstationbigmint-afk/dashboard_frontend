@@ -725,7 +725,7 @@ def page_forecasting():
         group = group if group in groups else gkeys[0]
         loc_map = {_location_label(group, n): n for n in groups[group]}   # label -> product key
         loc_labels = sorted(loc_map)
-        loc_key = f"fc_loc_{group}"
+        loc_key = f"fc_loc_{group.replace(' ', '_')}"
         if st.session_state.get(loc_key) not in loc_labels:   # default/sanitise before the widget
             st.session_state[loc_key] = loc_labels[0]
         product = loc_map[st.session_state[loc_key]]
@@ -741,22 +741,25 @@ def page_forecasting():
     fwd = dl.load_forward(meta["ff"])
     acc_hist = dl.load_accuracy("6-week", meta["acc"])   # Accuracy_Table_6 (Table_16 retired)
 
-    if row:
+    def price_cards():
+        if not row:
+            return
         last_actual = row.get("Last actual (Rs./ton)", row.get("Last actual (₹/ton)"))
         last_date = pd.to_datetime(row.get("Last actual date"), errors="coerce")
         ld = last_date.strftime("%d %b %Y") if pd.notna(last_date) else "-"
         nextwk = row.get("Next-wk forecast")
         p12 = row.get("+12wk forecast")
-
         nextwk_dir = dl.direction_flag(nextwk - last_actual) if (pd.notna(nextwk) and pd.notna(last_actual)) else row.get("Next-wk dir", "")
         p12_dir = dl.direction_flag(p12 - last_actual) if (pd.notna(p12) and pd.notna(last_actual)) else row.get("+12wk dir", "")
-
         k1, k2, k3 = st.columns(3)
         k1.markdown(theme.kpi_card("Last actual spot", f"Rs.{last_actual:,.0f}", ld, theme.icon("rupee")), unsafe_allow_html=True)
         k2.markdown(theme.kpi_card("Next-week forecast", f"Rs.{nextwk:,.0f}", theme.direction_chip(nextwk_dir), theme.icon("clock")), unsafe_allow_html=True)
         k3.markdown(theme.kpi_card("+12-week forecast", f"Rs.{p12:,.0f}", theme.direction_chip(p12_dir), theme.icon("trending")), unsafe_allow_html=True)
-    else:
-        last_actual, last_date = None, None
+
+    # Default layout: price cards above the tabs. Grouped (adani_dev): the graph goes on top
+    # (right after the group tabs) and the cards drop below the tab block (rendered after it).
+    if not grouped:
+        price_cards()
 
     st.write("")
     tab_graph, tab_table = st.tabs(["Graphical view", "Tabular view"])
@@ -767,7 +770,8 @@ def page_forecasting():
             with tcol:
                 theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
             with dcol:                                    # top-right dropdown (old legend slot)
-                st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
+                with st.container(key="fc_loc_box"):      # styled hook (border/colour) — see theme.py
+                    st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
         else:
             theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
         forecast_chart(acc_hist, fwd, legend_inside=grouped, year_labels=grouped)
@@ -810,6 +814,10 @@ def page_forecasting():
                     "(same window as the chart); shaded rows = 12-week-ahead forecast (no actuals yet). "
                     "&Delta; = actual &minus; forecast. Headline line = Ensemble (Weighted Mean).</div>",
                     unsafe_allow_html=True)
+
+    if grouped:                                   # adani_dev: price cards below the graph/table tabs
+        st.write("")
+        price_cards()
 
     # ---- Forecast rationale (placeholder; real analyst commentary supplied later) ----
     st.write("")
