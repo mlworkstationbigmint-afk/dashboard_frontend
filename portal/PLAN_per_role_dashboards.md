@@ -55,10 +55,12 @@ Single deployment; the logged-in user's `role` selects everything at render time
   `theme.ROLE_PROFILES` entry; until then the new role uses `DEFAULT_PROFILE`.
 - **Per-role forecasting layout (adani_dev, 2026-07-07):** beyond branding/access, a role can get a
   different **Price-forecasting UI**. `adani_dev` uses a **grouped** layout — a top HRC/HR Plate/Rebar/
-  Structure group tab-strip, then the **graph on top** (right after the group tabs), then the **3 price
+  Structure group tab-strip, then the **graph on top** (no section title, right after the group tabs), then the **3 price
   cards below the tab block**, a top-right per-group location/full-name dropdown (in the old legend
-  slot, **styled with a coloured border + tint**, sorted alphabetically, defaulting to the first), an
-  in-chart legend, and year-stamped x-axis labels. Gated by `app.py` `GROUPED_FORECASTING_ROLES` (case-
+  slot, **styled with a coloured border + tint** and **floated over the chart in line with the zoom
+  buttons**, sorted alphabetically, defaulting to the first), an in-chart legend, year-stamped x-axis
+  labels, and a **compact chart** (shorter height + tighter margins) so it fits **without scrolling**.
+  Gated by `app.py` `GROUPED_FORECASTING_ROLES` (case-
   insensitive) — a dev-controlled behaviour flag, not a runtime knob. This is the staging ground for
   the eventual Adani cut-over: **promote by adding `"adani"` to `GROUPED_FORECASTING_ROLES`** (and, if
   desired later, fold the flag into `theme.ROLE_PROFILES`). Non-grouped roles are unaffected.

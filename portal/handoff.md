@@ -92,7 +92,7 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - Methodology page content (pipeline steps, factors, horizons, stats) → `app.py` `page_methodology()` (`steps`/`factors` lists + inline HTML); infographic styling → `theme.py` `.bm-meth-*`/`.bm-flow*`/`.bm-factor*`/`.bm-horizon*`
 - Forecast rationale text → `app.py` `RATIONALES` dict (add a key per product name; `_default` is the placeholder shown until then)
 - Forecasting Graphical/Tabular tabs → `app.py` `page_forecasting()` `st.tabs([...])` block
-- **Grouped forecasting layout (adani_dev)** — group tabs (HRC/HR Plate/Rebar/Structure) → graph on top → price cards below the tabs, + per-group location dropdown (old legend slot) + in-chart legend + short year in x-axis labels → `app.py` `page_forecasting()` grouped branch + helpers `_grouped_forecasting` / `_product_group` / `_grouped_products` / `_location_label` + `FORECAST_GROUP_ORDER` + nested `price_cards()`; which roles get it → `app.py` `GROUPED_FORECASTING_ROLES`; the chart's legend-position + year-label toggles → `forecast_chart(legend_inside=…, year_labels=…)`; the dropdown's border/tint styling → `theme.py` `.st-key-fc_loc_box` (container key set in `app.py`)
+- **Grouped forecasting layout (adani_dev)** — group tabs (HRC/HR Plate/Rebar/Structure) → graph on top (no title) → price cards below the tabs, + per-group location dropdown floating top-right in line with the zoom buttons + in-chart legend + short year in x-axis labels, compact/no-scroll chart → `app.py` `page_forecasting()` grouped branch + helpers `_grouped_forecasting` / `_product_group` / `_grouped_products` / `_location_label` + `FORECAST_GROUP_ORDER` + nested `price_cards()`; which roles get it → `app.py` `GROUPED_FORECASTING_ROLES`; the chart's legend-position / year-label / compact-size toggles → `forecast_chart(legend_inside=…, year_labels=…, compact=…)`; the dropdown's border/tint **and its float-over-chart position** (right-align + negative margin + z-index) → `theme.py` `.st-key-fc_loc_box` (container key set in `app.py`)
 - Forecast chart time slider + Zoom buttons (1W/4W/8W/12W/26W/YTD/ALL) → `app.py` `forecast_chart()` `rangeslider`/`rangeselector` block (end of the function, before `_render_with_highlighter`)
 - History shown in chart + historical table → **full available history, no window/trim**. `forecast_chart()` and the tabular block both use `dropna(subset=["Actual"])` with no `.tail()`; the old `HIST_WEEKS` constant was removed (2026-07-03)
 - Data parsing → `data_loader.py`
@@ -132,15 +132,20 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   group a **top-right dropdown** (in the old legend slot, inside the Graphical tab) picks the specific
   **location / full name** (`_location_label` strips the group prefix — Rebar → *BF Mumbai / IF Mumbai
   / IF Raipur*; single-member groups show their one name), sorted **alphabetically**, defaulting to the
-  first. The dropdown is given a **coloured border + soft tint** (accent on hover) via a
-  `st.container(key="fc_loc_box")` hook styled in `theme.py` (`.st-key-fc_loc_box`). The Plotly
-  **legend moves inside the plot** (white region) and the x-axis date ticks gain the **short year**
-  (`%d %b %y`). Selection persists per group via `st.session_state["fc_loc_<slug>"]` (resolved at the
-  top, so graph, table and cards all follow it). All gated by `app.py` `GROUPED_FORECASTING_ROLES`
-  (case-insensitive; currently just `adani_dev`) via `_grouped_forecasting(role)`; **other roles keep
-  the existing flat layout** (cards above the tabs). `forecast_chart()` gained `legend_inside` /
-  `year_labels` kwargs (default off — no change for non-grouped roles); the price-card block was
-  refactored into a nested `price_cards()` so it can render above or below the tabs. **Promotion to
+  first. **No section title** on the Graphical tab; the dropdown gets a **coloured border + soft tint**
+  (accent on hover) and **floats over the chart's top-right, right-aligned + pulled down** (negative
+  margin + `z-index` on `.st-key-fc_loc_box`, styled in `theme.py`) so it sits **in line with the
+  chart's zoom buttons** on the left. The Plotly **legend moves inside the plot** (white region) and
+  the x-axis date ticks gain the **short year** (`%d %b %y`). To fit **without scrolling**, the grouped
+  chart runs in a **compact** mode — `forecast_chart(compact=True)` shrinks the height (560→470),
+  tightens the top margin (82→54) and pulls the zoom buttons up (y 1.18→1.05); the colour-legend
+  footnote is dropped for this layout (the in-chart legend covers it). Selection persists per group via
+  `st.session_state["fc_loc_<slug>"]` (resolved at the top, so graph, table and cards all follow it).
+  All gated by `app.py` `GROUPED_FORECASTING_ROLES` (case-insensitive; currently just `adani_dev`) via
+  `_grouped_forecasting(role)`; **other roles keep the existing flat layout** (cards above the tabs,
+  section title + footnote present, full-height chart). `forecast_chart()` gained `legend_inside` /
+  `year_labels` / `compact` kwargs (default off — no change for non-grouped roles); the price-card block
+  was refactored into a nested `price_cards()` so it can render above or below the tabs. **Promotion to
   Adani:** add `"adani"` to `GROUPED_FORECASTING_ROLES`. → `app.py`, `theme.py`.
 - **theme.py — per-role branding profiles + CSS-variable theming (task 1/5)** — the 4 themeable colors
   (`PRIMARY`/`PRIMARY_DARK`/`PRIMARY_SOFT`/`ACCENT`) in `inject_css()` are now driven by CSS custom

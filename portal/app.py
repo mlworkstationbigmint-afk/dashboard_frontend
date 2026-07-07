@@ -398,11 +398,12 @@ def _render_with_highlighter(fig, height=430, dom_id="chart"):
     components.html(html, height=height + 12)
 
 
-def forecast_chart(acc, fwd, legend_inside=False, year_labels=False):
+def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=False):
     """Light-blue actual spot (soft area fill) + bold red dashed forecast, with a dotted
     divider and a faint shaded band marking the 12-week-ahead region.
     legend_inside places the legend inside the plot (white region); year_labels adds the
-    short year to the x-axis date ticks (both used by the grouped adani_dev layout)."""
+    short year to the x-axis date ticks; compact shrinks the height + top margin and pulls
+    the zoom buttons up (all used by the grouped adani_dev layout, no scroll needed)."""
     hist = acc.dropna(subset=["Actual"]).copy()
     if hist.empty:
         st.info("No historical spot series available for this product.")
@@ -457,7 +458,10 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False):
             return dict(count=min(n * 7 + fc_span, all_days), step="day",
                         stepmode="backward", label=label)
 
-        fig = _style_fig(fig, height=560)
+        h = 470 if compact else 560
+        top_m = 54 if compact else 82
+        rs_y = 1.05 if compact else 1.18
+        fig = _style_fig(fig, height=h)
         fig.update_xaxes(
             # exact range (no autorange padding) so the backward zoom anchors on the last forecast date
             range=[_dt(start_all), _dt(last_fc)], autorange=False,
@@ -474,7 +478,7 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False):
                     dict(count=1, label="YTD", step="year", stepmode="todate"),
                     dict(count=all_days, label="ALL", step="day", stepmode="backward"),
                 ],
-                x=0, xanchor="left", y=1.18, yanchor="bottom",
+                x=0, xanchor="left", y=rs_y, yanchor="bottom",
                 bgcolor="#eef2f7", activecolor=theme.ACCENT,
                 bordercolor="#e2e8f0", borderwidth=1,
                 font=dict(size=11.5, color="#1f2937"),
@@ -489,8 +493,8 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False):
                           font=dict(size=11.5))
         else:
             legend = dict(x=1, xanchor="right", y=1.18, yanchor="bottom")
-        fig.update_layout(margin=dict(l=14, r=22, t=82, b=18), legend=legend)
-        _render_with_highlighter(fig, height=560, dom_id="fc_chart")
+        fig.update_layout(margin=dict(l=14, r=22, t=top_m, b=18), legend=legend)
+        _render_with_highlighter(fig, height=h, dom_id="fc_chart")
     except Exception:
         h = hist.set_index("Date")[["Actual", "Forecast"]]
         f = fwd.set_index("Date")[["Forecast"]].rename(columns={"Forecast": "Forecast (12-wk)"})
@@ -760,24 +764,24 @@ def page_forecasting():
     # (right after the group tabs) and the cards drop below the tab block (rendered after it).
     if not grouped:
         price_cards()
+        st.write("")
 
-    st.write("")
     tab_graph, tab_table = st.tabs(["Graphical view", "Tabular view"])
 
     with tab_graph:
         if grouped:
-            tcol, dcol = st.columns([3, 1.4], vertical_alignment="center")
-            with tcol:
-                theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
-            with dcol:                                    # top-right dropdown (old legend slot)
-                with st.container(key="fc_loc_box"):      # styled hook (border/colour) — see theme.py
-                    st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
+            # No section title. The dropdown floats top-right, pulled down over the chart so it
+            # lines up with the zoom buttons on the left (positioned via .st-key-fc_loc_box in
+            # theme.py); the compact chart fits without scrolling.
+            with st.container(key="fc_loc_box"):
+                st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
+            forecast_chart(acc_hist, fwd, legend_inside=True, year_labels=True, compact=True)
         else:
             theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
-        forecast_chart(acc_hist, fwd, legend_inside=grouped, year_labels=grouped)
-        st.markdown("<div class='bm-footnote'>Light blue = actual spot. Red dashed = model forecast "
-                    "(historical fit + 12-week ahead). Hover any point for its price.</div>",
-                    unsafe_allow_html=True)
+            forecast_chart(acc_hist, fwd)
+            st.markdown("<div class='bm-footnote'>Light blue = actual spot. Red dashed = model forecast "
+                        "(historical fit + 12-week ahead). Hover any point for its price.</div>",
+                        unsafe_allow_html=True)
 
     with tab_table:
         # One continuous table: history (actual+forecast+delta, blank direction) flows into
