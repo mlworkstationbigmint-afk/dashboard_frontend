@@ -144,16 +144,6 @@ _DDL = [
         detail   TEXT
     )
     """,
-    # Per-role commodity access. A role with NO rows = "all commodities" (the
-    # unconfigured default); saving a non-empty subset restricts that role. Admins
-    # always see everything regardless of this table (enforced in the app layer).
-    """
-    CREATE TABLE IF NOT EXISTS role_commodities (
-        role      TEXT NOT NULL,
-        commodity TEXT NOT NULL,
-        PRIMARY KEY (role, commodity)
-    )
-    """,
 ]
 
 
@@ -262,28 +252,6 @@ def clear_failed_attempts(username: str) -> None:
     )
     with get_engine().begin() as conn:
         conn.execute(sql, {"u": username})
-
-
-# ---------------------------------------------------------------------------
-# Per-role commodity access
-# ---------------------------------------------------------------------------
-def get_role_commodities(role: str) -> list[str]:
-    """Commodities a role is allowed to see. Empty list = unconfigured (the app
-    treats that as 'all')."""
-    sql = text("SELECT commodity FROM role_commodities WHERE role = :r ORDER BY commodity")
-    with get_engine().connect() as conn:
-        return [r[0] for r in conn.execute(sql, {"r": role})]
-
-
-def set_role_commodities(role: str, commodities: list[str]) -> None:
-    """Replace a role's allowed-commodity set atomically (delete then insert)."""
-    with get_engine().begin() as conn:
-        conn.execute(text("DELETE FROM role_commodities WHERE role = :r"), {"r": role})
-        for commodity in commodities:
-            conn.execute(
-                text("INSERT INTO role_commodities (role, commodity) VALUES (:r, :c)"),
-                {"r": role, "c": commodity},
-            )
 
 
 # ---------------------------------------------------------------------------
