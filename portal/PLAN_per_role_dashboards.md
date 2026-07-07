@@ -73,6 +73,12 @@ Single deployment; the logged-in user's `role` selects everything at render time
   pair changes; Calculators / other tab strips keep the default segmented pill). Applies to both the
   grouped and flat layouts. See the handoff changelog for the CSS mechanics.
 
+- **Deploy fix (2026-07-07):** the `Revert "New Dashboard Frontend"` commits left unresolved git
+  conflict markers committed in `theme.py` (line 567), breaking the Streamlit Cloud deploy with a
+  `SyntaxError`. Resolved toward the revert side (markers + the now-unused `loading_screen()`
+  removed); see the handoff changelog. NB: those reverts also rolled back some 2026-07-07 UI work
+  (cookie splash, segmented-control slider restyle) — not re-applied.
+
 ## Known limitation
 `.streamlit/config.toml` `primaryColor` is a build-time global, so native Streamlit widgets (default
 primary buttons/tabs) keep the global orange for all roles. The brand topbar and all custom-CSS

@@ -119,6 +119,17 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **Accent = orange**: `primaryColor` is now `#EE4E24` (ACCENT orange) in config.toml — it natively drives **primary buttons (Sign in / Log out / active nav) + tab highlights + segmented selected state** orange. The **brand topbar stays blue** because it uses the `PRIMARY` (#024CA1) constant in `theme.py` CSS, *not* `primaryColor`. **Tabs** are a **sliding segmented switch**: `div[data-baseweb="tab-highlight"]` is *repurposed* from baseweb's bottom underline into a full-height **white pill** (`top/bottom:5px; height:auto; border-radius; bg #fff`) — baseweb (Streamlit 1.58) repositions it with **`transform: translateX(...)`** (NOT `left`) and updates `width` when you switch tabs, so the pill **slides only if the `transition` targets `transform`** (`transition:transform .28s, width .28s`). **Verified live (2026-06-30):** at 0.28s the highlight's `translateX` eases smoothly between tab positions (e.g. 5px↔149px). Tab buttons sit above it (`z-index:1`, transparent bg) with orange active text; `tab-border` is hidden; the grey track is `div[data-baseweb="tab-list"]` (`position:relative` anchors the pill). Do **not** re-hide `tab-highlight`, and **keep the transition on `transform`** — a `transition:left/width` (the old value) never fires because baseweb moves the pill via `transform`, so the pill snaps instead of sliding. The segmented selector (Product) gets orange via `stBaseButton-segmented_controlActive`. If tabs look wrong after a Streamlit upgrade, re-check the `data-baseweb="tab*"` selectors. (Was previously blue buttons + orange underline-tabs; accent flipped + tabs → sliding pill 2026-06-26.)
 
 ## Changelog (prototype iterations)
+### 2026-07-07 — Deploy fix: committed merge-conflict markers in theme.py
+- **Streamlit Cloud was down with `SyntaxError: invalid syntax` at `theme.py:567 <<<<<<< HEAD`** —
+  the two `Revert "New Dashboard Frontend"` commits (89648a1, f66fd91) left an **unresolved git
+  conflict** (`<<<<<<< HEAD … >>>>>>> parent of c7733b9`) committed inside `theme.py`. Resolved
+  **toward the revert side**: removed the markers and the `loading_screen()` function they wrapped
+  (the reverted `app.py` no longer calls it — verified no `theme.loading_screen` reference remains).
+  Verified `py_compile` on all portal modules + calculators, every `theme.*` attribute used by
+  `app.py` exists, and no conflict markers remain anywhere in the repo. **NB:** the same reverts also
+  rolled back the cookie-splash flow that used `loading_screen()` and the 2026-07-07 segmented-control
+  slider restyle — intentionally not re-applied. Committed as 590018d (**push pending**). → `theme.py`.
+
 ### 2026-07-07 — Forecasting view switch → modern sliding switch
 - **Graphical/Tabular view is now a modern sliding switch (glides slowly).** The
   `st.tabs(["Graphical view","Tabular view"])` in `page_forecasting()` is wrapped in
