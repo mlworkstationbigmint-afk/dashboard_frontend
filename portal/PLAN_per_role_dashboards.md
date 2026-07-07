@@ -44,8 +44,10 @@ Single deployment; the logged-in user's `role` selects everything at render time
 - **Commodity access:** a role with **no saved rows = all** commodities (unconfigured default). To
   restrict, admin saves a subset; saving an empty set is disallowed — so empty-config only ever means
   "unconfigured = all" (no ambiguity). Admin role always sees all.
-- **Analyst audience:** call `audiences` missing/empty ⇒ visible to all (backward compatible); else the
-  user's role must be in the list. Admin always sees all calls (incl. the preview).
+- **Analyst audience (deny-by-default, updated 2026-07-07):** a non-admin role sees a call only if its
+  role is explicitly in the call's `audiences`. Empty/missing ⇒ *unassigned*: **admins only** (no other
+  role sees it). Admin always sees all calls (incl. the preview). ⚠ Existing untagged `calls.json`
+  entries become admin-only until an admin assigns their audience.
 - **Adding a new client role (dev, once):** add the role to `auth.ROLES`, drop its logo in
   `portal/assets/`, add a `ROLE_PROFILES` entry (co-brand, title, colors, pages); then create users +
   set commodity access + tag calls via the Admin tab.

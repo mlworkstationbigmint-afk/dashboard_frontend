@@ -129,9 +129,11 @@ def allowed_products(role):
 
 
 def _call_visible(call, role):
-    """An analyst call is visible if it has no audience (all) or lists this role."""
-    aud = call.get("audiences") or []
-    return (not aud) or (role in aud)
+    """Deny-by-default: a call is visible to a (non-admin) role only if that role is
+    explicitly in its audience. Untagged calls (empty audience) are 'unassigned' and
+    show to admins only — the admin picks each call's audience. Admins bypass this
+    (see page_analyst)."""
+    return role in (call.get("audiences") or [])
 
 
 def login_screen():
@@ -938,7 +940,8 @@ def page_admin():
         aud_default = [r for r in (editing or {}).get("audiences", []) if r in aud_opts]
         audiences = st.multiselect("Audience — user types who see this call", aud_opts,
                                    default=aud_default, key=f"aud_{ekey}",
-                                   help="Leave empty = visible to everyone. Admins always see all calls.")
+                                   help="Pick who sees this call. Leave empty = unassigned "
+                                        "(admins only — no other role sees it). Admins always see all calls.")
         u1, u2 = st.columns(2)
         pdf_up = u1.file_uploader("PDF deck", type=["pdf"], key=f"pdf_up_{ekey}")
         ppt_up = u2.file_uploader("PPT deck", type=["ppt", "pptx"], key=f"ppt_up_{ekey}")

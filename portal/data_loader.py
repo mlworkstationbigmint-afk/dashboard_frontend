@@ -285,8 +285,9 @@ ANALYST_FILES_DIR = "analyst_calls/files"
 ANALYST_SECTIONS = ["Flats", "Longs", "Raw materials", "Imports & exports", "Outlook"]
 
 # Shown when no private store is configured/reachable (plain text — escaped at render).
-# "audiences" = list of roles that may see the call; empty/missing => visible to all
-# (the app filters via _call_visible in app.py; admins always see every call).
+# "audiences" = list of roles that may see the call (deny-by-default). Empty/missing
+# => unassigned: admins only, no other role sees it (the app filters via _call_visible
+# in app.py; admins always see every call). Set the audience from the Admin call editor.
 SAMPLE_ANALYST_CALLS = [
     {"id": "2026-06", "month": "June 2026", "title": "Market outlook call",
      "summary": "Flat-to-soft HRC into Q3; raw-material support easing as iron-ore and coking-coal cool.",
