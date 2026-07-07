@@ -121,6 +121,15 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 
 ## Changelog (prototype iterations)
 ### 2026-07-07 — Per-role white-label dashboards + admin-managed access (in progress)
+- **App now fills the whole screen width (full-bleed at any resolution)** — the custom
+  `.block-container` cap `max-width:1180px` in `theme.py` `inject_css()` became `max-width:100%`
+  with `2.2rem` side padding (`layout="wide"` was already set, the CSS cap was the limiter). Charts
+  adapt automatically (`st.iframe` width `stretch` + the `_HL_TEMPLATE` ResizeObserver →
+  `Plotly.Plots.resize`; native charts/tables use `width="stretch"`). The **login** and
+  **password-reset** cards would stretch absurdly on wide monitors, so their bordered containers
+  gained keys (`login_card` / `reset_card`) and a `max-width:460px; margin:0 auto` rule in
+  `theme.py`. To restore a capped layout, put a px `max-width` back on `.block-container`. →
+  `theme.py`, `app.py`.
 > Feature plan: `portal/PLAN_per_role_dashboards.md`. Turns the app into a per-role white-label
 > dashboard on a single deployment: each role gets its own branding (dev-configured, static), and the
 > Admin controls which commodities + which analyst calls each role sees (runtime). Landing task-by-task.

@@ -167,7 +167,8 @@ def login_screen():
     theme.render_topbar(None)
     cols = st.columns([1, 1.5, 1])
     with cols[1]:
-        with st.container(border=True):
+        # key -> theme.py caps the card width now the page is full-bleed
+        with st.container(border=True, key="login_card"):
             st.markdown("### Sign in")
             st.caption("Price Forecasting: Steel")
             username = st.text_input("Username")
@@ -192,7 +193,7 @@ def force_password_change():
     theme.render_topbar(st.session_state.user)
     cols = st.columns([1, 1.5, 1])
     with cols[1]:
-        with st.container(border=True):
+        with st.container(border=True, key="reset_card"):
             st.markdown("### Set a new password")
             st.caption("Your account requires a new password before you continue.")
             p1 = st.text_input("New password", type="password", key="reset_p1")

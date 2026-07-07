@@ -162,7 +162,12 @@ def inject_css():
     --bm-accent: {ACCENT};
 }}
 .stApp {{ background-color: {BG_SOFT}; }}
-.block-container {{ padding-top: 1rem !important; padding-bottom: 2rem; max-width: 1180px; }}
+/* full-bleed: fill the whole viewport width at any resolution (was capped at 1180px);
+   side padding keeps content off the screen edges. layout="wide" is set in app.py. */
+.block-container {{ padding-top: 1rem !important; padding-bottom: 2rem; max-width: 100%;
+    padding-left: 2.2rem; padding-right: 2.2rem; }}
+/* login / password-reset cards: keep a readable fixed width now the page is full-bleed */
+.st-key-login_card, .st-key-reset_card {{ max-width: 460px; margin: 0 auto; }}
 header[data-testid="stHeader"] {{ background: transparent; height: 0; }}
 #MainMenu, footer {{ visibility: hidden; }}
 section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display: none !important; }}

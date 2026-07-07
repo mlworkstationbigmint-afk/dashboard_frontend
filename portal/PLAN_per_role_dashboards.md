@@ -71,6 +71,10 @@ Single deployment; the logged-in user's `role` selects everything at render time
   the eventual Adani cut-over: **promote by adding `"adani"` to `GROUPED_FORECASTING_ROLES`** (and, if
   desired later, fold the flag into `theme.ROLE_PROFILES`). Non-grouped roles are unaffected.
 
+> NB (2026-07-07): the whole app is now **full-bleed** — `.block-container` fills the viewport width
+> at any resolution (was 1180px) — so every role's dashboard, including the grouped layout, scales
+> with the monitor; login/reset cards stay capped at 460px. See the handoff changelog.
+
 ## Known limitation
 `.streamlit/config.toml` `primaryColor` is a build-time global, so native Streamlit widgets (default
 primary buttons/tabs) keep the global orange for all roles. The brand topbar and all custom-CSS
