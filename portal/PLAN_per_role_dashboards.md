@@ -57,8 +57,9 @@ Single deployment; the logged-in user's `role` selects everything at render time
   different **Price-forecasting UI**. `adani_dev` uses a **grouped** layout — a top HRC/HR Plate/Rebar/
   Structure group tab-strip, then one row with a **sliding pill switch** for Graphical/Tabular on
   the left (an `st.segmented_control` — NOT `st.tabs`, whose baseweb CSS hooks are dead on the deployed
-  build — styled as a grey capsule track + a white label-width pill gliding behind the active option,
-  `.st-key-fc_view_box`) and a **right-aligned
+  build (streamlit 1.59, react-aria markup) — styled as a grey capsule track + a white label-width pill
+  gliding behind the active option; selectors cover both the 1.58 testid and the 1.59 `aria-checked`
+  markup, `.st-key-fc_view_box`) and a **right-aligned
   location/full-name dropdown** (styled border + tint, **shared across Graphical+Tabular** so it works
   in the table view too, sorted alphabetically, defaulting to the first), then the **graph on top**
   (no section title), then the **3 price cards below the tab block**, an in-chart legend, and

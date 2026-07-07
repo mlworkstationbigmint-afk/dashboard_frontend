@@ -8,10 +8,13 @@ import os
 import sys
 import re
 import html
+import uuid
+import tempfile
 import datetime as dt
+from pathlib import Path
+
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 import extra_streamlit_components as stx
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -392,10 +395,19 @@ def _render_with_highlighter(fig, height=430, dom_id="chart"):
     fig.add_trace(go.Scatter(x=[], y=[], mode="markers", hoverinfo="skip", showlegend=False,
                              cliponaxis=False, marker=dict(size=9, color=theme.FORECAST_LINE, line=dict(width=2, color="#ffffff"))))
     halo_idx, core_idx = len(fig.data) - 2, len(fig.data) - 1
-    html = (_HL_TEMPLATE.replace("__DIV__", dom_id).replace("__H__", str(height))
-            .replace("__FIGJSON__", fig.to_json())
-            .replace("__HALO__", str(halo_idx)).replace("__CORE__", str(core_idx)))
-    components.html(html, height=height + 12)
+    doc = (_HL_TEMPLATE.replace("__DIV__", dom_id).replace("__H__", str(height))
+           .replace("__FIGJSON__", fig.to_json())
+           .replace("__HALO__", str(halo_idx)).replace("__CORE__", str(core_idx)))
+    # st.iframe replaces the deprecated components.v1.html (removal announced for mid-2026;
+    # 1.59 warns on every call). It takes a src PATH and inlines the file as the iframe's
+    # srcdoc (read synchronously at call time), so write the doc to a per-session temp file —
+    # the session token keeps concurrent viewers from overwriting each other's charts.
+    token = st.session_state.setdefault("_chart_doc_token", uuid.uuid4().hex[:10])
+    doc_dir = Path(tempfile.gettempdir()) / "bm_charts"
+    doc_dir.mkdir(exist_ok=True)
+    doc_path = doc_dir / f"{token}_{dom_id}.html"
+    doc_path.write_text(doc, encoding="utf-8")
+    st.iframe(doc_path, height=height + 12)
 
 
 def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=False):

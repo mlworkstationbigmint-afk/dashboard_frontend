@@ -371,12 +371,16 @@ div[class*="st-key-home_methodology"] button:hover em {{ filter:brightness(.97);
 }}
 [data-baseweb="tab"]:not([aria-selected="true"]):hover {{ color:var(--bm-primary-dark) !important; }}
 [data-baseweb="tab"][aria-selected="true"] {{ color:var(--bm-accent) !important; font-weight:700 !important; }}
-/* segmented selectors (Product) -> orange active */
-button[data-testid="stBaseButton-segmented_controlActive"] {{
+/* segmented selectors (Product) -> orange active. Two selector generations: streamlit 1.58
+   marks the active option with a stBaseButton-…Active testid; 1.59+ (react-aria) uses
+   data-variant="segmented_control" + aria-checked="true". */
+button[data-testid="stBaseButton-segmented_controlActive"],
+button[data-variant="segmented_control"][aria-checked="true"] {{
     color:var(--bm-accent) !important; border-color:var(--bm-accent) !important;
     background-color:rgba(238,78,36,0.10) !important;
 }}
-button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-accent) !important; }}
+button[data-testid="stBaseButton-segmented_controlActive"] p,
+button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--bm-accent) !important; }}
 /* grouped-forecasting location dropdown (adani_dev) -> make it stand out: coloured border + tint */
 /* RIGHT-aligned and pulled down onto the Graphical/Tabular slider row (negative margin eats
    the block gap + its own height) so switch (left) + dropdown (right) share one line; it stays
@@ -418,7 +422,10 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-a
     transform:translateX(4px); transition:transform .28s cubic-bezier(.4,0,.2,1);
     pointer-events:none; z-index:0;
 }}
-.st-key-fc_view_box div[role="radiogroup"]:has(button:last-of-type[data-testid="stBaseButton-segmented_controlActive"])::before {{
+/* pill parking: streamlit 1.58 marks the active option with a stBaseButton-…Active testid;
+   1.59+ (react-aria segmented control) uses aria-checked="true" instead — match BOTH. */
+.st-key-fc_view_box div[role="radiogroup"]:has(button:last-of-type[data-testid="stBaseButton-segmented_controlActive"])::before,
+.st-key-fc_view_box div[role="radiogroup"]:has(button:last-of-type[aria-checked="true"])::before {{
     transform:translateX(135px);                 /* right half: 4 + (270-8)/2 */
 }}
 .st-key-fc_view_box div[role="radiogroup"] button {{
@@ -431,10 +438,13 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-a
     color:inherit !important; font-size:13px !important; font-weight:600 !important;
 }}
 .st-key-fc_view_box div[role="radiogroup"] button:hover {{ color:var(--bm-primary-dark) !important; }}
-.st-key-fc_view_box div[role="radiogroup"] button[data-testid="stBaseButton-segmented_controlActive"] {{
+.st-key-fc_view_box div[role="radiogroup"] button[data-testid="stBaseButton-segmented_controlActive"],
+.st-key-fc_view_box div[role="radiogroup"] button[aria-checked="true"] {{
     color:var(--bm-accent) !important; background:transparent !important; border:none !important;
+    box-shadow:none !important;
 }}
-.st-key-fc_view_box div[role="radiogroup"] button[data-testid="stBaseButton-segmented_controlActive"] p {{
+.st-key-fc_view_box div[role="radiogroup"] button[data-testid="stBaseButton-segmented_controlActive"] p,
+.st-key-fc_view_box div[role="radiogroup"] button[aria-checked="true"] p {{
     color:var(--bm-accent) !important; font-weight:700 !important;
 }}
 
