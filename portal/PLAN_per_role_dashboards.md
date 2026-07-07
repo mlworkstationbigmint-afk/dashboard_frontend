@@ -72,6 +72,12 @@ Single deployment; the logged-in user's `role` selects everything at render time
   `st.container(key="fc_view_toggle")` and adding a **scoped** CSS block in `theme.py` (so only this
   pair changes; Calculators / other tab strips keep the default segmented pill). Applies to both the
   grouped and flat layouts. See the handoff changelog for the CSS mechanics.
+- **Segmented controls → modern slider style (2026-07-07, all roles):** every `st.segmented_control`
+  (Forecasting product picker, grouped commodity-group picker, Performance product picker) is now a
+  **capsule slider** — grey capsule track + white active pill with orange text, animated (.35s
+  background/shadow/color fade; discrete buttons, so the pill fades rather than physically glides).
+  Global CSS in `theme.py` via `[data-testid="stButtonGroup"]` + `stBaseButton-segmented_control(Active)`.
+  See the handoff changelog for details.
 
 ## Known limitation
 `.streamlit/config.toml` `primaryColor` is a build-time global, so native Streamlit widgets (default
