@@ -8,16 +8,13 @@ import os
 import sys
 import re
 import html
-import datetime as dt
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
-import extra_streamlit_components as stx
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import theme
 import auth
-import db
 import data_loader as dl
 from calculators import calc_import_price, calc_cost, calc_elasticity
 
@@ -32,76 +29,6 @@ theme.inject_css()
 # ---------------------------------------------------------------------------
 # LOGIN
 # ---------------------------------------------------------------------------
-# The browser cookie holds a signed session token so a refresh (which clears
-# st.session_state) can restore the login. Two details make this reliable on
-# Streamlit Cloud:
-#   * READ from st.context.cookies — the HTTP request carries the cookie, so it
-#     is available on the very first run after a refresh with no component
-#     round-trip and no login flash.
-#   * WRITE / CLEAR are DEFERRED to the next run. st.rerun() discards the
-#     current run's frontend output, which would drop the cookie component's
-#     browser-side write (the cause of "refresh logs me out" and the logout
-#     KeyError). We queue the mutation in session_state and perform it on the
-#     following run, which renders a full page and is NOT followed by st.rerun().
-cookie_manager = stx.CookieManager(key="portal_cm")
-
-_pending_write = st.session_state.pop("_cookie_write", None)
-if _pending_write is not None:
-    _name, _val, _exp = _pending_write
-    try:
-        # max_age (relative seconds) is timezone-proof; expires_at is a fallback
-        # for browsers that prefer an absolute date.
-        cookie_manager.set(_name, _val, expires_at=_exp,
-                           max_age=auth.SESSION_TTL_HOURS * 3600, key="cm_set")
-    except Exception:
-        pass
-elif st.session_state.pop("_cookie_clear", False):
-    # Delete by overwriting with an immediately-expired empty cookie (avoids the
-    # library's delete() KeyError when its in-memory view lacks the cookie).
-    try:
-        cookie_manager.set(auth.COOKIE_NAME, "", max_age=0,
-                           expires_at=db.utcnow() - dt.timedelta(days=1), key="cm_clear")
-    except Exception:
-        pass
-
-
-def _read_cookie_token():
-    """Read the session cookie from two sources for reliability on refresh.
-
-    1) st.context.cookies — the HTTP request; present on a genuine page reload.
-    2) the cookie component's live read — authoritative for cookies set
-       client-side this session (may need one extra rerun to populate).
-    """
-    try:
-        tok = st.context.cookies.get(auth.COOKIE_NAME)
-        if tok:
-            return tok
-    except Exception:
-        pass
-    try:
-        # cookie_manager.cookies is populated by CookieManager.__init__'s getAll
-        # (no second component). It's {} on the very first render, then filled.
-        return (cookie_manager.cookies or {}).get(auth.COOKIE_NAME)
-    except Exception:
-        return None
-
-
-def _start_session(profile):
-    """Mint a session, store it in session_state, and queue the cookie write."""
-    token, expires = auth.create_session(profile["username"])
-    st.session_state.user = profile
-    st.session_state._auth_token = token
-    st.session_state["_cookie_write"] = (auth.COOKIE_NAME, token, expires)
-
-
-def _password_problem(p1: str, p2: str):
-    if p1 != p2:
-        return "The two passwords don't match."
-    if len(p1) < 10:
-        return "Use at least 10 characters."
-    return None
-
-
 def login_screen():
     theme.render_topbar(None)
     cols = st.columns([1, 1.5, 1])
@@ -112,89 +39,21 @@ def login_screen():
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
             if st.button("Sign in", use_container_width=True, type="primary"):
-                profile, status = auth.authenticate(username, password)
-                if status == "ok":
-                    _start_session(profile)
+                profile = auth.authenticate(username, password)
+                if profile:
+                    st.session_state.user = profile
                     st.session_state.page = "Home"
                     st.rerun()
-                elif status == "locked":
-                    st.error("Too many failed attempts. Try again in a few minutes.")
-                elif status == "disabled":
-                    st.error("This account is disabled. Contact an administrator.")
                 else:
                     st.error("Invalid username or password.")
     theme.footer()
     st.stop()
 
 
-def force_password_change():
-    theme.render_topbar(st.session_state.user)
-    cols = st.columns([1, 1.5, 1])
-    with cols[1]:
-        with st.container(border=True):
-            st.markdown("### Set a new password")
-            st.caption("Your account requires a new password before you continue.")
-            p1 = st.text_input("New password", type="password", key="reset_p1")
-            p2 = st.text_input("Confirm new password", type="password", key="reset_p2")
-            if st.button("Set password", use_container_width=True, type="primary"):
-                problem = _password_problem(p1, p2)
-                if problem:
-                    st.error(problem)
-                else:
-                    uname = st.session_state.user["username"]
-                    auth.set_password(uname, p1, must_reset=False)
-                    # set_password revoked old sessions; mint + queue a fresh one.
-                    _start_session({**st.session_state.user, "must_reset": False})
-                    st.rerun()
-    theme.footer()
-    st.stop()
-
-
-# Restore a prior login from the cookie if session_state was cleared (refresh).
-if "user" not in st.session_state:
-    _tok = _read_cookie_token()
-    _restored = auth.resolve_session(_tok) if _tok else None
-    if _restored:
-        st.session_state.user = _restored
-        st.session_state._auth_token = _tok
-    elif not st.session_state.get("_cookie_probed"):
-        # First render after a refresh: the cookie component hasn't reported its
-        # value yet, so we can't tell "logged out" from "cookie not delivered
-        # yet". Show a full-screen loading animation (NOT the login form) and let
-        # the component's automatic rerun deliver the cookie on the next run.
-        # This removes the flash of the login screen before auto-login.
-        st.session_state["_cookie_probed"] = True
-        theme.loading_screen()
-        st.stop()
-
-# Opt-in diagnostics: append ?authdebug=1 to the URL to see cookie state.
-if st.query_params.get("authdebug") == "1":
-    _ctx_keys, _comp_keys = [], []
-    try:
-        _ctx_keys = list(st.context.cookies.keys())
-    except Exception as _e:
-        _ctx_keys = [f"<err: {_e}>"]
-    try:
-        _comp_keys = list((cookie_manager.get_all() or {}).keys())
-    except Exception as _e:
-        _comp_keys = [f"<err: {_e}>"]
-    _dbg_tok = _read_cookie_token()
-    st.warning(
-        "AUTH DEBUG\n\n"
-        f"- request cookies: `{_ctx_keys}`\n"
-        f"- component cookies: `{_comp_keys}`\n"
-        f"- `{auth.COOKIE_NAME}` found: **{bool(_dbg_tok)}**\n"
-        f"- token resolves to a user: **{bool(auth.resolve_session(_dbg_tok)) if _dbg_tok else False}**\n"
-        f"- logged in this run: **{'user' in st.session_state}**"
-    )
-
 if "user" not in st.session_state:
     login_screen()
 
 user = st.session_state.user
-if user.get("must_reset"):
-    force_password_change()
-
 st.session_state.setdefault("page", "Home")
 
 # header: brand bar + a primary "Log out" button (same design as Sign in) pinned top-right
@@ -203,11 +62,7 @@ with hcol1:
     theme.render_topbar(user)
 with hcol2:
     if st.button("Log out", key="logout_top", type="primary", use_container_width=True, icon=":material/logout:"):
-        auth.logout(st.session_state.get("_auth_token"))
-        for k in ("user", "_auth_token", "nav", "calc", "page"):
-            st.session_state.pop(k, None)
-        st.session_state["_cookie_clear"] = True   # cleared on the next (login) render
-        st.rerun()
+        auth.logout()
 
 # data controls (collapsed sidebar): which folder the app reads, the data 'as of'
 # date, and a manual refresh. Data files are re-read automatically whenever they
@@ -753,97 +608,11 @@ def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.strip().lower()).strip("-") or "call"
 
 
-def _admin_users_panel():
-    """Self-service user administration: create, disable, reset, re-role, delete."""
-    with st.expander("User management", icon=":material/group:"):
-        users = auth.list_users()
-        active_admins = [u["username"] for u in users
-                         if u["role"] == "Admin" and u["is_active"]]
-
-        st.dataframe(
-            [{"username": u["username"], "name": u["name"], "role": u["role"],
-              "active": bool(u["is_active"]),
-              "locked": u["locked_until"] is not None} for u in users],
-            hide_index=True, use_container_width=True,
-        )
-
-        st.markdown("**Add a user**")
-        with st.form("add_user_form", clear_on_submit=True):
-            a1, a2, a3 = st.columns(3)
-            new_username = a1.text_input("Username")
-            new_name = a2.text_input("Full name")
-            new_role = a3.selectbox("Role", auth.ROLES)
-            add = st.form_submit_button("Create user", type="primary")
-        if add:
-            uname = (new_username or "").strip().lower()
-            if not uname or not new_name.strip():
-                st.error("Username and full name are both required.")
-            elif db.get_user(uname) is not None:
-                st.error(f"User '{uname}' already exists.")
-            else:
-                temp = auth.generate_temp_password()
-                auth.create_user(uname, new_name.strip(), new_role, temp, must_reset=True)
-                st.success(f"Created '{uname}'. Share this one-time password — "
-                           "they'll set their own on first login:")
-                st.code(temp, language=None)
-
-        if not users:
-            return
-        st.markdown("**Manage a user**")
-        sel = st.selectbox("Select user", [u["username"] for u in users],
-                           key="admin_user_sel")
-        selrow = next(u for u in users if u["username"] == sel)
-        is_self = sel == user["username"]
-        last_admin = sel in active_admins and len(active_admins) == 1
-
-        m1, m2, m3, m4 = st.columns(4)
-        with m1:
-            role_idx = auth.ROLES.index(selrow["role"]) if selrow["role"] in auth.ROLES else 0
-            new_r = st.selectbox("Role", auth.ROLES, index=role_idx, key=f"role_{sel}")
-            if st.button("Apply role", key=f"applyrole_{sel}", use_container_width=True):
-                if last_admin and new_r != "Admin":
-                    st.error("Can't demote the last active admin.")
-                else:
-                    auth.set_role(sel, new_r)
-                    st.rerun()
-        with m2:
-            if selrow["is_active"]:
-                if st.button("Disable", key=f"dis_{sel}", use_container_width=True,
-                             disabled=is_self or last_admin,
-                             help="You can't disable yourself or the last admin."):
-                    auth.set_active(sel, False)
-                    st.rerun()
-            else:
-                if st.button("Enable", key=f"en_{sel}", use_container_width=True):
-                    auth.set_active(sel, True)
-                    st.rerun()
-        with m3:
-            if st.button("Reset password", key=f"rst_{sel}", use_container_width=True):
-                temp = auth.generate_temp_password()
-                auth.set_password(sel, temp, must_reset=True)
-                st.session_state["_admin_last_temp"] = (sel, temp)
-                st.rerun()
-        with m4:
-            if st.button("Delete", key=f"del_{sel}", use_container_width=True,
-                         disabled=is_self or last_admin,
-                         help="You can't delete yourself or the last admin."):
-                auth.delete_user(sel)
-                st.session_state.pop("_admin_last_temp", None)
-                st.rerun()
-
-        last_temp = st.session_state.get("_admin_last_temp")
-        if last_temp and last_temp[0] == sel:
-            st.info(f"One-time password for '{sel}' (they must change it on next login):")
-            st.code(last_temp[1], language=None)
-
-
 def page_admin():
     if user["role"] != "Admin":
         st.error("This page is for admins only.")
         theme.footer()
         return
-
-    _admin_users_panel()
 
     st.markdown("## Admin — Analyst calls")
     if not dl.can_admin_write():

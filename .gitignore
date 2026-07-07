@@ -17,11 +17,6 @@ dashboard-data/
 .env
 .env.*
 
-# One-time seed output: temporary login passwords written by portal/seed_users.py.
-# NEVER commit — delete after the first login/rotation.
-.streamlit/seed_credentials.txt
-*.local
-
 # Python caches / build junk
 __pycache__/
 *.py[cod]
