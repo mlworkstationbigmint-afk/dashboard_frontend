@@ -377,6 +377,25 @@ button[data-testid="stBaseButton-segmented_controlActive"] {{
     background-color:rgba(238,78,36,0.10) !important;
 }}
 button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-accent) !important; }}
+/* ---------- Forecasting view toggle -> modern sliding switch (Graphical <-> Tabular) ---------- */
+/* Scoped to the keyed container (app.py `st.container(key="fc_view_toggle")`) so Calculators and
+   any other tab strips keep the default segmented pill. Same baseweb mechanics as the tabs above
+   (highlight moved via transform+width) but shaped as a full-capsule switch that glides SLOWLY. */
+.st-key-fc_view_toggle [data-baseweb="tab-list"] {{
+    gap:0 !important; padding:4px !important; border-radius:999px !important;
+    background:linear-gradient(180deg,#eef2f8,#e3e9f2) !important;
+    box-shadow:inset 0 1px 3px rgba(16,24,40,.12) !important;
+}}
+.st-key-fc_view_toggle [data-baseweb="tab-highlight"] {{
+    top:4px !important; bottom:4px !important; height:auto !important; border-radius:999px !important;
+    background:#fff !important; box-shadow:0 2px 9px rgba(16,24,40,.20) !important;
+    /* slow, smooth glide — baseweb repositions via transform+width, so the easing must cover both */
+    transition:transform .6s cubic-bezier(.22,1,.36,1), width .6s cubic-bezier(.22,1,.36,1) !important;
+}}
+.st-key-fc_view_toggle [data-baseweb="tab"] {{
+    padding:10px 36px !important; border-radius:999px !important; letter-spacing:.2px !important;
+    transition:color .35s ease !important;
+}}
 /* grouped-forecasting location dropdown (adani_dev) -> make it stand out: coloured border + tint */
 /* left-aligned, sits above the Graphical/Tabular tabs (shared across both views) */
 .st-key-fc_loc_box {{

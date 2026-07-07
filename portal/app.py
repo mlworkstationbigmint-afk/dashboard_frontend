@@ -774,7 +774,9 @@ def page_forecasting():
         with st.container(key="fc_loc_box"):
             st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
 
-    tab_graph, tab_table = st.tabs(["Graphical view", "Tabular view"])
+    # Graphical/Tabular is a modern sliding switch (styled in theme.py, scoped to this key).
+    with st.container(key="fc_view_toggle"):
+        tab_graph, tab_table = st.tabs(["Graphical view", "Tabular view"])
 
     with tab_graph:
         if grouped:
