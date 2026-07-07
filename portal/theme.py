@@ -176,8 +176,7 @@ section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display
     content: ""; position: fixed; inset: 0; z-index: 99990;
     background: rgba(244,246,250,0.55);
     -webkit-backdrop-filter: blur(1.5px); backdrop-filter: blur(1.5px);
-    opacity: 0; visibility: hidden;
-    transition: opacity .18s ease, visibility 0s .18s;
+    opacity: 0; visibility: hidden; transition: opacity .18s ease;
 }}
 [data-testid="stApp"]::after {{
     content: ""; position: fixed; top: 50%; left: 50%;
@@ -185,18 +184,11 @@ section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display
     border-radius: 50%; border: 5px solid rgba(2,76,161,0.15);
     border-top-color: var(--bm-accent); border-right-color: var(--bm-primary);
     opacity: 0; visibility: hidden;
-    transition: opacity .18s ease, visibility 0s .18s;
     animation: bm-spin .85s linear infinite;
 }}
-/* Only reveal the overlay once a rerun has lasted >.4s. Fast reruns (e.g. moving
-   between the login username/password fields, each of which fires a quick rerun)
-   finish before the delay elapses, so the overlay never flashes; genuinely slow
-   reruns (page switches, chart loads) still show it. The delay lives on the :has
-   (visible) rule; the base rule above hides promptly (no show-delay). */
 [data-testid="stApp"]:has([data-testid="stStatusWidget"])::before,
 [data-testid="stApp"]:has([data-testid="stStatusWidget"])::after {{
     opacity: 1; visibility: visible;
-    transition: opacity .18s ease .4s, visibility 0s .4s;
 }}
 @media (prefers-reduced-motion: reduce) {{
     [data-testid="stApp"]::after {{ animation-duration: 2s; }}
