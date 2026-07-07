@@ -458,7 +458,7 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
             return dict(count=min(n * 7 + fc_span, all_days), step="day",
                         stepmode="backward", label=label)
 
-        h = 470 if compact else 560
+        h = 620 if compact else 560
         top_m = 54 if compact else 82
         rs_y = 1.05 if compact else 1.18
         fig = _style_fig(fig, height=h)

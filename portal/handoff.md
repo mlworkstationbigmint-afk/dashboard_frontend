@@ -135,11 +135,12 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   first. **No section title** on the Graphical tab; the dropdown gets a **coloured border + soft tint**
   (accent on hover) and **floats over the chart's top-right, right-aligned + pulled down** (negative
   margin + `z-index` on `.st-key-fc_loc_box`, styled in `theme.py`) so it sits **in line with the
-  chart's zoom buttons** on the left. The Plotly **legend moves inside the plot** (white region) and
-  the x-axis date ticks gain the **short year** (`%d %b %y`). To fit **without scrolling**, the grouped
-  chart runs in a **compact** mode — `forecast_chart(compact=True)` shrinks the height (560→470),
-  tightens the top margin (82→54) and pulls the zoom buttons up (y 1.18→1.05); the colour-legend
-  footnote is dropped for this layout (the in-chart legend covers it). Selection persists per group via
+  chart's zoom buttons** on the left (via `margin-bottom:-68px` — tune this one value if the two rows
+  aren't level). The Plotly **legend moves inside the plot** (white region) and the x-axis date ticks
+  gain the **short year** (`%d %b %y`). The grouped chart runs via `forecast_chart(compact=True)` — a
+  **taller plot (h=620)** with a **tight top margin** (82→54) and the zoom buttons pulled up (y
+  1.18→1.05) so the top space isn't wasted; the colour-legend footnote is dropped for this layout (the
+  in-chart legend covers it). Selection persists per group via
   `st.session_state["fc_loc_<slug>"]` (resolved at the top, so graph, table and cards all follow it).
   All gated by `app.py` `GROUPED_FORECASTING_ROLES` (case-insensitive; currently just `adani_dev`) via
   `_grouped_forecasting(role)`; **other roles keep the existing flat layout** (cards above the tabs,

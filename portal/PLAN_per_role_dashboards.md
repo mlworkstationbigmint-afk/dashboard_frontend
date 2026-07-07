@@ -59,7 +59,7 @@ Single deployment; the logged-in user's `role` selects everything at render time
   cards below the tab block**, a top-right per-group location/full-name dropdown (in the old legend
   slot, **styled with a coloured border + tint** and **floated over the chart in line with the zoom
   buttons**, sorted alphabetically, defaulting to the first), an in-chart legend, year-stamped x-axis
-  labels, and a **compact chart** (shorter height + tighter margins) so it fits **without scrolling**.
+  labels, and a **taller chart with a tight top margin** (`forecast_chart(compact=True)`, h=620).
   Gated by `app.py` `GROUPED_FORECASTING_ROLES` (case-
   insensitive) — a dev-controlled behaviour flag, not a runtime knob. This is the staging ground for
   the eventual Adani cut-over: **promote by adding `"adani"` to `GROUPED_FORECASTING_ROLES`** (and, if

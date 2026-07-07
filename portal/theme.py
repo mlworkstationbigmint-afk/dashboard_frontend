@@ -377,7 +377,7 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-a
 /* right-align it and pull it down over the chart's top band so it lines up with the zoom
    buttons (on the left) and reclaims the vertical space — floats above the chart via z-index */
 .st-key-fc_loc_box {{
-    width:250px; margin-left:auto; margin-bottom:-46px;
+    width:250px; margin-left:auto; margin-bottom:-68px;
     position:relative; z-index:6;
 }}
 .st-key-fc_loc_box div[data-baseweb="select"] > div {{
