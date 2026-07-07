@@ -136,6 +136,30 @@ def _call_visible(call, role):
     return role in (call.get("audiences") or [])
 
 
+def known_roles():
+    """Built-in roles (`auth.ROLES`) plus any custom role already assigned to a user,
+    so a role the admin created at runtime appears in every role picker. Built-ins
+    first, insertion order preserved."""
+    roles = list(auth.ROLES)
+    for u in auth.list_users():
+        if u["role"] not in roles:
+            roles.append(u["role"])
+    return roles
+
+
+def _resolve_new_role(custom, picked):
+    """Resolve the add-user role: a non-blank custom name wins over the dropdown.
+    A custom name matching an existing role case-insensitively reuses that role's
+    exact casing so we don't fork 'Adani' vs 'adani'."""
+    custom = (custom or "").strip()
+    if not custom:
+        return picked
+    for r in known_roles():
+        if r.lower() == custom.lower():
+            return r
+    return custom
+
+
 def login_screen():
     theme.render_topbar(None)
     cols = st.columns([1, 1.5, 1])
@@ -809,18 +833,28 @@ def _admin_users_panel():
             a1, a2, a3 = st.columns(3)
             new_username = a1.text_input("Username")
             new_name = a2.text_input("Full name")
-            new_role = a3.selectbox("Role", auth.ROLES)
+            new_role_pick = a3.selectbox("Role", known_roles())
+            new_role_custom = st.text_input(
+                "…or create a new role (leave blank to use the dropdown)",
+                key="add_user_new_role",
+                help="A new role starts with the default branding and access to all commodities, "
+                     "and sees no analyst calls until you tag some for it. Set its commodity access "
+                     "in the Commodity-access panel and tag its calls in the call editor; for custom "
+                     "branding a developer adds a profile in theme.ROLE_PROFILES.")
             add = st.form_submit_button("Create user", type="primary")
         if add:
             uname = (new_username or "").strip().lower()
+            role = _resolve_new_role(new_role_custom, new_role_pick)
             if not uname or not new_name.strip():
                 st.error("Username and full name are both required.")
+            elif not role:
+                st.error("Pick a role from the dropdown or type a new one.")
             elif db.get_user(uname) is not None:
                 st.error(f"User '{uname}' already exists.")
             else:
                 temp = auth.generate_temp_password()
-                auth.create_user(uname, new_name.strip(), new_role, temp, must_reset=True)
-                st.success(f"Created '{uname}'. Share this one-time password — "
+                auth.create_user(uname, new_name.strip(), role, temp, must_reset=True)
+                st.success(f"Created '{uname}' with role **{role}**. Share this one-time password — "
                            "they'll set their own on first login:")
                 st.code(temp, language=None)
 
@@ -835,8 +869,9 @@ def _admin_users_panel():
 
         m1, m2, m3, m4 = st.columns(4)
         with m1:
-            role_idx = auth.ROLES.index(selrow["role"]) if selrow["role"] in auth.ROLES else 0
-            new_r = st.selectbox("Role", auth.ROLES, index=role_idx, key=f"role_{sel}")
+            _roles = known_roles()
+            role_idx = _roles.index(selrow["role"]) if selrow["role"] in _roles else 0
+            new_r = st.selectbox("Role", _roles, index=role_idx, key=f"role_{sel}")
             if st.button("Apply role", key=f"applyrole_{sel}", use_container_width=True):
                 if last_admin and new_r != "Admin":
                     st.error("Can't demote the last active admin.")
@@ -881,7 +916,7 @@ def _admin_access_panel():
         st.caption("Pick which commodities each user type sees on Forecasting, Performance and Home. "
                    "A user type with nothing saved sees **all** commodities; save a subset to restrict it. "
                    "Admins always see everything.")
-        roles = [r for r in auth.ROLES if r != "Admin"]
+        roles = [r for r in known_roles() if r != "Admin"]
         role = st.selectbox("User type", roles, key="access_role_sel")
         all_products = list(dl.STEEL_PRODUCTS.keys())
         current = db.get_role_commodities(role)
@@ -936,7 +971,7 @@ def page_admin():
         st.markdown("**Sections** (leave blank to hide a row)")
         secvals = {lbl: st.text_input(lbl, value=esecs.get(lbl, ""), key=f"sec_{ekey}_{lbl}")
                    for lbl in dl.ANALYST_SECTIONS}
-        aud_opts = [r for r in auth.ROLES if r != "Admin"]
+        aud_opts = [r for r in known_roles() if r != "Admin"]
         aud_default = [r for r in (editing or {}).get("audiences", []) if r in aud_opts]
         audiences = st.multiselect("Audience — user types who see this call", aud_opts,
                                    default=aud_default, key=f"aud_{ekey}",

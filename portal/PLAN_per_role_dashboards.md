@@ -48,9 +48,11 @@ Single deployment; the logged-in user's `role` selects everything at render time
   role is explicitly in the call's `audiences`. Empty/missing ⇒ *unassigned*: **admins only** (no other
   role sees it). Admin always sees all calls (incl. the preview). ⚠ Existing untagged `calls.json`
   entries become admin-only until an admin assigns their audience.
-- **Adding a new client role (dev, once):** add the role to `auth.ROLES`, drop its logo in
-  `portal/assets/`, add a `ROLE_PROFILES` entry (co-brand, title, colors, pages); then create users +
-  set commodity access + tag calls via the Admin tab.
+- **Adding a new client role:** the **admin** creates the role directly in the Add-user form
+  (free-text "create a new role") — no `auth.ROLES` edit needed; it auto-appears in every role picker
+  via `known_roles()`. Then set its commodity access + tag its calls in the Admin tab. For **custom
+  branding** (logo/title/colors/pages) a **dev** drops a logo in `portal/assets/` and adds a
+  `theme.ROLE_PROFILES` entry; until then the new role uses `DEFAULT_PROFILE`.
 
 ## Known limitation
 `.streamlit/config.toml` `primaryColor` is a build-time global, so native Streamlit widgets (default
