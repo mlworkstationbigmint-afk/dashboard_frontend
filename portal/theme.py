@@ -3,6 +3,7 @@ BigMint - AI Labs portal: brand theme, CSS and shared UI helpers.
 Colours sampled from the bigmint.co logo/site (blue + orange accent).
 """
 import os
+import html
 import base64
 import streamlit as st
 
@@ -59,9 +60,107 @@ def _adani_logo_html(height: int = 26) -> str:
             "color:transparent;-webkit-text-fill-color:transparent;'>adani</span>")
 
 
+# ---------------------------------------------------------------------------
+# Per-role branding profiles (static, developer-configured once)
+# ---------------------------------------------------------------------------
+# Each role gets its own dashboard chrome — co-brand logo/label, topbar title,
+# theme colors and which nav pages are visible. Applied per session from the
+# logged-in user's role (render_topbar + apply_role_theme, wired in app.py).
+# The left BigMint logo is constant (product owner); the co-brand chip varies.
+#
+# Add a new client (dev, once): add its role to auth.ROLES, drop its logo in
+# assets/, add an entry below, then set commodity access + tag analyst calls
+# from the Admin tab. cobrand_logo=None hides the co-brand chip (BigMint-only).
+ALL_PAGES = ["Home", "Price Forecasting", "Analyst Calls",
+             "Performance Dashboard", "Calculators", "Methodology"]
+
+DEFAULT_PROFILE = {
+    "cobrand_logo": "adani_logo.png",   # white chip logo in the topbar (None => no chip)
+    "cobrand_label": "adani",           # gradient-text fallback if the image is missing
+    "title": "STEEL GCP - AI LABS : Steel Prices Forecasting Model",
+    "primary": PRIMARY,
+    "primary_dark": PRIMARY_DARK,
+    "primary_soft": PRIMARY_SOFT,
+    "accent": ACCENT,
+    "pages": ALL_PAGES,
+}
+
+ROLE_PROFILES = {
+    "Adani": {
+        "cobrand_logo": "adani_logo.png",
+        "cobrand_label": "adani",
+        "title": "STEEL GCP - AI LABS : Steel Prices Forecasting Model",
+    },
+    "Analyst": {                         # internal BigMint view (no client co-brand)
+        "cobrand_logo": None,
+        "cobrand_label": "",
+        "title": "AI LABS : Steel Prices Forecasting Model",
+    },
+    "Admin": {                           # internal BigMint view (Admin tab added in top_nav)
+        "cobrand_logo": None,
+        "cobrand_label": "",
+        "title": "AI LABS : Steel Prices Forecasting Model",
+    },
+}
+
+
+def profile_for(role) -> dict:
+    """A role's branding profile, merged over DEFAULT_PROFILE (used for the login
+    screen and any unknown role)."""
+    return {**DEFAULT_PROFILE, **ROLE_PROFILES.get(role or "", {})}
+
+
+def _cobrand_logo_html(profile: dict, height: int = 26) -> str:
+    """Co-brand chip image for a profile, else a gradient wordmark of its label,
+    else empty. Reuses the Adani fallback chain when the label is 'adani'."""
+    candidates = []
+    if profile.get("cobrand_logo"):
+        candidates.append(os.path.join(ASSETS_DIR, profile["cobrand_logo"]))
+    if profile.get("cobrand_label") == "adani":
+        candidates += ADANI_LOGO_CANDIDATES
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                with open(path, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode()
+                return f"<img src='data:image/png;base64,{b64}' style='height:{height}px;display:block;'/>"
+            except Exception:
+                continue
+    label = profile.get("cobrand_label") or ""
+    if not label:
+        return ""
+    return ("<span style='font-weight:800;font-size:21px;letter-spacing:.2px;"
+            "background:linear-gradient(90deg,#1196C6,#6A4DA3,#C42A6B);"
+            "-webkit-background-clip:text;background-clip:text;"
+            "color:transparent;-webkit-text-fill-color:transparent;'>" + html.escape(label) + "</span>")
+
+
+def apply_role_theme(profile: dict) -> None:
+    """Override the :root brand tokens for the logged-in role. Call once after the
+    user is resolved (see app.py); inject_css() seeds the BigMint defaults for the
+    login screen."""
+    st.markdown(
+        "<style>:root{"
+        f"--bm-primary:{profile['primary']};"
+        f"--bm-primary-dark:{profile['primary_dark']};"
+        f"--bm-primary-soft:{profile['primary_soft']};"
+        f"--bm-accent:{profile['accent']};"
+        "}</style>",
+        unsafe_allow_html=True,
+    )
+
+
 def inject_css():
     st.markdown(f"""
 <style>
+/* Themeable brand tokens — defaults here (BigMint); apply_role_theme() overrides
+   these per logged-in role so the topbar + all custom surfaces re-brand per session. */
+:root {{
+    --bm-primary: {PRIMARY};
+    --bm-primary-dark: {PRIMARY_DARK};
+    --bm-primary-soft: {PRIMARY_SOFT};
+    --bm-accent: {ACCENT};
+}}
 .stApp {{ background-color: {BG_SOFT}; }}
 .block-container {{ padding-top: 1rem !important; padding-bottom: 2rem; max-width: 1180px; }}
 header[data-testid="stHeader"] {{ background: transparent; height: 0; }}
@@ -84,7 +183,7 @@ section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display
     content: ""; position: fixed; top: 50%; left: 50%;
     width: 54px; height: 54px; margin: -27px 0 0 -27px; z-index: 99991;
     border-radius: 50%; border: 5px solid rgba(2,76,161,0.15);
-    border-top-color: {ACCENT}; border-right-color: {PRIMARY};
+    border-top-color: var(--bm-accent); border-right-color: var(--bm-primary);
     opacity: 0; visibility: hidden;
     transition: opacity .18s ease, visibility 0s .18s;
     animation: bm-spin .85s linear infinite;
@@ -105,7 +204,7 @@ section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display
 
 /* ---------- top brand bar ---------- */
 .bm-topbar {{
-    background: {PRIMARY}; border-radius: 12px; padding: 13px 22px;
+    background: var(--bm-primary); border-radius: 12px; padding: 13px 22px;
     display: flex; align-items: center; justify-content: space-between;
     margin: 0 0 14px 0; box-shadow: 0 2px 10px rgba(2,76,161,.18);
 }}
@@ -124,17 +223,17 @@ div[data-testid="stHorizontalBlock"] {{ align-items: stretch; }}
     background:#fff; border:1px solid #dbe3ee; color:#334155;
 }}
 .stButton > button[kind="secondary"]:hover {{
-    border-color:{PRIMARY}; color:{PRIMARY}; background:{PRIMARY_SOFT};
+    border-color:var(--bm-primary); color:var(--bm-primary); background:var(--bm-primary-soft);
 }}
 .stButton > button[kind="primary"] {{ box-shadow:0 2px 8px rgba(2,76,161,.25); }}
 
 /* ---------- Log out button: invert (orange) on hover ---------- */
 div[class*="st-key-logout_top"] button:hover {{
-    background:#fff !important; border:1px solid {ACCENT} !important; color:{ACCENT} !important;
+    background:#fff !important; border:1px solid var(--bm-accent) !important; color:var(--bm-accent) !important;
     box-shadow:0 2px 8px rgba(238,78,36,.20);
 }}
 div[class*="st-key-logout_top"] button:hover [data-testid="stIconMaterial"],
-div[class*="st-key-logout_top"] button:hover p {{ color:{ACCENT} !important; }}
+div[class*="st-key-logout_top"] button:hover p {{ color:var(--bm-accent) !important; }}
 
 /* ---------- home module card-buttons (whole card is one clickable button) ---------- */
 /* layout: icon on top -> **title** (strong) -> brief (p text) -> *Open ->* (em CTA) */
@@ -147,20 +246,20 @@ div[class*="st-key-homemod_"] button {{
     transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
 }}
 div[class*="st-key-homemod_"] button:hover {{
-    border-color:{PRIMARY} !important; background:{PRIMARY_SOFT} !important;
+    border-color:var(--bm-primary) !important; background:var(--bm-primary-soft) !important;
     transform:translateY(-3px); box-shadow:0 10px 26px rgba(2,76,161,.12);
 }}
 /* leading material icon -> larger, on its own row above the text */
 div[class*="st-key-homemod_"] button [data-testid="stIconMaterial"] {{
-    font-size:30px !important; width:30px; height:30px; color:{PRIMARY}; margin-bottom:14px;
+    font-size:30px !important; width:30px; height:30px; color:var(--bm-primary); margin-bottom:14px;
 }}
 div[class*="st-key-homemod_"] button strong {{
-    display:block; font-size:18px; color:{PRIMARY_DARK}; font-weight:700; margin-bottom:6px;
+    display:block; font-size:18px; color:var(--bm-primary-dark); font-weight:700; margin-bottom:6px;
 }}
 div[class*="st-key-homemod_"] button p {{ font-size:13.5px; color:{NEUTRAL}; line-height:1.5; margin:0; font-weight:400; }}
 /* "Open ->" call-to-action (rendered from the *Open ->* em in the label) */
 div[class*="st-key-homemod_"] button em {{
-    display:block; font-style:normal; font-weight:700; color:{ACCENT};
+    display:block; font-style:normal; font-weight:700; color:var(--bm-accent);
     font-size:13px; letter-spacing:.3px; margin-top:14px;
 }}
 
@@ -169,17 +268,17 @@ div[class*="st-key-home_methodology"] {{ margin-top:16px; }}
 div[class*="st-key-home_methodology"] button {{
     width:100%; min-height:92px; flex-direction:row; align-items:center; justify-content:flex-start;
     gap:18px; text-align:left; white-space:normal; padding:24px 28px; border-radius:18px;
-    border:1px solid #e8edf3 !important; color:{PRIMARY_DARK} !important; font-weight:400;
+    border:1px solid #e8edf3 !important; color:var(--bm-primary-dark) !important; font-weight:400;
     background:#fff !important;
     box-shadow:0 1px 2px rgba(16,24,40,.05);
     transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
 }}
 div[class*="st-key-home_methodology"] button:hover {{
-    border-color:{PRIMARY} !important; background:{PRIMARY_SOFT} !important;
+    border-color:var(--bm-primary) !important; background:var(--bm-primary-soft) !important;
     transform:translateY(-2px); box-shadow:0 10px 26px rgba(2,76,161,.12);
 }}
 div[class*="st-key-home_methodology"] button [data-testid="stIconMaterial"] {{
-    font-size:32px !important; width:32px; height:32px; color:{PRIMARY};
+    font-size:32px !important; width:32px; height:32px; color:var(--bm-primary);
 }}
 /* let the label row stretch so the CTA can sit at the far right */
 div[class*="st-key-home_methodology"] button [data-testid="stMarkdownContainer"] {{ flex:1 1 auto; }}
@@ -187,13 +286,13 @@ div[class*="st-key-home_methodology"] button [data-testid="stMarkdownContainer"]
     display:flex; align-items:center; flex-wrap:wrap; gap:4px 12px; margin:0;
 }}
 div[class*="st-key-home_methodology"] button strong {{
-    font-size:20px; color:{PRIMARY_DARK}; font-weight:800; letter-spacing:.2px;
+    font-size:20px; color:var(--bm-primary-dark); font-weight:800; letter-spacing:.2px;
 }}
 div[class*="st-key-home_methodology"] button p {{ font-size:13.5px; color:{NEUTRAL}; font-weight:400; }}
 /* "View ->" CTA -> solid orange pill, pushed to the right, reads as clickable (whole banner navigates) */
 div[class*="st-key-home_methodology"] button em {{
     margin-left:auto; font-style:normal; font-weight:800; color:#fff;
-    background:{ACCENT}; padding:9px 20px; border-radius:10px; font-size:14px; white-space:nowrap;
+    background:var(--bm-accent); padding:9px 20px; border-radius:10px; font-size:14px; white-space:nowrap;
     box-shadow:0 2px 8px rgba(238,78,36,.30);
 }}
 div[class*="st-key-home_methodology"] button:hover em {{ filter:brightness(.97); }}
@@ -209,29 +308,29 @@ div[class*="st-key-home_methodology"] button:hover em {{ filter:brightness(.97);
     box-shadow:0 1px 2px rgba(16,24,40,.04); transition:transform .18s ease, box-shadow .18s ease; }}
 .bm-card:hover {{ transform:translateY(-2px); box-shadow:0 8px 22px rgba(2,76,161,.10); }}
 .bm-kpi-top {{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }}
-.bm-kpi-icon {{ width:30px;height:30px;border-radius:8px;background:{PRIMARY_SOFT};color:{PRIMARY};
+.bm-kpi-icon {{ width:30px;height:30px;border-radius:8px;background:var(--bm-primary-soft);color:var(--bm-primary);
     display:flex;align-items:center;justify-content:center;font-size:17px; }}
 .bm-kpi-label {{ color:{NEUTRAL}; font-size:13px; font-weight:500; }}
 .bm-kpi-value {{ font-size:26px; font-weight:700; color:#0f172a; line-height:1.15; }}
 .bm-kpi-sub {{ font-size:12.5px; color:{NEUTRAL}; margin-top:4px; }}
-.bm-card h4 {{ margin:2px 0 4px 0; color:{PRIMARY_DARK}; font-size:16px; }}
+.bm-card h4 {{ margin:2px 0 4px 0; color:var(--bm-primary-dark); font-size:16px; }}
 .bm-card .bm-desc {{ color:{NEUTRAL}; font-size:13px; }}
 
 /* analyst-call detailed summary: label + one-line section rows */
 .bm-call-secs {{ margin:8px 0 2px 0; }}
 .bm-call-sec {{ display:flex; gap:12px; padding:7px 0; border-top:1px dashed #eef2f7; font-size:13.5px; line-height:1.45; }}
 .bm-call-sec:first-child {{ border-top:none; }}
-.bm-call-sec-l {{ flex:0 0 140px; font-weight:700; color:{PRIMARY_DARK}; }}
+.bm-call-sec-l {{ flex:0 0 140px; font-weight:700; color:var(--bm-primary-dark); }}
 .bm-call-sec-t {{ color:{NEUTRAL}; }}
 
 /* section heading */
-.bm-h {{ font-size:15px; font-weight:600; color:{PRIMARY_DARK}; margin:6px 0 6px 0;
+.bm-h {{ font-size:15px; font-weight:600; color:var(--bm-primary-dark); margin:6px 0 6px 0;
     display:flex; align-items:center; gap:8px; }}
 
 /* ---------- tables ---------- */
 .bm-table {{ width:100%; border-collapse:collapse; font-size:13.5px; background:#fff;
     border:1px solid #e8edf3; border-radius:12px; overflow:hidden; }}
-.bm-table thead th {{ background:{PRIMARY_SOFT}; color:{PRIMARY_DARK}; font-weight:600;
+.bm-table thead th {{ background:var(--bm-primary-soft); color:var(--bm-primary-dark); font-weight:600;
     padding:10px 12px; text-align:left; }}
 .bm-table tbody td {{ padding:9px 12px; border-top:1px solid #eef2f7; color:#334155; }}
 .bm-table tbody tr:hover {{ background:#f7faff; }}
@@ -266,17 +365,17 @@ button[data-baseweb="tab"] {{
     background:transparent !important; border:none !important; border-radius:9px;
     padding:9px 26px; margin:0; height:auto; transition:color .2s ease;
 }}
-button[data-baseweb="tab"]:not([aria-selected="true"]):hover {{ color:{PRIMARY_DARK}; }}
-button[data-baseweb="tab"][aria-selected="true"] {{ color:{ACCENT} !important; font-weight:700; }}
+button[data-baseweb="tab"]:not([aria-selected="true"]):hover {{ color:var(--bm-primary-dark); }}
+button[data-baseweb="tab"][aria-selected="true"] {{ color:var(--bm-accent) !important; font-weight:700; }}
 /* segmented selectors (Product) -> orange active */
 button[data-testid="stBaseButton-segmented_controlActive"] {{
-    color:{ACCENT} !important; border-color:{ACCENT} !important;
+    color:var(--bm-accent) !important; border-color:var(--bm-accent) !important;
     background-color:rgba(238,78,36,0.10) !important;
 }}
-button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:{ACCENT} !important; }}
+button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-accent) !important; }}
 
 /* ---------- methodology infographics ---------- */
-.bm-meth-hero {{ background:linear-gradient(120deg,{PRIMARY} 0%,{PRIMARY_DARK} 100%); color:#fff;
+.bm-meth-hero {{ background:linear-gradient(120deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%); color:#fff;
     border-radius:16px; padding:22px 26px; margin:2px 0 18px; box-shadow:0 6px 22px rgba(2,76,161,.20); }}
 .bm-meth-hero h3 {{ margin:0 0 6px; font-size:20px; color:#fff; }}
 .bm-meth-hero p {{ margin:0; font-size:14px; line-height:1.6; color:#dce8f8; max-width:860px; }}
@@ -284,7 +383,7 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:{ACCENT} !
 .bm-stat-row {{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:0 0 20px; }}
 .bm-stat {{ background:#fff; border:1px solid #e8edf3; border-radius:14px; padding:16px 18px; text-align:center;
     box-shadow:0 1px 2px rgba(16,24,40,.05); }}
-.bm-stat-v {{ font-size:24px; font-weight:800; color:{PRIMARY_DARK}; line-height:1.1; }}
+.bm-stat-v {{ font-size:24px; font-weight:800; color:var(--bm-primary-dark); line-height:1.1; }}
 .bm-stat-l {{ font-size:12.5px; color:{NEUTRAL}; margin-top:4px; }}
 /* horizontal process flow — one continuous pipeline (single row, arrows between).
    CSS grid (card / arrow / card / …) so it never wraps into an awkward 3+3 jump;
@@ -297,33 +396,33 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:{ACCENT} !
     transition:transform .15s ease, box-shadow .15s ease; }}
 .bm-flow-step:hover {{ transform:translateY(-2px); box-shadow:0 8px 20px rgba(2,76,161,.10); }}
 .bm-flow-step .num {{ position:absolute; top:-12px; left:16px; width:26px; height:26px; border-radius:50%;
-    background:{ACCENT}; color:#fff; font-size:12.5px; font-weight:700; display:flex; align-items:center;
+    background:var(--bm-accent); color:#fff; font-size:12.5px; font-weight:700; display:flex; align-items:center;
     justify-content:center; box-shadow:0 2px 6px rgba(238,78,36,.35); }}
-.bm-flow-step .ic {{ width:38px; height:38px; border-radius:10px; background:{PRIMARY_SOFT}; color:{PRIMARY};
+.bm-flow-step .ic {{ width:38px; height:38px; border-radius:10px; background:var(--bm-primary-soft); color:var(--bm-primary);
     display:flex; align-items:center; justify-content:center; margin:0 0 10px; }}
 .bm-flow-step .bm-flow-t {{ margin:0 0 6px; font-size:14px; line-height:1.3;
-    color:{PRIMARY_DARK}; font-weight:700; }}   /* plain div (not <h5>) so Streamlit adds no anchor-link icon */
+    color:var(--bm-primary-dark); font-weight:700; }}   /* plain div (not <h5>) so Streamlit adds no anchor-link icon */
 .bm-flow-step p {{ margin:0; font-size:12.5px; color:{NEUTRAL}; line-height:1.45; }}
 /* arrow pinned to the icon row (align-self:start + padding) so 1..6 share one flow line */
 .bm-flow-arrow {{ align-self:start; padding-top:30px; display:flex; align-items:flex-start;
-    justify-content:center; color:{ACCENT}; font-size:18px; font-weight:700; }}
+    justify-content:center; color:var(--bm-accent); font-size:18px; font-weight:700; }}
 /* factor grid */
 .bm-factor-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:6px 0; }}
 .bm-factor {{ display:flex; gap:12px; align-items:flex-start; background:#fff; border:1px solid #e8edf3;
     border-radius:14px; padding:14px 16px; box-shadow:0 1px 2px rgba(16,24,40,.05);
     transition:transform .15s ease, box-shadow .15s ease; }}
 .bm-factor:hover {{ transform:translateY(-2px); box-shadow:0 8px 20px rgba(2,76,161,.10); }}
-.bm-factor .ic {{ flex:0 0 38px; width:38px; height:38px; border-radius:10px; background:{PRIMARY_SOFT}; color:{PRIMARY};
+.bm-factor .ic {{ flex:0 0 38px; width:38px; height:38px; border-radius:10px; background:var(--bm-primary-soft); color:var(--bm-primary);
     display:flex; align-items:center; justify-content:center; }}
-.bm-factor h5 {{ margin:0 0 2px; font-size:13.5px; color:{PRIMARY_DARK}; font-weight:700; }}
+.bm-factor h5 {{ margin:0 0 2px; font-size:13.5px; color:var(--bm-primary-dark); font-weight:700; }}
 .bm-factor p {{ margin:0; font-size:12.5px; color:{NEUTRAL}; line-height:1.4; }}
 /* horizon cards */
 .bm-horizon-grid {{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:6px 0; }}
-.bm-horizon {{ background:#fff; border:1px solid #e8edf3; border-top:3px solid {ACCENT}; border-radius:14px;
+.bm-horizon {{ background:#fff; border:1px solid #e8edf3; border-top:3px solid var(--bm-accent); border-radius:14px;
     padding:16px 18px; box-shadow:0 1px 2px rgba(16,24,40,.05); }}
-.bm-horizon h5 {{ margin:0 0 4px; font-size:15px; color:{PRIMARY_DARK}; }}
+.bm-horizon h5 {{ margin:0 0 4px; font-size:15px; color:var(--bm-primary-dark); }}
 .bm-horizon p {{ margin:0; font-size:12.5px; color:{NEUTRAL}; line-height:1.5; }}
-.bm-horizon .tag {{ display:inline-block; font-size:11px; font-weight:700; color:{ACCENT};
+.bm-horizon .tag {{ display:inline-block; font-size:11px; font-weight:700; color:var(--bm-accent);
     background:rgba(238,78,36,.10); border-radius:20px; padding:2px 10px; margin-bottom:8px; }}
 @media (max-width:1024px) {{
     /* pipeline: single row -> vertical column, arrows rotate to point downward */
@@ -336,13 +435,13 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:{ACCENT} !
 }}
 
 /* links / footer */
-.bm-link-btn a {{ display:inline-block; background:{ACCENT}; color:#fff!important; text-decoration:none;
+.bm-link-btn a {{ display:inline-block; background:var(--bm-accent); color:#fff!important; text-decoration:none;
     padding:11px 20px; border-radius:9px; font-weight:600; font-size:14px; box-shadow:0 2px 8px rgba(238,78,36,.25); }}
 .bm-link-btn a:hover {{ filter:brightness(.95); }}
 .bm-footnote {{ color:{NEUTRAL}; font-size:12px; margin-top:8px; }}
 .bm-footer {{ margin-top:26px; padding-top:14px; border-top:1px solid #e2e8f0; color:{NEUTRAL};
     font-size:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }}
-.bm-footer a {{ color:{PRIMARY}; text-decoration:none; }}
+.bm-footer a {{ color:var(--bm-primary); text-decoration:none; }}
 </style>
 """, unsafe_allow_html=True)
 
@@ -370,15 +469,19 @@ def icon(name: str, size: int = 18) -> str:
 
 
 def render_topbar(user: dict | None = None):
-    right = ""
+    """Brand bar for the logged-in user's role: BigMint logo · (co-brand chip) · title.
+    The co-brand chip + one pipe are omitted when the role's profile has no co-brand."""
+    profile = profile_for(user.get("role") if user else None)
+    cobrand = _cobrand_logo_html(profile)
+    parts = [f"<div class='bm-topbar-l'>{_logo_html()}"]
+    if cobrand:
+        parts.append("<span class='bm-cobrand-x'>|</span>"
+                     f"<span class='bm-adani-chip'>{cobrand}</span>")
+    parts.append("<span class='bm-cobrand-x'>|</span>"
+                 f"<span class='bm-portal-title'>{html.escape(profile['title'])}</span></div>")
     st.markdown(
-        f"<div class='bm-topbar'>"
-        f"<div class='bm-topbar-l'>{_logo_html()}"
-        f"<span class='bm-cobrand-x'>|</span>"
-        f"<span class='bm-adani-chip'>{_adani_logo_html()}</span>"
-        f"<span class='bm-cobrand-x'>|</span>"
-        f"<span class='bm-portal-title'>STEEL GCP - AI LABS : Steel Prices Forecasting Model</span></div>"
-        f"<div class='bm-topbar-r'>{right}</div>"
+        f"<div class='bm-topbar'>{''.join(parts)}"
+        f"<div class='bm-topbar-r'></div>"
         f"</div>",
         unsafe_allow_html=True,
     )
@@ -455,9 +558,9 @@ def loading_screen():
           }}
           #bm-splash .bm-ring {{
               width: 68px; height: 68px; border-radius: 50%;
-              border: 6px solid {PRIMARY_SOFT};
-              border-top-color: {ACCENT};
-              border-right-color: {PRIMARY};
+              border: 6px solid var(--bm-primary-soft);
+              border-top-color: var(--bm-accent);
+              border-right-color: var(--bm-primary);
               animation: bm-spin 0.85s linear infinite;
           }}
           @keyframes bm-spin {{ to {{ transform: rotate(360deg); }} }}

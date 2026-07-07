@@ -29,6 +29,18 @@ st.set_page_config(
 theme.inject_css()
 
 
+@st.cache_resource(show_spinner=False)
+def _ensure_db_schema():
+    """Create any missing tables once per process (idempotent CREATE IF NOT EXISTS).
+    The app historically relied on seed_users.py to run init_db(), so new tables
+    (e.g. role_commodities) must be ensured here for already-seeded deployments."""
+    db.init_db()
+    return True
+
+
+_ensure_db_schema()
+
+
 # ---------------------------------------------------------------------------
 # LOGIN
 # ---------------------------------------------------------------------------
@@ -100,6 +112,26 @@ def _password_problem(p1: str, p2: str):
     if len(p1) < 10:
         return "Use at least 10 characters."
     return None
+
+
+# ---------------------------------------------------------------------------
+# PER-ROLE ACCESS (commodities + analyst-call audience)
+# ---------------------------------------------------------------------------
+def allowed_products(role):
+    """The `dl.STEEL_PRODUCTS` subset a role may see. Admins and any role with no
+    saved config see all (order preserved). Set per role from the Admin tab."""
+    if role == "Admin":
+        return dl.STEEL_PRODUCTS
+    allow = db.get_role_commodities(role)
+    if not allow:                       # unconfigured => all
+        return dl.STEEL_PRODUCTS
+    return {k: v for k, v in dl.STEEL_PRODUCTS.items() if k in allow}
+
+
+def _call_visible(call, role):
+    """An analyst call is visible if it has no audience (all) or lists this role."""
+    aud = call.get("audiences") or []
+    return (not aud) or (role in aud)
 
 
 def login_screen():
@@ -174,6 +206,11 @@ user = st.session_state.user
 if user.get("must_reset"):
     force_password_change()
 
+# Re-brand the app for this user's role (topbar + all custom surfaces). inject_css()
+# already seeded the BigMint defaults for the login screen.
+_profile = theme.profile_for(user.get("role"))
+theme.apply_role_theme(_profile)
+
 st.session_state.setdefault("page", "Home")
 
 # header: brand bar + a primary "Log out" button (same design as Sign in) pinned top-right
@@ -237,7 +274,8 @@ NAV = [
 
 
 def top_nav():
-    items = list(NAV)
+    allowed = set(theme.profile_for(user.get("role"))["pages"])   # role-visible pages
+    items = [it for it in NAV if it[0] in allowed]
     if user.get("role") == "Admin":                       # Admin tab is admin-only
         items.append(("Admin", "Admin", "admin_panel_settings"))
     widths = [1] + [1.35] * (len(items) - 1)              # keep Home a touch narrower
@@ -510,8 +548,12 @@ def directional_accuracy_bar(view):
 # PAGE: HOME
 # ---------------------------------------------------------------------------
 def page_home():
+    products = allowed_products(user["role"])          # role-scoped commodities
+    n_products = len(products)
+    allowed_pages = set(theme.profile_for(user.get("role"))["pages"])
     st.markdown("## Price Forecasting: Steel")
-    st.markdown(f"Welcome, **{user['name']}**. Six steel products, 12-week Ensemble forecasts and week-wise accuracy.")
+    st.markdown(f"Welcome, **{user['name']}**. {n_products} steel "
+                f"product{'s' if n_products != 1 else ''}, 12-week Ensemble forecasts and week-wise accuracy.")
     st.write("")
 
     # "Last updated on" = the newest date an ACTUAL spot exists, read from the accuracy
@@ -520,7 +562,7 @@ def page_home():
     last_update = last_actual.strftime("%d %b %Y") if last_actual is not None else "-"
     mapas = []
     n_weeks = 0
-    for _, meta in dl.STEEL_PRODUCTS.items():
+    for _, meta in products.items():
         acc = dl.load_accuracy("6-week", meta["acc"]).dropna(subset=["Actual", "Forecast"])
         n_weeks = max(n_weeks, len(acc))
         k = dl.accuracy_kpis(acc)
@@ -529,7 +571,7 @@ def page_home():
     avg_mapa = sum(mapas) / len(mapas) if mapas else None
 
     s1, s2, s3, s4 = st.columns(4)
-    s1.markdown(theme.kpi_card("Steel products", "6", "tracked weekly", theme.icon("factory")), unsafe_allow_html=True)
+    s1.markdown(theme.kpi_card("Steel products", str(n_products), "tracked weekly", theme.icon("factory")), unsafe_allow_html=True)
     s2.markdown(theme.kpi_card("Forecast horizon", "12 wk", "Ensemble Wgt-Mean", theme.icon("trending")), unsafe_allow_html=True)
     s3.markdown(theme.kpi_card("Avg absolute accuracy", f"{avg_mapa:.1f}%" if avg_mapa else "-", f"MAPA, {n_weeks}-wk avg", theme.icon("target")), unsafe_allow_html=True)
     s4.markdown(theme.kpi_card("Last updated on", last_update, "latest actual spot date", theme.icon("calendar")), unsafe_allow_html=True)
@@ -537,25 +579,28 @@ def page_home():
     st.write("")
     theme.section_title("Modules", theme.icon("home"))
     modules = [
-        ("Price forecasting", "Spot vs 12-week Ensemble forecast for the six steel products.", "trending_up", "Price Forecasting"),
+        ("Price forecasting", "Spot vs 12-week Ensemble forecast for the steel products.", "trending_up", "Price Forecasting"),
         ("Analyst calls", "Monthly market-outlook calls, key insights and downloadable decks.", "campaign", "Analyst Calls"),
         ("Performance", "Week-wise accuracy: spot vs forecast, weekly delta, MAPA and directional hit-rate.", "insights", "Performance Dashboard"),
         ("Calculators", "Import vs landed-cost, production cost & margin, and price-elasticity tools.", "calculate", "Calculators"),
     ]
-    for col, (title, desc, mi, target) in zip(st.columns(4), modules):
-        with col:
-            # whole card is one clickable button (styled via .st-key-homemod_* in theme.py)
-            # label = **title** (strong/block) + brief (p text) + *Open ->* (em/block CTA)
-            if st.button(f"**{title}** {desc} *Open →*", key=f"homemod_{target.replace(' ', '_')}",
-                         icon=f":material/{mi}:", use_container_width=True):
-                st.session_state.page = target
-                st.rerun()
+    modules = [m for m in modules if m[3] in allowed_pages]   # only role-visible modules
+    if modules:
+        for col, (title, desc, mi, target) in zip(st.columns(len(modules)), modules):
+            with col:
+                # whole card is one clickable button (styled via .st-key-homemod_* in theme.py)
+                # label = **title** (strong/block) + brief (p text) + *Open ->* (em/block CTA)
+                if st.button(f"**{title}** {desc} *Open →*", key=f"homemod_{target.replace(' ', '_')}",
+                             icon=f":material/{mi}:", use_container_width=True):
+                    st.session_state.page = target
+                    st.rerun()
 
-    # full-width banner button spanning the four module cards -> Methodology
-    if st.button("**Methodology** — how the forecasts are built: data, models, ensemble & accuracy. *View →*",
-                 key="home_methodology", icon=":material/schema:", use_container_width=True):
-        st.session_state.page = "Methodology"
-        st.rerun()
+    # full-width banner button spanning the module cards -> Methodology (if visible to this role)
+    if "Methodology" in allowed_pages:
+        if st.button("**Methodology** — how the forecasts are built: data, models, ensemble & accuracy. *View →*",
+                     key="home_methodology", icon=":material/schema:", use_container_width=True):
+            st.session_state.page = "Methodology"
+            st.rerun()
     theme.footer()
 
 
@@ -579,10 +624,18 @@ RATIONALES = {
 # ---------------------------------------------------------------------------
 def page_forecasting():
     st.markdown("## Price forecasting")
-    product = st.segmented_control("Product", list(dl.STEEL_PRODUCTS.keys()),
-                                   default="HRC", key="fc_prod", label_visibility="collapsed")
-    product = product or "HRC"
-    meta = dl.STEEL_PRODUCTS[product]
+    products = allowed_products(user["role"])
+    if not products:
+        st.info("No commodities are enabled for your account yet. Please contact an administrator.",
+                icon=":material/info:")
+        theme.footer()
+        return
+    keys = list(products.keys())
+    default = keys[0]
+    product = st.segmented_control("Product", keys, default=default, key="fc_prod",
+                                   label_visibility="collapsed")
+    product = product if product in products else default
+    meta = products[product]
     summary = dl.load_summary()
     row = dl.summary_row(summary, meta["ff"])
     fwd = dl.load_forward(meta["ff"])
@@ -713,15 +766,18 @@ def _render_call_card(call, sig):
 def page_analyst():
     st.markdown("## Analyst calls / meets")
     calls = dl.load_analyst_calls()
+    if user["role"] != "Admin":                       # admins see every call; others see their audience
+        calls = [c for c in calls if _call_visible(c, user["role"])]
     if not calls:
-        st.info("No analyst calls published yet.", icon=":material/info:")
+        st.info("No analyst calls published for your account yet.", icon=":material/info:")
         theme.footer()
         return
     sig = dl.data_sig()
     for call in calls:
         _render_call_card(call, sig)
     if user["role"] == "Admin":
-        st.caption("You're an admin — use the **Admin** tab to add, edit or remove calls and upload decks.")
+        st.caption("You're an admin — use the **Admin** tab to add, edit or remove calls, set each "
+                   "call's audience, and upload decks.")
     theme.footer()
 
 
@@ -816,6 +872,34 @@ def _admin_users_panel():
             st.code(last_temp[1], language=None)
 
 
+def _admin_access_panel():
+    """Per-role commodity access: which commodities each user type sees on
+    Forecasting / Performance / Home. Stored in Neon (`db.role_commodities`)."""
+    with st.expander("Commodity access (per user type)", icon=":material/tune:"):
+        st.caption("Pick which commodities each user type sees on Forecasting, Performance and Home. "
+                   "A user type with nothing saved sees **all** commodities; save a subset to restrict it. "
+                   "Admins always see everything.")
+        roles = [r for r in auth.ROLES if r != "Admin"]
+        role = st.selectbox("User type", roles, key="access_role_sel")
+        all_products = list(dl.STEEL_PRODUCTS.keys())
+        current = db.get_role_commodities(role)
+        chosen = st.multiselect("Commodities this user type can see", all_products,
+                                default=(current or all_products), key=f"access_ms_{role}")
+        if current:
+            st.caption(f"Currently restricted to **{len(current)}** of {len(all_products)}: "
+                       f"{', '.join(current)}.")
+        else:
+            st.caption("Currently unconfigured → this user type sees **all** commodities.")
+        if st.button("Save access", type="primary", key=f"access_save_{role}"):
+            if not chosen:
+                st.error("Select at least one commodity — an empty set isn't allowed (it would leave an "
+                         "empty dashboard). To hide the whole page for a role, edit its profile in `theme.py`.")
+            else:
+                db.set_role_commodities(role, chosen)
+                st.success(f"Saved commodity access for **{role}**: {', '.join(chosen)}.")
+                st.rerun()
+
+
 def page_admin():
     if user["role"] != "Admin":
         st.error("This page is for admins only.")
@@ -823,6 +907,7 @@ def page_admin():
         return
 
     _admin_users_panel()
+    _admin_access_panel()
 
     st.markdown("## Admin — Analyst calls")
     if not dl.can_admin_write():
@@ -849,6 +934,11 @@ def page_admin():
         st.markdown("**Sections** (leave blank to hide a row)")
         secvals = {lbl: st.text_input(lbl, value=esecs.get(lbl, ""), key=f"sec_{ekey}_{lbl}")
                    for lbl in dl.ANALYST_SECTIONS}
+        aud_opts = [r for r in auth.ROLES if r != "Admin"]
+        aud_default = [r for r in (editing or {}).get("audiences", []) if r in aud_opts]
+        audiences = st.multiselect("Audience — user types who see this call", aud_opts,
+                                   default=aud_default, key=f"aud_{ekey}",
+                                   help="Leave empty = visible to everyone. Admins always see all calls.")
         u1, u2 = st.columns(2)
         pdf_up = u1.file_uploader("PDF deck", type=["pdf"], key=f"pdf_up_{ekey}")
         ppt_up = u2.file_uploader("PPT deck", type=["ppt", "pptx"], key=f"ppt_up_{ekey}")
@@ -869,6 +959,7 @@ def page_admin():
                 "summary": summary.strip(),
                 "sections": {lbl: secvals[lbl].strip() for lbl in dl.ANALYST_SECTIONS},
                 "pdf": (editing or {}).get("pdf", ""), "ppt": (editing or {}).get("ppt", ""),
+                "audiences": audiences,   # [] = visible to all
             }
             try:
                 if pdf_up is not None:
@@ -911,10 +1002,18 @@ def page_admin():
 # ---------------------------------------------------------------------------
 def page_performance():
     st.markdown("## Performance dashboard")
-    product = st.segmented_control("Product", list(dl.STEEL_PRODUCTS.keys()),
-                                   default="HRC", key="perf_prod", label_visibility="collapsed")
-    product = product or "HRC"
-    meta = dl.STEEL_PRODUCTS[product]
+    products = allowed_products(user["role"])
+    if not products:
+        st.info("No commodities are enabled for your account yet. Please contact an administrator.",
+                icon=":material/info:")
+        theme.footer()
+        return
+    keys = list(products.keys())
+    default = keys[0]
+    product = st.segmented_control("Product", keys, default=default, key="perf_prod",
+                                   label_visibility="collapsed")
+    product = product if product in products else default
+    meta = products[product]
 
     df = dl.load_accuracy("6-week", meta["acc"])   # Accuracy_Table_6 only (window toggle removed)
     if df.empty:
@@ -1093,4 +1192,11 @@ PAGES = {
     "Methodology": page_methodology,
     "Admin": page_admin,
 }
+# Gate the current page by the role's profile (fall back to Home for a hidden page,
+# e.g. a stale st.session_state.page after a role change). Home is in every profile.
+_allowed_pages = set(theme.profile_for(user.get("role"))["pages"])
+if user.get("role") == "Admin":
+    _allowed_pages.add("Admin")
+if st.session_state.page not in _allowed_pages:
+    st.session_state.page = "Home"
 PAGES.get(st.session_state.page, page_home)()

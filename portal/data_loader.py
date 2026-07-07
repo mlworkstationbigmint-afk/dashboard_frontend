@@ -285,6 +285,8 @@ ANALYST_FILES_DIR = "analyst_calls/files"
 ANALYST_SECTIONS = ["Flats", "Longs", "Raw materials", "Imports & exports", "Outlook"]
 
 # Shown when no private store is configured/reachable (plain text — escaped at render).
+# "audiences" = list of roles that may see the call; empty/missing => visible to all
+# (the app filters via _call_visible in app.py; admins always see every call).
 SAMPLE_ANALYST_CALLS = [
     {"id": "2026-06", "month": "June 2026", "title": "Market outlook call",
      "summary": "Flat-to-soft HRC into Q3; raw-material support easing as iron-ore and coking-coal cool.",
@@ -293,13 +295,13 @@ SAMPLE_ANALYST_CALLS = [
                   "Raw materials": "Iron ore, coking coal & scrap — sample commentary.",
                   "Imports & exports": "Trade flows and landed-cost parity — sample commentary.",
                   "Outlook": "Near-term price direction — sample commentary."},
-     "pdf": "", "ppt": ""},
+     "pdf": "", "ppt": "", "audiences": []},
     {"id": "2026-05", "month": "May 2026", "title": "Market outlook call",
      "summary": "Rebar firm on monsoon-led restocking; scrap stable.",
-     "sections": {s: "" for s in ANALYST_SECTIONS}, "pdf": "", "ppt": ""},
+     "sections": {s: "" for s in ANALYST_SECTIONS}, "pdf": "", "ppt": "", "audiences": []},
     {"id": "2026-04", "month": "April 2026", "title": "Market outlook call",
      "summary": "Q1 review and forward view across flats and longs.",
-     "sections": {s: "" for s in ANALYST_SECTIONS}, "pdf": "", "ppt": ""},
+     "sections": {s: "" for s in ANALYST_SECTIONS}, "pdf": "", "ppt": "", "audiences": []},
 ]
 
 

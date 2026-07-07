@@ -34,19 +34,21 @@ Users live in the **Neon `users` table**, not in code. Passwords are **argon2id*
 ## Locked decisions
 - Streamlit UI-only prototype; **per-user login backed by Neon Postgres (argon2id + JWT cookie sessions)**; **12-week** horizon.
 - Headline forecast line = **Ensemble (Weighted Mean)**.
-- Title: plain-text "Price Forecasting: Steel" (browser tab / login caption / Home H2). The **topbar heading** reads "BIGMINT `|` ADANI `|` STEEL GCP - AI LABS : Steel Prices Forecasting Model" (BigMint logo · pipe · Adani chip · pipe · title text — separators are pipes, not `×`); the "BigMint × Adani" text was removed everywhere else. Brand name is **BigMint** (never "Bigmint").
+- Title: plain-text "Price Forecasting: Steel" (browser tab / login caption / Home H2). The **topbar heading** is now **per-role** (see the 2026-07-07 changelog): the **Adani/default** profile reads "BIGMINT `|` ADANI `|` STEEL GCP - AI LABS : Steel Prices Forecasting Model" (BigMint logo · pipe · Adani chip · pipe · title — separators are pipes, not `×`); internal **Analyst/Admin** profiles drop the Adani chip (BigMint-only). Brand name is **BigMint** (never "Bigmint").
+- **Per-role white-label dashboards (2026-07-07):** one deployment; each `auth.ROLES` value gets its own static branding (`theme.ROLE_PROFILES`) + admin-controlled commodity access (`db.role_commodities`) + analyst-call audience. See `portal/PLAN_per_role_dashboards.md`.
 - Static snapshot data (no live connection).
 
-## Six steel products (fixed)
+## Six steel products (catalog)
 HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Structure (IF Raipur)
+> Full catalog in `data_loader.STEEL_PRODUCTS`. Since 2026-07-07 each **role** sees an admin-chosen subset (Admin tab → Commodity access); a role with nothing saved sees all six. Admins always see all.
 
 ## File map  (everything under `dashboard/portal/`)
 | File | What it does |
 |------|--------------|
 | `app.py` | Entry: page config, auth gate, top nav, 5 pages, chart helpers |
-| `theme.py` | Brand palette, CSS, icons, topbar, KPI/card/table helpers |
+| `theme.py` | Brand palette, CSS (themeable via `--bm-*` vars), icons, topbar, KPI/card/table helpers; **per-role branding** (`ROLE_PROFILES`/`profile_for`/`apply_role_theme`) |
 | `auth.py` | Auth core (UI-agnostic, no users in-file): argon2id verify + lockout, JWT cookie sessions (`create_session`/`resolve_session`/`logout`), user CRUD helpers |
-| `db.py` | Neon Postgres layer (SQLAlchemy): schema (`users`/`sessions`/`audit_log`) + queries + config resolution (`database_url` / `session_signing_key`) |
+| `db.py` | Neon Postgres layer (SQLAlchemy): schema (`users`/`sessions`/`audit_log`/`role_commodities`) + queries + config resolution (`database_url` / `session_signing_key`) |
 | `seed_users.py` | One-time seeder: creates the first users with random temp passwords → git-ignored `.streamlit/seed_credentials.txt` (`--force` to reset) |
 | `data_loader.py` | Cached readers for forecast_forward + accuracy tables |
 | `calculators/calc_import_price.py` | Import vs Landed Cost (HRC) |
@@ -70,14 +72,17 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **Methodology** — general (not per-product) infographic page: gradient hero + stat strip (~98% accuracy / 15+ yrs / 1–2% delta / IOSCO) + a 6-step **pipeline flow** (data → signals → ML+sentiment → ensemble → 12-wk forecast → accuracy) + 6 **key-factor** cards + 3 **horizon** cards + transparency/governance cards + disclaimer. Content sourced/generalised from bigmint.co forecasting methodology. All built with HTML/CSS (`.bm-meth-*`, `.bm-flow*`, `.bm-factor*`, `.bm-horizon*` in `theme.py`).
 
 ## "Edit X → go here"
-- Brand colours/logo → `theme.py` palette + `.streamlit/config.toml`; co-brand logos → `theme.py` `_logo_html` / `_adani_logo_html` (+ `ADANI_LOGO_CANDIDATES` fallback list) + `render_topbar`; topbar heading text/pipes → `render_topbar()` + `.bm-portal-title` CSS
+- **Per-role branding (logo/co-brand/title/colors/visible pages)** → `theme.ROLE_PROFILES` (+ `DEFAULT_PROFILE`); resolved by `theme.profile_for(role)`; applied per session by `theme.apply_role_theme()` (called in `app.py` after login) + `render_topbar(user)`. Themeable colors are CSS vars (`--bm-primary`/`--bm-primary-dark`/`--bm-primary-soft`/`--bm-accent`) seeded on `:root` in `inject_css()`. **Add a new client:** add role to `auth.ROLES`, drop its logo in `assets/`, add a `ROLE_PROFILES` entry, then set access from the Admin tab.
+- **Which commodities a role sees** → **Admin tab → Commodity access** (`app.py` `_admin_access_panel()`) → `db.role_commodities` (`db.get_role_commodities`/`set_role_commodities`); read via `app.py` `allowed_products(role)` (empty config or Admin ⇒ all)
+- **Which analyst calls a role sees** → each call's **Audience** multiselect in the Admin call editor (`page_admin`), stored as `audiences` on the call; filtered by `app.py` `_call_visible(call, role)` in `page_analyst` (admins see all; empty audience = all)
+- Brand colours/logo (defaults) → `theme.py` palette + `.streamlit/config.toml`; co-brand logos → `theme.py` `_cobrand_logo_html` (+ `ADANI_LOGO_CANDIDATES` fallback) + `render_topbar`; topbar heading text/pipes → `render_topbar()` + `.bm-portal-title` CSS
 - Tab + segmented-selector accent (orange) → `theme.py` `inject_css()` tab/segmented CSS block (overrides primaryColor for those elements only)
-- Nav items / page wiring → `app.py` `NAV` list + `PAGES` dict (`top_nav()` appends an **Admin** item + widens the column list when `user["role"] == "Admin"`)
+- Nav items / page wiring → `app.py` `NAV` list + `PAGES` dict. `top_nav()` shows only the pages in the role's `theme.profile_for(...)["pages"]` (+ appends **Admin** for admins); the dispatch guard (bottom of `app.py`) resets a hidden `st.session_state.page` back to Home. Change which pages a role sees → that role's `pages` in `theme.ROLE_PROFILES`
 - Home module cards (clickable) → `app.py` `page_home()` `modules` list + `theme.py` `.st-key-homemod_*` CSS
 - Home Methodology banner (full-width) → `app.py` `page_home()` `home_methodology` button + `theme.py` `.st-key-home_methodology` CSS
 - Log out button (header top-right, primary) → `app.py` header `st.columns([6,1])` block (key `logout_top`)
 - Chart look / lines / hover ball → `app.py` `_style_fig`, `_spot_trace`, `forecast_chart`, `perf_chart`, `delta_bar`, `accuracy_chart`, `directional_accuracy_bar`, `_render_with_highlighter`; colours in `theme.py` (`SPOT_LINE`, `FORECAST_LINE`, `FORECAST_HALO`)
-- Products → `data_loader.py` `STEEL_PRODUCTS`
+- Products (catalog) → `data_loader.py` `STEEL_PRODUCTS`; per-role visible subset → `app.py` `allowed_products()` + `db.role_commodities` (Admin tab)
 - Users → **Admin tab → User management** (`app.py` `_admin_users_panel()`) at runtime, or `python portal/seed_users.py` to seed. Stored in the Neon `users` table; helpers in `auth.py` (`create_user`/`upsert_user`/`set_password`/`set_active`/`set_role`/`delete_user`/`list_users`) over `db.py`. Roles = `auth.ROLES`. `authenticate()` returns `(user, status)` — argon2id verify + lockout
 - Session / cookie behaviour (login persists across refresh, logout, forced first-login reset) → `app.py` cookie block (`cookie_manager`, `_read_cookie_token`, `_start_session`, deferred `_cookie_write`/`_cookie_clear`, `force_password_change`) + `auth.create_session`/`resolve_session`/`logout`. Signed JWT in the `portal_session` cookie; server rows in `sessions`
 - Post-refresh full-screen splash (while the cookie is read) → `theme.loading_screen()`; in-app **translucent** loading overlay (page switches / slow reruns) → `inject_css()` `[data-testid="stApp"]::before/::after` gated by `:has([data-testid="stStatusWidget"])`
@@ -112,7 +117,54 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **Accent = orange**: `primaryColor` is now `#EE4E24` (ACCENT orange) in config.toml — it natively drives **primary buttons (Sign in / Log out / active nav) + tab highlights + segmented selected state** orange. The **brand topbar stays blue** because it uses the `PRIMARY` (#024CA1) constant in `theme.py` CSS, *not* `primaryColor`. **Tabs** are a **sliding segmented switch**: `div[data-baseweb="tab-highlight"]` is *repurposed* from baseweb's bottom underline into a full-height **white pill** (`top/bottom:5px; height:auto; border-radius; bg #fff`) — baseweb (Streamlit 1.58) repositions it with **`transform: translateX(...)`** (NOT `left`) and updates `width` when you switch tabs, so the pill **slides only if the `transition` targets `transform`** (`transition:transform .28s, width .28s`). **Verified live (2026-06-30):** at 0.28s the highlight's `translateX` eases smoothly between tab positions (e.g. 5px↔149px). Tab buttons sit above it (`z-index:1`, transparent bg) with orange active text; `tab-border` is hidden; the grey track is `div[data-baseweb="tab-list"]` (`position:relative` anchors the pill). Do **not** re-hide `tab-highlight`, and **keep the transition on `transform`** — a `transition:left/width` (the old value) never fires because baseweb moves the pill via `transform`, so the pill snaps instead of sliding. The segmented selector (Product) gets orange via `stBaseButton-segmented_controlActive`. If tabs look wrong after a Streamlit upgrade, re-check the `data-baseweb="tab*"` selectors. (Was previously blue buttons + orange underline-tabs; accent flipped + tabs → sliding pill 2026-06-26.)
 
 ## Changelog (prototype iterations)
-### 2026-07-06
+### 2026-07-07 — Per-role white-label dashboards + admin-managed access (in progress)
+> Feature plan: `portal/PLAN_per_role_dashboards.md`. Turns the app into a per-role white-label
+> dashboard on a single deployment: each role gets its own branding (dev-configured, static), and the
+> Admin controls which commodities + which analyst calls each role sees (runtime). Landing task-by-task.
+- **theme.py — per-role branding profiles + CSS-variable theming (task 1/5)** — the 4 themeable colors
+  (`PRIMARY`/`PRIMARY_DARK`/`PRIMARY_SOFT`/`ACCENT`) in `inject_css()` are now driven by CSS custom
+  properties (`--bm-primary` / `--bm-primary-dark` / `--bm-primary-soft` / `--bm-accent`) seeded with
+  the BigMint defaults on `:root`. New **`ROLE_PROFILES`** / **`DEFAULT_PROFILE`** dicts (keyed by
+  `auth.ROLES` values) hold each role's co-brand logo/label, topbar title, colors and visible `pages`;
+  **`profile_for(role)`** merges over the default; **`apply_role_theme(profile)`** emits a tiny
+  `<style>:root{…}</style>` override so the topbar + all custom surfaces re-brand per session (call it
+  from `app.py` after login — wired in task 4). **`render_topbar(user)`** now builds the bar from the
+  role profile (BigMint logo · optional co-brand chip · title); `cobrand_logo=None` hides the chip +
+  one pipe (internal Analyst/Admin = BigMint-only). New `_cobrand_logo_html(profile)` generalises the
+  old `_adani_logo_html` (kept, unused). Added `import html`. **Limitation:** `config.toml`
+  `primaryColor` is a build-time global, so native Streamlit primary buttons/tabs keep the global
+  orange for all roles; only the brand topbar + custom-CSS surfaces follow the role. → `theme.py`.
+- **db.py — `role_commodities` table + accessors (task 2/5)** — new table `role_commodities(role,
+  commodity, PK(role,commodity))` added to `_DDL`. **NB:** the app never called `init_db()` before
+  (it relied on `seed_users.py`), so task 4 adds a cached `_ensure_db_schema()` in `app.py` that runs
+  `db.init_db()` once per process — this creates `role_commodities` on already-seeded deployments with
+  no manual migration. `get_role_commodities(role)` returns the allowed list (**empty = unconfigured ⇒ app treats
+  as all**); `set_role_commodities(role, list)` replaces a role's set atomically (DELETE then INSERT,
+  bound params). Admins bypass this in the app layer (always all). → `db.py`.
+- **data_loader.py — `audiences` on sample calls (task 3/5)** — each `SAMPLE_ANALYST_CALLS` entry gains
+  `"audiences": []` (empty/missing ⇒ visible to all, backward-compatible). `load_analyst_calls` /
+  `save_analyst_calls` are generic dict (de)serializers, so real calls in `calls.json` carry the field
+  through unchanged once the Admin sets it (task 4). → `data_loader.py`.
+- **app.py — per-role filtering, page-gating, apply theme, admin access panel (task 4/5)** — new
+  helpers `allowed_products(role)` (role's `STEEL_PRODUCTS` subset; Admin + unconfigured roles = all)
+  and `_call_visible(call, role)` (audience filter). After login, `theme.apply_role_theme(profile_for(
+  user.role))` re-brands the session. **Product filtering** applied in `page_forecasting` /
+  `page_performance` (segmented control built from `allowed_products`, empty-state message) and
+  `page_home` (product count/KPI/MAPA loop + welcome text). **`page_analyst`** filters calls by audience
+  (admins see all). **Page-gating:** `top_nav` shows only the role's profile `pages` (+ Admin item for
+  admins); the dispatch guard resets a hidden `st.session_state.page` to Home; Home module cards +
+  Methodology banner are filtered to visible pages. **Admin call form** gained an *Audience* multiselect
+  (`audiences` saved on the record). New **`_admin_access_panel()`** in `page_admin` (expander →
+  select role → multiselect commodities → save to `db.set_role_commodities`; rejects an empty set).
+  Also added a cached **`_ensure_db_schema()`** (runs `db.init_db()` once per process) so the new
+  table exists at runtime without a manual migration. → `app.py`.
+- **Verified (task 5/5)** — `py_compile` on all four modules; a smoke test against **live Neon**
+  confirmed `init_db()` creates `role_commodities` and `get/set_role_commodities` round-trip (test rows
+  restored afterwards, DB left clean); `profile_for()` returns distinct branding per role (Adani =
+  co-brand + steel title; Analyst/Admin = no co-brand + "AI LABS" title); `_call_visible` filters by
+  audience correctly. The login screen renders the new profile-driven topbar with no console/render
+  errors. **Not yet screenshotted in-app per role** — that needs a login (all seeded accounts are
+  `must_reset` / use owner-set passwords); left for the owner or a throwaway test account.
 - **Removed the `?authdebug=1` diagnostic panel** — cookie persistence is confirmed solid on Cloud, so the temporary opt-in debug block (request-vs-component cookie readout) was deleted from `app.py`. The cookie read path (`st.context.cookies` → `cookie_manager` fallback + `_cookie_probed` loading splash) is unchanged. Clears auth follow-up (1). → `app.py`.
 - **Auth replaced: production self-managed user store in Neon Postgres (supersedes the 2026-07-03 "Auth is now IN-FILE ONLY" entry)** — the SHA-256 `USERS` dict in `auth.py` is gone. New **`db.py`** (SQLAlchemy over a Neon Postgres **pooled** connection) owns three tables — `users` (argon2id `password_hash`, `role`, `is_active`, `must_reset`, `failed_attempts`, `locked_until`), `sessions` (SHA-256 of an opaque session id + `expires_at`; server-side revocable), `audit_log` — created by `db.init_db()`. **`auth.py`** rewritten UI-agnostic: `authenticate() → (user, status)` (`ok`/`invalid`/`locked`/`disabled`) with argon2id verify, failure counting + **lockout (5 tries / 15 min)** and a dummy-hash timing guard; `create_session()` / `resolve_session()` / `logout()` mint/validate/revoke a **signed JWT** carried in the `portal_session` cookie (12 h TTL); user-management helpers (`create_user`/`upsert_user`/`set_password`/`set_active`/`set_role`/`delete_user`/`list_users`). New **`seed_users.py`** seeds adani/admin/analyst with random temp passwords + `must_reset=True` → git-ignored `.streamlit/seed_credentials.txt`. Secrets now require **`database_url`** + **`session_signing_key`** (top-level; `db._config()` reads st.secrets → env → secrets.toml). Deps added to both `requirements.txt` files: `argon2-cffi`, `SQLAlchemy`, `psycopg[binary]`, `PyJWT`, `extra-streamlit-components`. `.gitignore` now ignores `.streamlit/seed_credentials.txt` + `*.local`. → `db.py`, `auth.py`, `seed_users.py`, `requirements.txt`, `portal/requirements.txt`, `.gitignore`.
 - **Login flow rewired for cookie-backed sessions + forced first-login reset** — `app.py`: `login_screen()` calls the new `authenticate()`, surfaces locked/disabled/invalid messages, and on success `_start_session()` (mint session + **queue** the cookie write). `force_password_change()` gates any `must_reset` user before the app. On refresh, session is restored from the `portal_session` cookie (`_read_cookie_token` → `resolve_session`). **Cookie writes are deferred** to the next run (`_cookie_write`/`_cookie_clear`) because `st.rerun()` discards same-run component output — this fixed "refresh logs me out" and a logout `KeyError`. Cookie read prefers `st.context.cookies`, falls back to the component; a one-shot loading splash (`_cookie_probed` → `theme.loading_screen()`) hides the login flash while the cookie is fetched. Logout revokes the server session, clears the cookie, wipes session_state. Added `?authdebug=1` diagnostics. → `app.py`.
