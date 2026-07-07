@@ -775,14 +775,7 @@ def page_forecasting():
         with st.container(key="fc_loc_box"):
             st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
 
-    if grouped:
-        # Modern slider-switch look for the view toggle (theme.py .st-key-fc_view_box).
-        with st.container(key="fc_view_box"):
-            tab_graph, tab_table = st.tabs(["Graphical view", "Tabular view"])
-    else:
-        tab_graph, tab_table = st.tabs(["Graphical view", "Tabular view"])
-
-    with tab_graph:
+    def render_graph_view():
         if grouped:
             # No section title; the zoom (week) buttons sit just ABOVE the plot (compact mode).
             forecast_chart(acc_hist, fwd, legend_inside=True, year_labels=True, compact=True)
@@ -793,7 +786,7 @@ def page_forecasting():
                         "(historical fit + 12-week ahead). Hover any point for its price.</div>",
                         unsafe_allow_html=True)
 
-    with tab_table:
+    def render_table_view():
         # One continuous table: history (actual+forecast+delta, blank direction) flows into
         # the 12-week-ahead forecast (forecast+direction, blank actual+delta).
         theme.section_title("Actual vs forecast (history &rarr; 12-week ahead)", theme.icon("calendar"))
@@ -828,6 +821,27 @@ def page_forecasting():
                     "(same window as the chart); shaded rows = 12-week-ahead forecast (no actuals yet). "
                     "&Delta; = actual &minus; forecast. Headline line = Ensemble (Weighted Mean).</div>",
                     unsafe_allow_html=True)
+
+    VIEW_OPTS = ["Graphical view", "Tabular view"]
+    if grouped:
+        # iOS-style toggle switch (segmented control styled in theme.py .st-key-fc_view_box).
+        # Built on st.segmented_control, NOT st.tabs: the tab pill/toggle CSS keys on baseweb
+        # `data-baseweb` attributes that newer Streamlit builds dropped, so it silently falls
+        # back to underline tabs there — the segmented control's stTButtonGroup/stBaseButton
+        # testids are Streamlit's own and style reliably everywhere.
+        with st.container(key="fc_view_box"):
+            view = st.segmented_control("View", VIEW_OPTS, default=VIEW_OPTS[0],
+                                        key="fc_view", label_visibility="collapsed")
+        if (view or VIEW_OPTS[0]) == VIEW_OPTS[0]:   # deselection falls back to the graph
+            render_graph_view()
+        else:
+            render_table_view()
+    else:
+        tab_graph, tab_table = st.tabs(VIEW_OPTS)
+        with tab_graph:
+            render_graph_view()
+        with tab_table:
+            render_table_view()
 
     if grouped:                                   # adani_dev: price cards below the graph/table tabs
         st.write("")

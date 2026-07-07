@@ -398,37 +398,46 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-a
 
 /* grouped-forecasting Graphical/Tabular switch (adani_dev) -> iOS-style toggle in brand colours:
    a gradient capsule track (primary blue) with a round WHITE KNOB that glides to the end of the
-   active side. The knob is baseweb's tab-highlight forced to a fixed 34px circle; two :has() rules
-   override baseweb's inline translateX so the knob parks flush left/right (it still rides the
-   global transform transition, so it glides). Both labels stay visible in white on the track; the
-   end-paddings on the first/last tab keep the text clear of the knob's parking spots. Scoped by
-   the fc_view_box container so every other st.tabs keeps the default white-pill look.
-   Fallback: without :has() the knob follows baseweb's own transform (active tab's left edge). */
-.st-key-fc_view_box [data-baseweb="tab-list"] {{
-    width:270px !important; height:42px !important; padding:0 !important; gap:0 !important;
-    border-radius:999px !important; display:inline-flex !important; align-items:center !important;
+   active side. Built on st.segmented_control (NOT st.tabs): its stButtonGroup / stBaseButton
+   testids are Streamlit's own and stable across versions, unlike the baseweb `data-baseweb="tab-*"`
+   attributes that newer builds dropped. The track is the button-group; the knob is a ::before
+   pseudo-element whose translateX flips via :has() on which option is Active; the transform
+   transition makes it glide. End-paddings keep the labels clear of the knob's parking spots.
+   Fallback: without :has() the knob stays parked left (active label still white/bold). */
+.st-key-fc_view_box div[role="radiogroup"] {{
+    position:relative !important; display:flex !important; width:270px !important;
+    min-width:270px !important; max-width:270px !important;
+    height:42px !important; padding:0 !important; gap:0 !important; border-radius:999px !important;
     background:linear-gradient(110deg, var(--bm-primary) 0%, var(--bm-primary-dark) 100%) !important;
     box-shadow:inset 0 1px 3px rgba(2,20,50,.35), 0 1px 4px rgba(2,76,161,.20) !important;
 }}
-.st-key-fc_view_box [data-baseweb="tab-highlight"] {{
-    top:4px !important; bottom:4px !important; width:34px !important; border-radius:50% !important;
-    background:#fff !important; box-shadow:0 2px 6px rgba(2,20,50,.35) !important;
+.st-key-fc_view_box div[role="radiogroup"]::before {{
+    content:""; position:absolute; top:4px; left:0; width:34px; height:34px;
+    border-radius:50%; background:#fff; box-shadow:0 2px 6px rgba(2,20,50,.35);
+    transform:translateX(4px); transition:transform .28s cubic-bezier(.4,0,.2,1);
+    pointer-events:none; z-index:0;
 }}
-.st-key-fc_view_box [data-baseweb="tab-list"]:has(button[data-baseweb="tab"]:first-of-type[aria-selected="true"]) [data-baseweb="tab-highlight"] {{
-    transform:translateX(4px) !important;
+.st-key-fc_view_box div[role="radiogroup"]:has(button:last-of-type[data-testid="stBaseButton-segmented_controlActive"])::before {{
+    transform:translateX(232px);                 /* track 270 - knob 34 - inset 4 */
 }}
-.st-key-fc_view_box [data-baseweb="tab-list"]:has(button[data-baseweb="tab"]:last-of-type[aria-selected="true"]) [data-baseweb="tab-highlight"] {{
-    transform:translateX(232px) !important;      /* track 270 - knob 34 - inset 4 */
+.st-key-fc_view_box div[role="radiogroup"] button {{
+    flex:1 1 0 !important; height:100% !important; margin:0 !important;
+    border:none !important; border-radius:999px !important; background:transparent !important;
+    box-shadow:none !important; position:relative; z-index:1;
+    color:rgba(255,255,255,.72) !important; justify-content:center !important;
 }}
-.st-key-fc_view_box [data-baseweb="tab"] {{
-    flex:1 1 0 !important; justify-content:center !important; text-align:center !important;
-    padding:10px 0 !important; font-size:13px !important; border-radius:999px !important;
-    color:rgba(255,255,255,.72) !important;
+.st-key-fc_view_box div[role="radiogroup"] button:first-of-type {{ padding-left:34px !important; }}
+.st-key-fc_view_box div[role="radiogroup"] button:last-of-type {{ padding-right:34px !important; }}
+.st-key-fc_view_box div[role="radiogroup"] button p {{
+    color:inherit !important; font-size:13px !important; font-weight:600 !important;
 }}
-.st-key-fc_view_box button[data-baseweb="tab"]:first-of-type {{ padding-left:34px !important; }}
-.st-key-fc_view_box button[data-baseweb="tab"]:last-of-type {{ padding-right:34px !important; }}
-.st-key-fc_view_box [data-baseweb="tab"]:not([aria-selected="true"]):hover {{ color:#fff !important; }}
-.st-key-fc_view_box [data-baseweb="tab"][aria-selected="true"] {{ color:#fff !important; font-weight:700 !important; }}
+.st-key-fc_view_box div[role="radiogroup"] button:hover {{ color:#fff !important; }}
+.st-key-fc_view_box div[role="radiogroup"] button[data-testid="stBaseButton-segmented_controlActive"] {{
+    color:#fff !important; background:transparent !important; border:none !important;
+}}
+.st-key-fc_view_box div[role="radiogroup"] button[data-testid="stBaseButton-segmented_controlActive"] p {{
+    color:#fff !important; font-weight:700 !important;
+}}
 
 /* ---------- methodology infographics ---------- */
 .bm-meth-hero {{ background:linear-gradient(120deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%); color:#fff;
