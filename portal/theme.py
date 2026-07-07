@@ -371,39 +371,12 @@ div[class*="st-key-home_methodology"] button:hover em {{ filter:brightness(.97);
 }}
 [data-baseweb="tab"]:not([aria-selected="true"]):hover {{ color:var(--bm-primary-dark) !important; }}
 [data-baseweb="tab"][aria-selected="true"] {{ color:var(--bm-accent) !important; font-weight:700 !important; }}
-/* ---------- segmented selectors (Product / group pickers) -> modern slider switch ----------
-   st.segmented_control renders discrete buttons inside stButtonGroup (no shared baseweb
-   highlight element like st.tabs has), so the pill can't physically glide between options;
-   instead the group becomes a capsule track and the active option raises a white capsule
-   pill (smooth background/shadow/color transition) — same visual language as the sliding
-   tab switches above. Applies to every st.segmented_control globally. */
-[data-testid="stButtonGroup"] {{
-    display:inline-flex !important; width:auto !important; max-width:100% !important;
-    gap:4px !important; padding:4px !important; border-radius:999px !important;
-    background:linear-gradient(180deg,#eef2f8,#e3e9f2) !important;
-    box-shadow:inset 0 1px 3px rgba(16,24,40,.12) !important;
-}}
-button[data-testid="stBaseButton-segmented_control"],
+/* segmented selectors (Product) -> orange active */
 button[data-testid="stBaseButton-segmented_controlActive"] {{
-    border:none !important; background:transparent !important; border-radius:999px !important;
-    padding:8px 22px !important; margin:0 !important; min-height:0 !important; height:auto !important;
-    font-weight:600 !important; letter-spacing:.2px !important; color:{NEUTRAL} !important;
-    box-shadow:none !important;
-    transition:background .35s cubic-bezier(.22,1,.36,1), color .35s ease,
-               box-shadow .35s cubic-bezier(.22,1,.36,1) !important;
+    color:var(--bm-accent) !important; border-color:var(--bm-accent) !important;
+    background-color:rgba(238,78,36,0.10) !important;
 }}
-button[data-testid="stBaseButton-segmented_control"] p,
-button[data-testid="stBaseButton-segmented_controlActive"] p {{
-    font-size:14px !important; font-weight:inherit !important; color:inherit !important;
-    transition:color .35s ease !important;
-}}
-button[data-testid="stBaseButton-segmented_control"]:hover {{
-    color:var(--bm-primary-dark) !important; background:rgba(255,255,255,.55) !important;
-}}
-button[data-testid="stBaseButton-segmented_controlActive"] {{
-    background:#fff !important; color:var(--bm-accent) !important; font-weight:700 !important;
-    box-shadow:0 2px 9px rgba(16,24,40,.20) !important;
-}}
+button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-accent) !important; }}
 /* ---------- Forecasting view toggle -> modern sliding switch (Graphical <-> Tabular) ---------- */
 /* Scoped to the keyed container (app.py `st.container(key="fc_view_toggle")`) so Calculators and
    any other tab strips keep the default segmented pill. Same baseweb mechanics as the tabs above
