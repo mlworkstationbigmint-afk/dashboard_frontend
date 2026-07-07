@@ -824,7 +824,7 @@ def page_forecasting():
 
     VIEW_OPTS = ["Graphical view", "Tabular view"]
     if grouped:
-        # iOS-style toggle switch (segmented control styled in theme.py .st-key-fc_view_box).
+        # Sliding pill switch (segmented control styled in theme.py .st-key-fc_view_box).
         # Built on st.segmented_control, NOT st.tabs: the tab pill/toggle CSS keys on baseweb
         # `data-baseweb` attributes that newer Streamlit builds dropped, so it silently falls
         # back to underline tabs there — the segmented control's stTButtonGroup/stBaseButton

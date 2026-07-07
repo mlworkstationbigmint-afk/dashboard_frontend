@@ -64,7 +64,7 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 
 ## Modules
 - **Home** — overview stats + 4 module cards + a full-width **Methodology banner** button below them.
-- **Price forecasting** — Steel only: product selector + KPI strip, then a **Graphical view / Tabular view** tab pair (Graphical = spot-vs-forecast chart; Tabular = one continuous *Actual vs Forecast* table, history flowing into the 12-wk-ahead forecast), then a **Forecast rationale** section (placeholder, per-product via `RATIONALES`). (Raw-material tab removed earlier.) **The `adani_dev` role instead sees a *grouped* layout** — a top HRC/HR Plate/Rebar/Structure group tab-strip, then one row with an **iOS-style toggle switch** (Graphical/Tabular; an `st.segmented_control` styled as a blue-gradient capsule track + gliding round white knob) on the left and the **location dropdown on the right** (usable in both views), then the graph on top (week/zoom buttons just above the plot, in-chart legend, year-stamped x-axis labels), then the 3 price cards below the view block (see the 2026-07-07 changelog + `GROUPED_FORECASTING_ROLES`).
+- **Price forecasting** — Steel only: product selector + KPI strip, then a **Graphical view / Tabular view** tab pair (Graphical = spot-vs-forecast chart; Tabular = one continuous *Actual vs Forecast* table, history flowing into the 12-wk-ahead forecast), then a **Forecast rationale** section (placeholder, per-product via `RATIONALES`). (Raw-material tab removed earlier.) **The `adani_dev` role instead sees a *grouped* layout** — a top HRC/HR Plate/Rebar/Structure group tab-strip, then one row with a **sliding pill switch** (Graphical/Tabular; an `st.segmented_control` styled as a grey capsule track + a white label-width pill that glides behind the active option) on the left and the **location dropdown on the right** (usable in both views), then the graph on top (week/zoom buttons just above the plot, in-chart legend, year-stamped x-axis labels), then the 3 price cards below the view block (see the 2026-07-07 changelog + `GROUPED_FORECASTING_ROLES`).
 - **Analyst calls** — cards driven by **editable content** (`data_loader.load_analyst_calls()` → `analyst_calls/calls.json` in the private repo, else `SAMPLE_ANALYST_CALLS`): each card = month, title, headline summary, a one-line sectioned breakdown (Flats/Longs/Raw materials/Imports & exports/Outlook), and **live Download PDF / PPT** buttons (fetch the deck bytes from the private repo). No video. Managed via the Admin tab.
 - **Admin** *(role = Admin only)* — content manager for the Analyst-calls page (`page_admin()`): add / edit / delete calls (text + sections), upload PDF/PPT decks, live preview. Saves to the private repo via the GitHub Contents API (`save_analyst_calls` / `upload_call_file` / `gh_delete_file`), needs `github_write_token` (or a write-capable `github_token`); shows a warning + disables saving when absent.
 - **Performance dashboard** — product selector only (window toggle removed); reads **all rows** of `Accuracy_Table_6`. MAPA / directional / avg-delta KPIs, actual-vs-forecast chart + weekly-delta (Rs.) bars + **weekly accuracy % line** + **weekly directional-accuracy bars** + week-wise table.
@@ -92,7 +92,7 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - Methodology page content (pipeline steps, factors, horizons, stats) → `app.py` `page_methodology()` (`steps`/`factors` lists + inline HTML); infographic styling → `theme.py` `.bm-meth-*`/`.bm-flow*`/`.bm-factor*`/`.bm-horizon*`
 - Forecast rationale text → `app.py` `RATIONALES` dict (add a key per product name; `_default` is the placeholder shown until then)
 - Forecasting Graphical/Tabular views → `app.py` `page_forecasting()` nested `render_graph_view()` / `render_table_view()`; grouped roles switch them with the `fc_view` **segmented-control toggle**, other roles with `st.tabs`
-- **Grouped forecasting layout (adani_dev)** — group tabs (HRC/HR Plate/Rebar/Structure) → one row: **Graphical/Tabular slider switch (left) + location dropdown (right)** (dropdown shared across Graphical+Tabular) → graph on top (no title, week/zoom buttons JUST ABOVE the plot + in-chart legend + short year in x-axis labels) → price cards below the tabs → `app.py` `page_forecasting()` grouped branch + helpers `_grouped_forecasting` / `_product_group` / `_grouped_products` / `_location_label` + `FORECAST_GROUP_ORDER` + nested `price_cards()`; which roles get it → `app.py` `GROUPED_FORECASTING_ROLES`; the chart's legend-position / year-label / compact-size (buttons-above + h=620) toggles → `forecast_chart(legend_inside=…, year_labels=…, compact=…)`; the dropdown's border/tint + right-aligned same-row placement (negative-margin pull-up) → `theme.py` `.st-key-fc_loc_box`; the iOS-style toggle (an `st.segmented_control`, key `fc_view`; gradient track / `::before` white knob / `:has()` knob-parking transform) → `theme.py` `.st-key-fc_view_box` (container keys set in `app.py`)
+- **Grouped forecasting layout (adani_dev)** — group tabs (HRC/HR Plate/Rebar/Structure) → one row: **Graphical/Tabular slider switch (left) + location dropdown (right)** (dropdown shared across Graphical+Tabular) → graph on top (no title, week/zoom buttons JUST ABOVE the plot + in-chart legend + short year in x-axis labels) → price cards below the tabs → `app.py` `page_forecasting()` grouped branch + helpers `_grouped_forecasting` / `_product_group` / `_grouped_products` / `_location_label` + `FORECAST_GROUP_ORDER` + nested `price_cards()`; which roles get it → `app.py` `GROUPED_FORECASTING_ROLES`; the chart's legend-position / year-label / compact-size (buttons-above + h=620) toggles → `forecast_chart(legend_inside=…, year_labels=…, compact=…)`; the dropdown's border/tint + right-aligned same-row placement (negative-margin pull-up) → `theme.py` `.st-key-fc_loc_box`; the sliding pill switch (an `st.segmented_control`, key `fc_view`; grey capsule track / `::before` white pill / `:has()` pill-parking transform) → `theme.py` `.st-key-fc_view_box` (container keys set in `app.py`)
 - Forecast chart time slider + Zoom buttons (1W/4W/8W/12W/26W/YTD/ALL) → `app.py` `forecast_chart()` `rangeslider`/`rangeselector` block (end of the function, before `_render_with_highlighter`)
 - History shown in chart + historical table → **full available history, no window/trim**. `forecast_chart()` and the tabular block both use `dropna(subset=["Actual"])` with no `.tail()`; the old `HIST_WEEKS` constant was removed (2026-07-03)
 - Data parsing → `data_loader.py`
@@ -125,7 +125,7 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 > dashboard on a single deployment: each role gets its own branding (dev-configured, static), and the
 > Admin controls which commodities + which analyst calls each role sees (runtime). Landing task-by-task.
 - **adani_dev — grouped layout refinements: dropdown → RIGHT, week/zoom buttons → just ABOVE the
-  plot, Graphical/Tabular → iOS-style toggle switch** — three tweaks to the grouped forecasting page
+  plot, Graphical/Tabular → sliding pill switch** — three tweaks to the grouped forecasting page
   (updates the entry below): **(1)** the location dropdown moved from left-above-the-tabs to the
   **right side of the view-switch row** — `.st-key-fc_loc_box` gains `margin-left:auto` +
   `margin-bottom:-58px` + `position:relative;z-index:5`, pulling it down beside the tabs block that
@@ -134,25 +134,27 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   `forecast_chart(compact=True)` the rangeselector is now `y=1.01, yanchor="bottom"` with
   `top_margin=46` (was y=0.98 "top" inside + margin 18); the in-plot legend rises back to `y=0.99`
   (it no longer needs to duck under the buttons). **(3)** the Graphical/Tabular switch (grouped
-  branch only) is an **iOS-style toggle** (per owner reference image, in brand colours): a fixed
-  **270×42px capsule track** (primary-blue gradient, `min/max-width` pinned — it's a shrinking flex
-  item otherwise), both labels in white on the track, and a **round 34px white knob** that **glides
-  to the end of the active side** (4px left / 232px right = 270−34−4). It is built on
-  **`st.segmented_control` (key `fc_view`), NOT `st.tabs`** — a first cut styled the tabs via
-  `data-baseweb="tab-*"` selectors and verified locally, but the **deployed app renders tabs without
-  those attributes** (see the new tabs gotcha), so it silently fell back to underline tabs there. The
-  toggle instead keys on Streamlit-owned markup (`div[role="radiogroup"]`,
-  `stBaseButton-segmented_control*` testids) that already styles reliably in this app. The knob is a
-  `::before` pseudo-element; a `:has(button:last-of-type[…Active])` rule flips its `translateX`, the
-  transform transition makes it glide (no-`:has()` fallback: knob stays left; active label still
-  white/bold). End-paddings (34px) keep labels clear of the knob's parking spots — if track/knob
-  sizes change, recompute the 232px and paddings together. In `page_forecasting()` the two view
+  branch only) is a **sliding segmented pill switch**: a fixed **270×42px grey capsule track**
+  (`min/max-width` pinned — it's a shrinking flex item otherwise) and a **label-width white pill
+  (131×34px) that glides behind the active option**, active label orange/700, inactive grey (the
+  classic tab-pill look). It is built on **`st.segmented_control` (key `fc_view`), NOT `st.tabs`** —
+  a first cut styled the tabs via `data-baseweb="tab-*"` selectors and verified locally, but the
+  **deployed app renders tabs without those attributes** (see the new tabs gotcha), so it silently
+  fell back to underline tabs there. The switch instead keys on Streamlit-owned markup
+  (`div[role="radiogroup"]`, `stBaseButton-segmented_control*` testids) that already styles reliably
+  in this app. The pill is a `::before` pseudo-element; a `:has(button:last-of-type[…Active])` rule
+  flips its `translateX` between the two halves (x=4 / x=135 = 4+(270−8)/2; pill w=131=(270−8)/2 —
+  recompute both if the track width changes), the transform transition makes it glide (no-`:has()`
+  fallback: pill stays left; active label still orange/bold). (An interim iOS-knob variant — blue
+  gradient + round white knob — was built and verified the same day, then restyled to this pill per
+  owner preference; geometry notes for it are in git history.) In `page_forecasting()` the two view
   bodies were refactored into nested `render_graph_view()` / `render_table_view()`; grouped renders
-  them behind the toggle (`view or "Graphical view"` — deselecting the active option falls back to
+  them behind the switch (`view or "Graphical view"` — deselecting the active option falls back to
   the graph), non-grouped keeps the plain `st.tabs`. **Verified live in a sandbox probe** (Streamlit
-  1.58): 270×42 track, knob parks 4↔232 with a smooth glide, active label white/700, and the plain
-  product/group segmented control keeps its default orange styling. → `app.py` (`page_forecasting`,
-  `forecast_chart`), `theme.py` (`.st-key-fc_loc_box`, new `.st-key-fc_view_box` block).
+  1.58): 270×42 grey track, white 131×34 pill parks 4↔135 with a smooth glide, active label
+  orange/700, inactive grey, and the plain product/group segmented control keeps its default
+  styling. → `app.py` (`page_forecasting`, `forecast_chart`), `theme.py` (`.st-key-fc_loc_box`,
+  new `.st-key-fc_view_box` block).
 - **adani_dev — grouped forecasting layout (group tabs → graph on top → price cards; styled location
   dropdown; in-chart legend; year labels)** — the `adani_dev` role sees a restructured **Price
   forecasting** page. Layout order: a top **commodity-group** segmented control (**HRC / HR Plate /

@@ -396,47 +396,46 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-a
 }}
 .st-key-fc_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
 
-/* grouped-forecasting Graphical/Tabular switch (adani_dev) -> iOS-style toggle in brand colours:
-   a gradient capsule track (primary blue) with a round WHITE KNOB that glides to the end of the
-   active side. Built on st.segmented_control (NOT st.tabs): its stButtonGroup / stBaseButton
-   testids are Streamlit's own and stable across versions, unlike the baseweb `data-baseweb="tab-*"`
-   attributes that newer builds dropped. The track is the button-group; the knob is a ::before
-   pseudo-element whose translateX flips via :has() on which option is Active; the transform
-   transition makes it glide. End-paddings keep the labels clear of the knob's parking spots.
-   Fallback: without :has() the knob stays parked left (active label still white/bold). */
+/* grouped-forecasting Graphical/Tabular switch (adani_dev) -> sliding segmented PILL switch:
+   grey capsule track, a label-width WHITE PILL that glides behind the active option, orange
+   active text (same look as the classic tab pill). Built on st.segmented_control (NOT st.tabs):
+   its stButtonGroup / stBaseButton testids are Streamlit's own and stable across versions, unlike
+   the baseweb `data-baseweb="tab-*"` attributes that the deployed build dropped. The track is the
+   button-group; the pill is a ::before pseudo-element whose translateX flips via :has() on which
+   option is Active; the transform transition makes it glide. Geometry: track 270px, 4px inset,
+   two equal halves -> pill w=131 (=(270-8)/2), parks at x=4 / x=135 — recompute both if the track
+   width changes. Fallback: without :has() the pill stays left (active label still orange/bold). */
 .st-key-fc_view_box div[role="radiogroup"] {{
     position:relative !important; display:flex !important; width:270px !important;
     min-width:270px !important; max-width:270px !important;
     height:42px !important; padding:0 !important; gap:0 !important; border-radius:999px !important;
-    background:linear-gradient(110deg, var(--bm-primary) 0%, var(--bm-primary-dark) 100%) !important;
-    box-shadow:inset 0 1px 3px rgba(2,20,50,.35), 0 1px 4px rgba(2,76,161,.20) !important;
+    background:#e9edf4 !important;
+    box-shadow:inset 0 1px 2px rgba(16,24,40,.08) !important;
 }}
 .st-key-fc_view_box div[role="radiogroup"]::before {{
-    content:""; position:absolute; top:4px; left:0; width:34px; height:34px;
-    border-radius:50%; background:#fff; box-shadow:0 2px 6px rgba(2,20,50,.35);
+    content:""; position:absolute; top:4px; left:0; width:131px; height:34px;
+    border-radius:999px; background:#fff; box-shadow:0 1px 4px rgba(16,24,40,.16);
     transform:translateX(4px); transition:transform .28s cubic-bezier(.4,0,.2,1);
     pointer-events:none; z-index:0;
 }}
 .st-key-fc_view_box div[role="radiogroup"]:has(button:last-of-type[data-testid="stBaseButton-segmented_controlActive"])::before {{
-    transform:translateX(232px);                 /* track 270 - knob 34 - inset 4 */
+    transform:translateX(135px);                 /* right half: 4 + (270-8)/2 */
 }}
 .st-key-fc_view_box div[role="radiogroup"] button {{
-    flex:1 1 0 !important; height:100% !important; margin:0 !important;
+    flex:1 1 0 !important; height:100% !important; margin:0 !important; padding:0 !important;
     border:none !important; border-radius:999px !important; background:transparent !important;
     box-shadow:none !important; position:relative; z-index:1;
-    color:rgba(255,255,255,.72) !important; justify-content:center !important;
+    color:{NEUTRAL} !important; justify-content:center !important;
 }}
-.st-key-fc_view_box div[role="radiogroup"] button:first-of-type {{ padding-left:34px !important; }}
-.st-key-fc_view_box div[role="radiogroup"] button:last-of-type {{ padding-right:34px !important; }}
 .st-key-fc_view_box div[role="radiogroup"] button p {{
     color:inherit !important; font-size:13px !important; font-weight:600 !important;
 }}
-.st-key-fc_view_box div[role="radiogroup"] button:hover {{ color:#fff !important; }}
+.st-key-fc_view_box div[role="radiogroup"] button:hover {{ color:var(--bm-primary-dark) !important; }}
 .st-key-fc_view_box div[role="radiogroup"] button[data-testid="stBaseButton-segmented_controlActive"] {{
-    color:#fff !important; background:transparent !important; border:none !important;
+    color:var(--bm-accent) !important; background:transparent !important; border:none !important;
 }}
 .st-key-fc_view_box div[role="radiogroup"] button[data-testid="stBaseButton-segmented_controlActive"] p {{
-    color:#fff !important; font-weight:700 !important;
+    color:var(--bm-accent) !important; font-weight:700 !important;
 }}
 
 /* ---------- methodology infographics ---------- */
