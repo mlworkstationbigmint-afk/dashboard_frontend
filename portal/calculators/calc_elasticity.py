@@ -145,7 +145,7 @@ def render():
         "Factor": [c.split("_lag")[0] for c in columns],
         "Contribution (%)": contributions * 100,
     }).sort_values(by="Contribution (%)", ascending=False)
-    st.dataframe(contrib_df, use_container_width=True)
+    st.dataframe(contrib_df, width="stretch")
 
     st.divider()
     if st.button("Generate PDF Report", key="elas_pdf"):

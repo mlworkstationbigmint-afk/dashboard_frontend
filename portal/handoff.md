@@ -145,9 +145,14 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   (same-origin, JS verified to execute on both versions), so the doc is written to a per-session
   temp file (`%TEMP%/bm_charts/<session-token>_<dom_id>.html`; the `uuid` session token in
   `st.session_state` stops concurrent viewers clobbering each other). `streamlit.components.v1`
-  import removed from `app.py`. **NB:** plain `st.tabs` (calculators + non-grouped forecasting) are
-  still underline-styled on 1.59 — separate follow-up; 1.59 tab markup is captured in that task +
-  the tabs gotcha. → `app.py`, `theme.py`.
+  import removed from `app.py`. **(d)** all 20 `use_container_width=True` kwargs (buttons /
+  plotly_chart / dataframe / form_submit_button across `app.py`, `calc_elasticity.py`,
+  `calc_import_price.py`) replaced with **`width="stretch"`** — 1.59 deprecation-warns on every
+  call (removal announced end-2025); the `width` kwarg verified present on all four widgets in
+  local 1.58, so both versions are happy. **NB:** plain `st.tabs` (calculators + non-grouped
+  forecasting) are still underline-styled on 1.59 — separate follow-up; 1.59 tab markup is captured
+  in that task + the tabs gotcha. → `app.py`, `theme.py`, `calculators/calc_elasticity.py`,
+  `calculators/calc_import_price.py`.
 - **adani_dev — grouped layout refinements: dropdown → RIGHT, week/zoom buttons → just ABOVE the
   plot, Graphical/Tabular → sliding pill switch** — three tweaks to the grouped forecasting page
   (updates the entry below): **(1)** the location dropdown moved from left-above-the-tabs to the

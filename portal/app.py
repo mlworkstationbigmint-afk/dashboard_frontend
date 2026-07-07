@@ -172,7 +172,7 @@ def login_screen():
             st.caption("Price Forecasting: Steel")
             username = st.text_input("Username")
             password = st.text_input("Password", type="password")
-            if st.button("Sign in", use_container_width=True, type="primary"):
+            if st.button("Sign in", width="stretch", type="primary"):
                 profile, status = auth.authenticate(username, password)
                 if status == "ok":
                     _start_session(profile)
@@ -197,7 +197,7 @@ def force_password_change():
             st.caption("Your account requires a new password before you continue.")
             p1 = st.text_input("New password", type="password", key="reset_p1")
             p2 = st.text_input("Confirm new password", type="password", key="reset_p2")
-            if st.button("Set password", use_container_width=True, type="primary"):
+            if st.button("Set password", width="stretch", type="primary"):
                 problem = _password_problem(p1, p2)
                 if problem:
                     st.error(problem)
@@ -247,7 +247,7 @@ hcol1, hcol2 = st.columns([6, 1], vertical_alignment="center")
 with hcol1:
     theme.render_topbar(user)
 with hcol2:
-    if st.button("Log out", key="logout_top", type="primary", use_container_width=True, icon=":material/logout:"):
+    if st.button("Log out", key="logout_top", type="primary", width="stretch", icon=":material/logout:"):
         auth.logout(st.session_state.get("_auth_token"))
         for k in ("user", "_auth_token", "nav", "calc", "page"):
             st.session_state.pop(k, None)
@@ -265,7 +265,7 @@ with st.sidebar:
     _asof = dl.last_actual_date()
     st.caption(f"Data as of **{_asof:%d %b %Y}**" if _asof is not None else "Data as of —")
     st.caption("Auto-refreshes when files change.")
-    if st.button("Refresh data", use_container_width=True, icon=":material/refresh:",
+    if st.button("Refresh data", width="stretch", icon=":material/refresh:",
                  help="Re-read the data files from disk right now."):
         st.cache_data.clear()
         st.rerun()
@@ -312,7 +312,7 @@ def top_nav():
     for i, (name, label, mi) in enumerate(items):
         active = st.session_state.page == name
         if cols[i].button(f":material/{mi}: {label}", key=f"nav_{name}",
-                          type="primary" if active else "secondary", use_container_width=True):
+                          type="primary" if active else "secondary", width="stretch"):
             st.session_state.page = name
             st.rerun()
 
@@ -545,7 +545,7 @@ def delta_bar(view):
                           font=dict(size=11, color="#334155"))
         fig.update_yaxes(tickprefix="Rs.", tickformat=",.0f", gridcolor="#eef2f7", zeroline=True, zerolinecolor="#cbd5e1")
         fig.update_xaxes(gridcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     except Exception:
         st.bar_chart(view.set_index("Date")[["Delta"]])
 
@@ -593,7 +593,7 @@ def directional_accuracy_bar(view):
         fig.update_yaxes(tickvals=[-1, 1], ticktext=["Wrong", "Correct"], range=[-1.4, 1.4],
                          gridcolor="#eef2f7", zeroline=True, zerolinecolor="#cbd5e1")
         fig.update_xaxes(gridcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     except Exception:
         st.bar_chart(view.assign(Correct=view["Hit"].astype(int)).set_index("Date")[["Correct"]])
 
@@ -645,14 +645,14 @@ def page_home():
                 # whole card is one clickable button (styled via .st-key-homemod_* in theme.py)
                 # label = **title** (strong/block) + brief (p text) + *Open ->* (em/block CTA)
                 if st.button(f"**{title}** {desc} *Open →*", key=f"homemod_{target.replace(' ', '_')}",
-                             icon=f":material/{mi}:", use_container_width=True):
+                             icon=f":material/{mi}:", width="stretch"):
                     st.session_state.page = target
                     st.rerun()
 
     # full-width banner button spanning the module cards -> Methodology (if visible to this role)
     if "Methodology" in allowed_pages:
         if st.button("**Methodology** — how the forecasts are built: data, models, ensemble & accuracy. *View →*",
-                     key="home_methodology", icon=":material/schema:", use_container_width=True):
+                     key="home_methodology", icon=":material/schema:", width="stretch"):
             st.session_state.page = "Methodology"
             st.rerun()
     theme.footer()
@@ -954,7 +954,7 @@ def _admin_users_panel():
             [{"username": u["username"], "name": u["name"], "role": u["role"],
               "active": bool(u["is_active"]),
               "locked": u["locked_until"] is not None} for u in users],
-            hide_index=True, use_container_width=True,
+            hide_index=True, width="stretch",
         )
 
         st.markdown("**Add a user**")
@@ -1001,7 +1001,7 @@ def _admin_users_panel():
             _roles = known_roles()
             role_idx = _roles.index(selrow["role"]) if selrow["role"] in _roles else 0
             new_r = st.selectbox("Role", _roles, index=role_idx, key=f"role_{sel}")
-            if st.button("Apply role", key=f"applyrole_{sel}", use_container_width=True):
+            if st.button("Apply role", key=f"applyrole_{sel}", width="stretch"):
                 if last_admin and new_r != "Admin":
                     st.error("Can't demote the last active admin.")
                 else:
@@ -1009,23 +1009,23 @@ def _admin_users_panel():
                     st.rerun()
         with m2:
             if selrow["is_active"]:
-                if st.button("Disable", key=f"dis_{sel}", use_container_width=True,
+                if st.button("Disable", key=f"dis_{sel}", width="stretch",
                              disabled=is_self or last_admin,
                              help="You can't disable yourself or the last admin."):
                     auth.set_active(sel, False)
                     st.rerun()
             else:
-                if st.button("Enable", key=f"en_{sel}", use_container_width=True):
+                if st.button("Enable", key=f"en_{sel}", width="stretch"):
                     auth.set_active(sel, True)
                     st.rerun()
         with m3:
-            if st.button("Reset password", key=f"rst_{sel}", use_container_width=True):
+            if st.button("Reset password", key=f"rst_{sel}", width="stretch"):
                 temp = auth.generate_temp_password()
                 auth.set_password(sel, temp, must_reset=True)
                 st.session_state["_admin_last_temp"] = (sel, temp)
                 st.rerun()
         with m4:
-            if st.button("Delete", key=f"del_{sel}", use_container_width=True,
+            if st.button("Delete", key=f"del_{sel}", width="stretch",
                          disabled=is_self or last_admin,
                          help="You can't delete yourself or the last admin."):
                 auth.delete_user(sel)
@@ -1113,7 +1113,7 @@ def page_admin():
             for kind, p in (("PDF", editing.get("pdf")), ("PPT", editing.get("ppt"))):
                 if p:
                     st.caption(f"Current {kind}: `{os.path.basename(p)}` (upload a new file to replace it)")
-        saved = st.form_submit_button("Save call", type="primary", use_container_width=True,
+        saved = st.form_submit_button("Save call", type="primary", width="stretch",
                                       disabled=not dl.can_admin_write())
 
     if saved:

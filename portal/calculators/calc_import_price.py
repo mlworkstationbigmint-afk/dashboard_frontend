@@ -358,7 +358,7 @@ def render():
                          gridcolor="#f1f5f9", zeroline=False,
                          range=[0, max(max(landed_vals), domestic) * 1.13])
         fig.update_xaxes(title_text="", tickfont=dict(size=12.5, color="#0f172a"))
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     except Exception:
         st.bar_chart(pd.DataFrame({"Landed Rs./t": {r: results[r]["landed"] for r in regions}}))
     st.caption("Sorted cheapest → priciest. Colour shows distance from domestic parity "
@@ -373,7 +373,7 @@ def render():
                                     st.session_state[f"fta_{r}"], {**g, "fx": fxs})
             row[f"FX {fxs:.0f}"] = f"Rs.{int(res_fx['landed']):,}"
         fx_rows.append(row)
-    st.dataframe(pd.DataFrame(fx_rows).set_index("Region"), use_container_width=True)
+    st.dataframe(pd.DataFrame(fx_rows).set_index("Region"), width="stretch")
     st.caption(f"Domestic benchmark for reference: Rs.{int(domestic):,}/t.")
 
     with st.expander("FOB price sources & disclosure"):
@@ -386,7 +386,7 @@ def render():
              "Source": fob_data[r]["source"], "As of": fob_data[r]["source_date"]}
             for r in regions
         ]).set_index("Region")
-        st.dataframe(src_df, use_container_width=True)
+        st.dataframe(src_df, width="stretch")
 
     st.divider()
 
