@@ -378,9 +378,11 @@ button[data-testid="stBaseButton-segmented_controlActive"] {{
 }}
 button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-accent) !important; }}
 /* grouped-forecasting location dropdown (adani_dev) -> make it stand out: coloured border + tint */
-/* left-aligned, sits above the Graphical/Tabular tabs (shared across both views) */
+/* RIGHT-aligned and pulled down onto the Graphical/Tabular slider row (negative margin eats
+   the block gap + its own height) so switch (left) + dropdown (right) share one line; it stays
+   usable in both views. z-index keeps it clickable above the tabs block that renders after it. */
 .st-key-fc_loc_box {{
-    width:250px; margin-bottom:4px;
+    width:250px; margin-left:auto; margin-bottom:-58px; position:relative; z-index:5;
 }}
 .st-key-fc_loc_box div[data-baseweb="select"] > div {{
     border:1.6px solid var(--bm-primary) !important; background:var(--bm-primary-soft) !important;
@@ -393,6 +395,22 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-a
     color:var(--bm-primary-dark) !important; font-weight:700 !important;
 }}
 .st-key-fc_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
+
+/* grouped-forecasting Graphical/Tabular switch (adani_dev) -> modern slider: capsule track,
+   accent thumb that glides (rides the same baseweb tab-highlight transform as the global pill),
+   white active label. Scoped by the fc_view_box container so other tabs keep the default look. */
+.st-key-fc_view_box [data-baseweb="tab-list"] {{
+    background:#e2e8f0 !important; border-radius:999px !important; padding:4px !important;
+    gap:4px !important; box-shadow:inset 0 1px 3px rgba(16,24,40,.10) !important;
+}}
+.st-key-fc_view_box [data-baseweb="tab-highlight"] {{
+    top:4px !important; bottom:4px !important; border-radius:999px !important;
+    background:var(--bm-accent) !important; box-shadow:0 2px 8px rgba(238,78,36,.35) !important;
+}}
+.st-key-fc_view_box [data-baseweb="tab"] {{
+    border-radius:999px !important; padding:8px 24px !important; font-size:13.5px !important;
+}}
+.st-key-fc_view_box [data-baseweb="tab"][aria-selected="true"] {{ color:#fff !important; }}
 
 /* ---------- methodology infographics ---------- */
 .bm-meth-hero {{ background:linear-gradient(120deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%); color:#fff;

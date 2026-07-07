@@ -402,8 +402,8 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
     """Light-blue actual spot (soft area fill) + bold red dashed forecast, with a dotted
     divider and a faint shaded band marking the 12-week-ahead region.
     legend_inside places the legend inside the plot (white region); year_labels adds the
-    short year to the x-axis date ticks; compact shrinks the height + top margin and pulls
-    the zoom buttons up (all used by the grouped adani_dev layout, no scroll needed)."""
+    short year to the x-axis date ticks; compact grows the plot + slims the top margin so the
+    zoom buttons sit just above the graph (all used by the grouped adani_dev layout)."""
     hist = acc.dropna(subset=["Actual"]).copy()
     if hist.empty:
         st.info("No historical spot series available for this product.")
@@ -459,9 +459,9 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
                         stepmode="backward", label=label)
 
         h = 620 if compact else 560
-        top_m = 18 if compact else 82            # compact: buttons sit INSIDE the plot, tiny margin
-        rs_y = 0.98 if compact else 1.18         # inside the plot (top) when compact, else above it
-        rs_ya = "top" if compact else "bottom"
+        top_m = 46 if compact else 82            # compact: slim margin, buttons JUST above the plot
+        rs_y = 1.01 if compact else 1.18         # just above the plot when compact, higher otherwise
+        rs_ya = "bottom"
         rs_x = 0.01 if compact else 0
         fig = _style_fig(fig, height=h)
         fig.update_xaxes(
@@ -490,7 +490,7 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
         # the plot's white region (the top-right slot is taken by the location dropdown in the
         # grouped layout); otherwise keep it at the top-right above the chart.
         if legend_inside:
-            ly = 0.86 if compact else 0.99       # compact: sit below the inside zoom buttons
+            ly = 0.99                            # top-left inside the plot (buttons sit above it)
             legend = dict(orientation="h", x=0.012, xanchor="left", y=ly, yanchor="top",
                           bgcolor="rgba(255,255,255,0.74)", bordercolor="#e2e8f0", borderwidth=1,
                           font=dict(size=11.5))
@@ -769,16 +769,22 @@ def page_forecasting():
         price_cards()
         st.write("")
     else:
-        # Shared location dropdown ABOVE the view tabs (left-aligned) so it can be changed in
-        # both the Graphical and Tabular views without switching back to the graph.
+        # Shared location dropdown on the RIGHT of the view-switch row (CSS pulls it down
+        # beside the Graphical/Tabular slider — theme.py .st-key-fc_loc_box) so it can be
+        # changed in both the Graphical and Tabular views without switching back to the graph.
         with st.container(key="fc_loc_box"):
             st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
 
-    tab_graph, tab_table = st.tabs(["Graphical view", "Tabular view"])
+    if grouped:
+        # Modern slider-switch look for the view toggle (theme.py .st-key-fc_view_box).
+        with st.container(key="fc_view_box"):
+            tab_graph, tab_table = st.tabs(["Graphical view", "Tabular view"])
+    else:
+        tab_graph, tab_table = st.tabs(["Graphical view", "Tabular view"])
 
     with tab_graph:
         if grouped:
-            # No section title; the zoom (week) buttons live INSIDE the plot now (compact mode).
+            # No section title; the zoom (week) buttons sit just ABOVE the plot (compact mode).
             forecast_chart(acc_hist, fwd, legend_inside=True, year_labels=True, compact=True)
         else:
             theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
