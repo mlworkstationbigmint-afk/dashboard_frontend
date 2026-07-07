@@ -218,11 +218,17 @@ if "user" not in st.session_state:
     elif not st.session_state.get("_cookie_probed"):
         # First render after a refresh: the cookie component hasn't reported its
         # value yet, so we can't tell "logged out" from "cookie not delivered
-        # yet". Show a full-screen loading animation (NOT the login form) and let
-        # the component's automatic rerun deliver the cookie on the next run.
-        # This removes the flash of the login screen before auto-login.
+        # yet". Show a brief loading state (NOT the login form) and let the
+        # component's automatic rerun deliver the cookie on the next run. This
+        # removes the flash of the login screen before auto-login.
         st.session_state["_cookie_probed"] = True
-        theme.loading_screen()
+        theme.render_topbar(None)
+        _pcols = st.columns([1, 1.5, 1])
+        with _pcols[1]:
+            with st.container(border=True):
+                st.markdown("### Loading…")
+                st.caption("Restoring your session.")
+        theme.footer()
         st.stop()
 
 if "user" not in st.session_state:

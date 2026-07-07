@@ -599,6 +599,7 @@ def footer():
         "</div>",
         unsafe_allow_html=True,
     )
+<<<<<<< HEAD
 
 
 def loading_screen():
@@ -638,3 +639,5 @@ def loading_screen():
         """,
         unsafe_allow_html=True,
     )
+=======
+>>>>>>> parent of c7733b9 (New Dashboard Frontend)
