@@ -396,21 +396,39 @@ button[data-testid="stBaseButton-segmented_controlActive"] p {{ color:var(--bm-a
 }}
 .st-key-fc_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
 
-/* grouped-forecasting Graphical/Tabular switch (adani_dev) -> modern slider: capsule track,
-   accent thumb that glides (rides the same baseweb tab-highlight transform as the global pill),
-   white active label. Scoped by the fc_view_box container so other tabs keep the default look. */
+/* grouped-forecasting Graphical/Tabular switch (adani_dev) -> iOS-style toggle in brand colours:
+   a gradient capsule track (primary blue) with a round WHITE KNOB that glides to the end of the
+   active side. The knob is baseweb's tab-highlight forced to a fixed 34px circle; two :has() rules
+   override baseweb's inline translateX so the knob parks flush left/right (it still rides the
+   global transform transition, so it glides). Both labels stay visible in white on the track; the
+   end-paddings on the first/last tab keep the text clear of the knob's parking spots. Scoped by
+   the fc_view_box container so every other st.tabs keeps the default white-pill look.
+   Fallback: without :has() the knob follows baseweb's own transform (active tab's left edge). */
 .st-key-fc_view_box [data-baseweb="tab-list"] {{
-    background:#e2e8f0 !important; border-radius:999px !important; padding:4px !important;
-    gap:4px !important; box-shadow:inset 0 1px 3px rgba(16,24,40,.10) !important;
+    width:270px !important; height:42px !important; padding:0 !important; gap:0 !important;
+    border-radius:999px !important; display:inline-flex !important; align-items:center !important;
+    background:linear-gradient(110deg, var(--bm-primary) 0%, var(--bm-primary-dark) 100%) !important;
+    box-shadow:inset 0 1px 3px rgba(2,20,50,.35), 0 1px 4px rgba(2,76,161,.20) !important;
 }}
 .st-key-fc_view_box [data-baseweb="tab-highlight"] {{
-    top:4px !important; bottom:4px !important; border-radius:999px !important;
-    background:var(--bm-accent) !important; box-shadow:0 2px 8px rgba(238,78,36,.35) !important;
+    top:4px !important; bottom:4px !important; width:34px !important; border-radius:50% !important;
+    background:#fff !important; box-shadow:0 2px 6px rgba(2,20,50,.35) !important;
+}}
+.st-key-fc_view_box [data-baseweb="tab-list"]:has(button[data-baseweb="tab"]:first-of-type[aria-selected="true"]) [data-baseweb="tab-highlight"] {{
+    transform:translateX(4px) !important;
+}}
+.st-key-fc_view_box [data-baseweb="tab-list"]:has(button[data-baseweb="tab"]:last-of-type[aria-selected="true"]) [data-baseweb="tab-highlight"] {{
+    transform:translateX(232px) !important;      /* track 270 - knob 34 - inset 4 */
 }}
 .st-key-fc_view_box [data-baseweb="tab"] {{
-    border-radius:999px !important; padding:8px 24px !important; font-size:13.5px !important;
+    flex:1 1 0 !important; justify-content:center !important; text-align:center !important;
+    padding:10px 0 !important; font-size:13px !important; border-radius:999px !important;
+    color:rgba(255,255,255,.72) !important;
 }}
-.st-key-fc_view_box [data-baseweb="tab"][aria-selected="true"] {{ color:#fff !important; }}
+.st-key-fc_view_box button[data-baseweb="tab"]:first-of-type {{ padding-left:34px !important; }}
+.st-key-fc_view_box button[data-baseweb="tab"]:last-of-type {{ padding-right:34px !important; }}
+.st-key-fc_view_box [data-baseweb="tab"]:not([aria-selected="true"]):hover {{ color:#fff !important; }}
+.st-key-fc_view_box [data-baseweb="tab"][aria-selected="true"] {{ color:#fff !important; font-weight:700 !important; }}
 
 /* ---------- methodology infographics ---------- */
 .bm-meth-hero {{ background:linear-gradient(120deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%); color:#fff;

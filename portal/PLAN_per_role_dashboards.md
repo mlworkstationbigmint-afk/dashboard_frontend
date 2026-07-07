@@ -55,8 +55,8 @@ Single deployment; the logged-in user's `role` selects everything at render time
   `theme.ROLE_PROFILES` entry; until then the new role uses `DEFAULT_PROFILE`.
 - **Per-role forecasting layout (adani_dev, 2026-07-07):** beyond branding/access, a role can get a
   different **Price-forecasting UI**. `adani_dev` uses a **grouped** layout — a top HRC/HR Plate/Rebar/
-  Structure group tab-strip, then one row with a **modern slider switch** for Graphical/Tabular on the
-  left (capsule track + gliding accent thumb, `.st-key-fc_view_box`) and a **right-aligned
+  Structure group tab-strip, then one row with an **iOS-style toggle switch** for Graphical/Tabular on
+  the left (blue-gradient capsule track + gliding round white knob, `.st-key-fc_view_box`) and a **right-aligned
   location/full-name dropdown** (styled border + tint, **shared across Graphical+Tabular** so it works
   in the table view too, sorted alphabetically, defaulting to the first), then the **graph on top**
   (no section title), then the **3 price cards below the tab block**, an in-chart legend, and
