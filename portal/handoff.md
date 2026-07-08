@@ -143,6 +143,21 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - `app.py` `page_forecasting()` comment refreshed (the pill *switch* stays on `st.segmented_control`;
   tabs CSS covering 1.59 doesn't change that choice). Both files `py_compile` clean.
   → `requirements.txt`, `portal/requirements.txt`, `portal/theme.py`, `portal/app.py`, gotchas above.
+- **Tab track no longer spans the full screen + app made more compact** (owner screenshot: the
+  calculators' grey tab track stretched edge-to-edge on 1.59, plus dead space at the top). Fixes in
+  `theme.py` `inject_css()`: **(a)** the tab-list track gained `width:fit-content` +
+  `max-width:100%` + `align-self:flex-start` (all `!important`) — on 1.59 the tablist is a
+  *stretched flex item*, so the old `display:inline-flex; width:auto` shrink-to-fit never applied.
+  **(b)** top space: `.block-container` rule (now also matched via the `stMainBlockContainer` testid
+  twin in case a newer build drops the emotion class) `padding-top 1rem → 0.4rem`, bottom
+  `2rem → 1.2rem`; the header-collapse rule hardened (`height/min-height:0 !important; padding:0`,
+  + `stAppHeader` testid twin). **(c)** compaction: global `stVerticalBlock` gap `1rem → 0.65rem`;
+  markdown `h1–h3` padding trimmed to `.35rem` top/bottom via a **direct-child** selector
+  (`[data-testid="stMarkdownContainer"] > h1…` — headings inside custom HTML cards like
+  `.bm-meth-hero` are untouched); topbar bottom margin `14px → 10px`. **Dependent retune:** the
+  `.st-key-fc_loc_box` pull-up margin `−58px → −52px` (it eats the block gap + its own height; the
+  gap shrank ~6px — see the updated grouped-layout entry). `py_compile` clean; **not verified live**
+  (edited blind per workflow). → `portal/theme.py`.
 ### 2026-07-07 — Per-role white-label dashboards + admin-managed access (in progress)
 - **App now fills the whole screen width (full-bleed at any resolution)** — the custom
   `.block-container` cap `max-width:1180px` in `theme.py` `inject_css()` became `max-width:100%`
@@ -190,8 +205,9 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   plot, Graphical/Tabular → sliding pill switch** — three tweaks to the grouped forecasting page
   (updates the entry below): **(1)** the location dropdown moved from left-above-the-tabs to the
   **right side of the view-switch row** — `.st-key-fc_loc_box` gains `margin-left:auto` +
-  `margin-bottom:-58px` + `position:relative;z-index:5`, pulling it down beside the tabs block that
-  renders after it (tune the −58px if the vertical alignment drifts; z-index keeps it clickable).
+  a negative `margin-bottom` + `position:relative;z-index:5`, pulling it down beside the tabs block
+  that renders after it (was −58px; retuned to **−52px** on 2026-07-08 when the global block gap went
+  compact — tune it if the vertical alignment drifts; z-index keeps it clickable).
   **(2)** the week/zoom buttons (1W…ALL) moved from inside the plot to **just above it**: in
   `forecast_chart(compact=True)` the rangeselector is now `y=1.01, yanchor="bottom"` with
   `top_margin=46` (was y=0.98 "top" inside + margin 18); the in-plot legend rises back to `y=0.99`

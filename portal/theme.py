@@ -163,12 +163,27 @@ def inject_css():
 }}
 .stApp {{ background-color: {BG_SOFT}; }}
 /* full-bleed: fill the whole viewport width at any resolution (was capped at 1180px);
-   side padding keeps content off the screen edges. layout="wide" is set in app.py. */
-.block-container {{ padding-top: 1rem !important; padding-bottom: 2rem; max-width: 100%;
+   side padding keeps content off the screen edges. layout="wide" is set in app.py.
+   `.block-container` is the 1.58 emotion class; the stMainBlockContainer testid twin
+   keeps this working if a newer build drops that class. */
+.block-container, [data-testid="stMainBlockContainer"] {{
+    padding-top: 0.4rem !important; padding-bottom: 1.2rem; max-width: 100%;
     padding-left: 2.2rem; padding-right: 2.2rem; }}
+/* compact vertical rhythm: streamlit's default 1rem gap between blocks -> 0.65rem.
+   NB: the .st-key-fc_loc_box negative pull-up margin below is tuned to THIS gap —
+   retune it if this changes. */
+[data-testid="stVerticalBlock"] {{ gap: 0.65rem !important; }}
+/* compact headings: streamlit gives markdown h1-h3 tall default padding. Direct-child
+   selector so headings inside custom HTML cards (.bm-meth-hero etc.) are untouched. */
+[data-testid="stMarkdownContainer"] > h1,
+[data-testid="stMarkdownContainer"] > h2,
+[data-testid="stMarkdownContainer"] > h3 {{
+    padding-top: 0.35rem !important; padding-bottom: 0.35rem !important;
+}}
 /* login / password-reset cards: keep a readable fixed width now the page is full-bleed */
 .st-key-login_card, .st-key-reset_card {{ max-width: 460px; margin: 0 auto; }}
-header[data-testid="stHeader"] {{ background: transparent; height: 0; }}
+header[data-testid="stHeader"], header[data-testid="stAppHeader"] {{
+    background: transparent; height: 0 !important; min-height: 0 !important; padding: 0 !important; }}
 #MainMenu, footer {{ visibility: hidden; }}
 section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display: none !important; }}
 
@@ -211,7 +226,7 @@ section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display
 .bm-topbar {{
     background: var(--bm-primary); border-radius: 12px; padding: 13px 22px;
     display: flex; align-items: center; justify-content: space-between;
-    margin: 0 0 14px 0; box-shadow: 0 2px 10px rgba(2,76,161,.18);
+    margin: 0 0 10px 0; box-shadow: 0 2px 10px rgba(2,76,161,.18);
 }}
 .bm-topbar-l {{ display:flex; align-items:center; gap:13px; }}
 .bm-cobrand-x {{ color:#cfe0f5; font-size:17px; font-weight:600; }}
@@ -362,7 +377,10 @@ div[class*="st-key-home_methodology"] button:hover em {{ filter:brightness(.97);
 [data-testid="stTabs"] div[role="tablist"] {{
     position:relative !important; gap:6px !important; background:#e9edf4 !important;
     padding:5px !important; border-radius:13px !important; margin-bottom:6px !important;
-    border-bottom:none !important; display:inline-flex !important; width:auto !important;
+    border-bottom:none !important; display:inline-flex !important;
+    /* shrink-to-fit: on 1.59 the tablist is a stretched flex item, so inline-flex/width:auto
+       alone leaves the grey track spanning the full screen — pin it to its content. */
+    width:fit-content !important; max-width:100% !important; align-self:flex-start !important;
     box-shadow:inset 0 1px 2px rgba(16,24,40,.06) !important;
 }}
 /* the white pill, 1.58 generation: baseweb's tab-highlight, repurposed from a bottom underline
@@ -412,7 +430,9 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
    the block gap + its own height) so switch (left) + dropdown (right) share one line; it stays
    usable in both views. z-index keeps it clickable above the tabs block that renders after it. */
 .st-key-fc_loc_box {{
-    width:250px; margin-left:auto; margin-bottom:-58px; position:relative; z-index:5;
+    /* -52px = 0.65rem compact block gap (~10px, set on stVerticalBlock above) + own ~42px
+       height (was -58px under the default 1rem gap) — retune if either changes. */
+    width:250px; margin-left:auto; margin-bottom:-52px; position:relative; z-index:5;
 }}
 .st-key-fc_loc_box div[data-baseweb="select"] > div {{
     border:1.6px solid var(--bm-primary) !important; background:var(--bm-primary-soft) !important;
