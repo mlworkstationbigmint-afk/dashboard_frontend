@@ -158,6 +158,14 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   `.st-key-fc_loc_box` pull-up margin `−58px → −52px` (it eats the block gap + its own height; the
   gap shrank ~6px — see the updated grouped-layout entry). `py_compile` clean; **not verified live**
   (edited blind per workflow). → `portal/theme.py`.
+- **Second compaction pass (owner: "very little space from the sides, remove ALL the space from
+  the top")** — `.block-container`/`stMainBlockContainer`: side padding `2.2rem → 0.8rem`, top
+  padding/margin **0** (bottom `1rem`); added flush-top guards `[data-testid="stAppViewContainer"],
+  [data-testid="stMain"] {padding/margin-top:0}` and `[data-testid="stDecoration"]
+  {display:none}` (streamlit's coloured top strip) so nothing in the app chrome holds the top
+  open. The blue topbar now sits at the very top edge of the viewport. NB the owner's screenshot
+  showing the old spacing was the DEPLOYED app — these fixes (and the earlier compaction) only
+  reach it once committed + pushed to `main`. → `portal/theme.py`.
 ### 2026-07-07 — Per-role white-label dashboards + admin-managed access (in progress)
 - **App now fills the whole screen width (full-bleed at any resolution)** — the custom
   `.block-container` cap `max-width:1180px` in `theme.py` `inject_css()` became `max-width:100%`

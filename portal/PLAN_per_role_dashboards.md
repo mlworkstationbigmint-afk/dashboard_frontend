@@ -63,8 +63,9 @@ Single deployment; the logged-in user's `role` selects everything at render time
   requirements pins bumped to 1.59.0, and plain `st.tabs` pill CSS in `theme.py` gained the
   react-aria selector generation too, so `st.tabs` is styleable again on the deployment; same day the
   tab track got `width:fit-content` — it stretched full-screen as a 1.59 flex item — and the app went
-  compact: block gap 1rem→0.65rem, top padding 0.4rem, heading padding trimmed, `.st-key-fc_loc_box`
-  pull-up retuned −58px→−52px to the new gap) and a
+  compact: block gap 1rem→0.65rem, top padding/margin 0 + stDecoration hidden (flush to the viewport
+  top), side padding 0.8rem, heading padding trimmed, `.st-key-fc_loc_box` pull-up retuned
+  −58px→−52px to the new gap) and a
   **right-aligned
   location/full-name dropdown** (styled border + tint, **shared across Graphical+Tabular** so it works
   in the table view too, sorted alphabetically, defaulting to the first), then the **graph on top**
