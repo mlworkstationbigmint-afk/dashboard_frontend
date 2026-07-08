@@ -778,9 +778,16 @@ def page_forecasting():
             ("Next-week forecast", f"Rs.{nextwk:,.0f}", theme.direction_chip(nextwk_dir), theme.icon("clock")),
             ("+12-week forecast", f"Rs.{p12:,.0f}", theme.direction_chip(p12_dir), theme.icon("trending")),
         ]
-        slots = [st, st, st] if vertical else st.columns(3)
-        for slot, (title, value, sub, ic) in zip(slots, cards):
-            slot.markdown(theme.kpi_card(title, value, sub, ic), unsafe_allow_html=True)
+        if vertical:
+            # One self-contained HTML flex column (.bm-vcards, theme.py) pinned to the chart
+            # height with space-between — spreading done in our own markup, immune to how
+            # Streamlit nests its container/block DOM.
+            st.markdown("<div class='bm-vcards'>"
+                        + "".join(theme.kpi_card(t, v, s, i) for t, v, s, i in cards)
+                        + "</div>", unsafe_allow_html=True)
+        else:
+            for slot, (title, value, sub, ic) in zip(st.columns(3), cards):
+                slot.markdown(theme.kpi_card(title, value, sub, ic), unsafe_allow_html=True)
 
     # Default layout: price cards above the tabs. Grouped (adani_dev): the graph goes on top
     # (right after the group tabs) with the cards stacked to its RIGHT (Graphical view);
@@ -854,15 +861,13 @@ def page_forecasting():
             view = st.segmented_control("View", VIEW_OPTS, default=VIEW_OPTS[0],
                                         key="fc_view", label_visibility="collapsed")
         if (view or VIEW_OPTS[0]) == VIEW_OPTS[0]:   # deselection falls back to the graph
-            # Chart on the left, the three price cards stacked on its right. The fc_cards_box
-            # container is pinned to the chart-iframe height in theme.py and space-between
-            # spreads the cards down it.
+            # Chart on the left, the three price cards stacked on its right (one .bm-vcards
+            # HTML block spread over the chart height — see price_cards vertical branch).
             chart_col, cards_col = st.columns([5, 1], gap="small")
             with chart_col:
                 render_graph_view()
             with cards_col:
-                with st.container(key="fc_cards_box"):
-                    price_cards(vertical=True)
+                price_cards(vertical=True)
         else:
             render_table_view()
             st.write("")

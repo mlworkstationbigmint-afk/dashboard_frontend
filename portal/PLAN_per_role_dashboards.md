@@ -70,8 +70,9 @@ Single deployment; the logged-in user's `role` selects everything at render time
   **right-aligned location/full-name dropdown** (styled border + tint, **shared across Graphical+Tabular** so it works
   in the table view too, sorted alphabetically, defaulting to the first), then the **graph on top**
   (no section title), then the **3 price cards stacked to the RIGHT of the chart** (2026-07-08:
-  moved from below the tab block — `st.columns([5,1])` + `price_cards(vertical=True)` inside
-  `fc_cards_box`, pinned to the 632px chart height with space-between so the cards spread evenly;
+  moved from below the tab block — `st.columns([5,1])` + `price_cards(vertical=True)`, which emits
+  one `.bm-vcards` HTML flex column pinned to the 632px chart height with space-between so the
+  cards spread evenly (own markup — Streamlit-container CSS attempts kept bunching);
   the Tabular view keeps them below the table; y-axis ticks also gained an 8px label standoff),
   an in-chart legend, and
   year-stamped x-axis labels. The chart runs `forecast_chart(compact=True)` with the **week/zoom

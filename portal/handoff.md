@@ -190,13 +190,17 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   → `portal/app.py` (`page_forecasting`, `_style_fig`).
 - **Right-side card stack refined (owner: narrower + spread to the chart's full height)** — the
   chart/cards split went `[4,1] → [5,1]`, and the cards now live in `st.container(key="fc_cards_box")`
-  whose CSS (`theme.py`) pins it to the chart-iframe height (**632px** = compact chart 620 +
-  `st.iframe` pad 12 — retune if `forecast_chart`'s compact `h` changes) with
-  `justify-content:space-between`, so the three cards spread evenly top-to-bottom alongside the
-  graph. **Gotcha found on the first cut (owner screenshot: cards bunched at the top):** the
-  `st-key-*` class sits on the container's **border wrapper**, NOT the flex block — height/
-  space-between must be applied to the inner `[data-testid="stVerticalBlock"]` (plus a
-  `> div {height:100%}` bridge on the intermediate wrapper) for the spread to take effect.
+  spread over the chart height. **Two failed cuts before the working one** (owner screenshots:
+  cards kept bunching at the top): (1) height/space-between on `.st-key-fc_cards_box` — the
+  st-key class lands on the container's border wrapper, not the flex block; (2) re-targeting the
+  inner `[data-testid="stVerticalBlock"]` + a `> div {height:100%}` bridge — still bunched on the
+  deployed build. **Final approach (works, keep this one):** dropped the keyed container entirely;
+  `price_cards(vertical=True)` now emits the three cards as **ONE `.bm-vcards` HTML block**
+  (`display:flex; flex-direction:column; height:632px` = compact chart 620 + `st.iframe` pad 12,
+  retune if `forecast_chart`'s compact `h` changes; `justify-content:space-between; gap:12px`) —
+  all in our own markup, zero dependence on Streamlit's container DOM. NB `.bm-card` carries
+  `height:100%`, which inside the fixed-height flex column would shrink the cards into touching
+  thirds — `.bm-vcards .bm-card {height:auto; flex:0 0 auto}` undoes it.
   → `portal/app.py`, `portal/theme.py`.
 ### 2026-07-07 — Per-role white-label dashboards + admin-managed access (in progress)
 - **App now fills the whole screen width (full-bleed at any resolution)** — the custom

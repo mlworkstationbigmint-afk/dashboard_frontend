@@ -458,20 +458,16 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
 }}
 .st-key-fc_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
 
-/* grouped-forecasting right-side price-card stack: pin the container to the chart-iframe
-   height (compact chart 620 + st.iframe pad 12 = 632 — retune if forecast_chart's compact
-   height changes) and spread the three cards evenly down it with space-between. The st-key
-   class sits on the container's BORDER WRAPPER, not the flex block, so the spreading rules
-   must hit the inner [data-testid="stVerticalBlock"] (both matched in case a build puts the
-   key class on the block itself). */
-.st-key-fc_cards_box {{ height: 632px !important; }}
-.st-key-fc_cards_box [data-testid="stVerticalBlock"],
-[data-testid="stVerticalBlock"].st-key-fc_cards_box {{
-    height: 632px !important; justify-content: space-between !important;
-}}
-/* the wrapper between border-wrapper and block must also be full-height for the inner
-   block's height to resolve */
-.st-key-fc_cards_box > div {{ height: 100% !important; }}
+/* grouped-forecasting right-side price-card stack: ONE HTML flex column (emitted whole by
+   app.py price_cards(vertical=True)) pinned to the chart-iframe height (compact chart 620 +
+   st.iframe pad 12 = 632 — retune if forecast_chart's compact height changes); space-between
+   spreads the three cards down it with even gaps. Our own markup, so no dependence on how
+   Streamlit nests its container/block DOM (a keyed-container attempt failed — the st-key
+   class lands on wrappers the flex rules never reached). .bm-card's height:100% must be
+   undone here or the cards would shrink into touching thirds. */
+.bm-vcards {{ height: 632px; display: flex; flex-direction: column;
+    justify-content: space-between; gap: 12px; }}
+.bm-vcards .bm-card {{ height: auto; flex: 0 0 auto; }}
 
 /* grouped-forecasting Graphical/Tabular switch (adani_dev) -> sliding segmented PILL switch:
    grey capsule track, a label-width WHITE PILL that glides behind the active option, orange
