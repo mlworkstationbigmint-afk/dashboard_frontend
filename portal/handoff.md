@@ -197,10 +197,12 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   deployed build. **Final approach (works, keep this one):** dropped the keyed container entirely;
   `price_cards(vertical=True)` now emits the three cards as **ONE `.bm-vcards` HTML block**
   (`display:flex; flex-direction:column; height:632px` = compact chart 620 + `st.iframe` pad 12,
-  retune if `forecast_chart`'s compact `h` changes; `justify-content:space-between; gap:12px`) —
-  all in our own markup, zero dependence on Streamlit's container DOM. NB `.bm-card` carries
-  `height:100%`, which inside the fixed-height flex column would shrink the cards into touching
-  thirds — `.bm-vcards .bm-card {height:auto; flex:0 0 auto}` undoes it.
+  retune if `forecast_chart`'s compact `h` changes) —
+  all in our own markup, zero dependence on Streamlit's container DOM. Spread style iterated
+  once more (owner: natural-height cards + space-between voids looked "too wide and awkward"):
+  final look = the three cards **grow into equal-height panels** (`flex:1 1 0; gap:14px`) filling
+  the full 632px, each card's content vertically centred
+  (`display:flex; flex-direction:column; justify-content:center`) — a solid side rail.
   → `portal/app.py`, `portal/theme.py`.
 ### 2026-07-07 — Per-role white-label dashboards + admin-managed access (in progress)
 - **App now fills the whole screen width (full-bleed at any resolution)** — the custom
