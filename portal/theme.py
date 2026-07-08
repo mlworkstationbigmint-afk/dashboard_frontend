@@ -459,15 +459,15 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
 .st-key-fc_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
 
 /* grouped-forecasting right-side price-card stack: ONE HTML flex column (emitted whole by
-   app.py price_cards(vertical=True)) pinned to the chart-iframe height (compact chart 620 +
-   st.iframe pad 12 = 632 — retune if forecast_chart's compact height changes). Our own markup,
-   so no dependence on how Streamlit nests its container/block DOM (a keyed-container attempt
-   failed — the st-key class lands on wrappers the flex rules never reached). The three cards
-   GROW into equal-height panels (flex:1) with 14px gaps — a solid side rail, not small cards
-   floating in voids (space-between looked awkward); each card's content is centred vertically. */
-.bm-vcards {{ height: 632px; display: flex; flex-direction: column; gap: 14px; }}
-.bm-vcards .bm-card {{ flex: 1 1 0; height: auto;
-    display: flex; flex-direction: column; justify-content: center; }}
+   app.py price_cards(vertical=True)). Our own markup, so no dependence on how Streamlit
+   nests its container/block DOM (a keyed-container attempt failed — the st-key class lands
+   on wrappers the flex rules never reached). Final look per owner: natural-height cards,
+   14px gaps, top-aligned (leftover space below the third card is fine), and a hard width
+   cap so the rail can't balloon on wide screens; right-aligned to match the location
+   dropdown above it. */
+.bm-vcards {{ display: flex; flex-direction: column; gap: 14px;
+    max-width: 280px; margin-left: auto; }}
+.bm-vcards .bm-card {{ height: auto; }}
 
 /* grouped-forecasting Graphical/Tabular switch (adani_dev) -> sliding segmented PILL switch:
    grey capsule track, a label-width WHITE PILL that glides behind the active option, orange

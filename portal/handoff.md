@@ -199,10 +199,11 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   (`display:flex; flex-direction:column; height:632px` = compact chart 620 + `st.iframe` pad 12,
   retune if `forecast_chart`'s compact `h` changes) —
   all in our own markup, zero dependence on Streamlit's container DOM. Spread style iterated
-  once more (owner: natural-height cards + space-between voids looked "too wide and awkward"):
-  final look = the three cards **grow into equal-height panels** (`flex:1 1 0; gap:14px`) filling
-  the full 632px, each card's content vertically centred
-  (`display:flex; flex-direction:column; justify-content:center`) — a solid side rail.
+  twice more on owner screenshots (space-between voids, then full-height equal panels — both
+  "too wide and awkward"). **Final look (owner-approved direction): natural-height cards,
+  `gap:14px`, top-aligned — leftover space below the third card is fine — with a hard
+  `max-width:280px` cap so the rail can't balloon on wide screens, `margin-left:auto`
+  right-aligning it under the location dropdown.** No fixed 632px height anymore.
   → `portal/app.py`, `portal/theme.py`.
 ### 2026-07-07 — Per-role white-label dashboards + admin-managed access (in progress)
 - **App now fills the whole screen width (full-bleed at any resolution)** — the custom
