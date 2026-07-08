@@ -460,10 +460,18 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
 
 /* grouped-forecasting right-side price-card stack: pin the container to the chart-iframe
    height (compact chart 620 + st.iframe pad 12 = 632 — retune if forecast_chart's compact
-   height changes) and spread the three cards evenly down it. */
-.st-key-fc_cards_box {{
+   height changes) and spread the three cards evenly down it with space-between. The st-key
+   class sits on the container's BORDER WRAPPER, not the flex block, so the spreading rules
+   must hit the inner [data-testid="stVerticalBlock"] (both matched in case a build puts the
+   key class on the block itself). */
+.st-key-fc_cards_box {{ height: 632px !important; }}
+.st-key-fc_cards_box [data-testid="stVerticalBlock"],
+[data-testid="stVerticalBlock"].st-key-fc_cards_box {{
     height: 632px !important; justify-content: space-between !important;
 }}
+/* the wrapper between border-wrapper and block must also be full-height for the inner
+   block's height to resolve */
+.st-key-fc_cards_box > div {{ height: 100% !important; }}
 
 /* grouped-forecasting Graphical/Tabular switch (adani_dev) -> sliding segmented PILL switch:
    grey capsule track, a label-width WHITE PILL that glides behind the active option, orange

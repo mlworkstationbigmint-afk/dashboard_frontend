@@ -193,7 +193,11 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   whose CSS (`theme.py`) pins it to the chart-iframe height (**632px** = compact chart 620 +
   `st.iframe` pad 12 — retune if `forecast_chart`'s compact `h` changes) with
   `justify-content:space-between`, so the three cards spread evenly top-to-bottom alongside the
-  graph. → `portal/app.py`, `portal/theme.py`.
+  graph. **Gotcha found on the first cut (owner screenshot: cards bunched at the top):** the
+  `st-key-*` class sits on the container's **border wrapper**, NOT the flex block — height/
+  space-between must be applied to the inner `[data-testid="stVerticalBlock"]` (plus a
+  `> div {height:100%}` bridge on the intermediate wrapper) for the spread to take effect.
+  → `portal/app.py`, `portal/theme.py`.
 ### 2026-07-07 — Per-role white-label dashboards + admin-managed access (in progress)
 - **App now fills the whole screen width (full-bleed at any resolution)** — the custom
   `.block-container` cap `max-width:1180px` in `theme.py` `inject_css()` became `max-width:100%`
