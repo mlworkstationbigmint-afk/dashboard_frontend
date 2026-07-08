@@ -188,6 +188,12 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   Also `_style_fig` y-axis gained `ticklabelstandoff=8` (the x-axis already had 6) — a sliver of
   gap between the Rs. tick labels and the plot edge, per owner. `py_compile` clean.
   → `portal/app.py` (`page_forecasting`, `_style_fig`).
+- **Right-side card stack refined (owner: narrower + spread to the chart's full height)** — the
+  chart/cards split went `[4,1] → [5,1]`, and the cards now live in `st.container(key="fc_cards_box")`
+  whose CSS (`theme.py`) pins it to the chart-iframe height (**632px** = compact chart 620 +
+  `st.iframe` pad 12 — retune if `forecast_chart`'s compact `h` changes) with
+  `justify-content:space-between`, so the three cards spread evenly top-to-bottom alongside the
+  graph. → `portal/app.py`, `portal/theme.py`.
 ### 2026-07-07 — Per-role white-label dashboards + admin-managed access (in progress)
 - **App now fills the whole screen width (full-bleed at any resolution)** — the custom
   `.block-container` cap `max-width:1180px` in `theme.py` `inject_css()` became `max-width:100%`

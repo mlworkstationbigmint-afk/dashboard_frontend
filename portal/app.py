@@ -854,12 +854,15 @@ def page_forecasting():
             view = st.segmented_control("View", VIEW_OPTS, default=VIEW_OPTS[0],
                                         key="fc_view", label_visibility="collapsed")
         if (view or VIEW_OPTS[0]) == VIEW_OPTS[0]:   # deselection falls back to the graph
-            # Chart on the left, the three price cards stacked on its right.
-            chart_col, cards_col = st.columns([4, 1], gap="small", vertical_alignment="center")
+            # Chart on the left, the three price cards stacked on its right. The fc_cards_box
+            # container is pinned to the chart-iframe height in theme.py and space-between
+            # spreads the cards down it.
+            chart_col, cards_col = st.columns([5, 1], gap="small")
             with chart_col:
                 render_graph_view()
             with cards_col:
-                price_cards(vertical=True)
+                with st.container(key="fc_cards_box"):
+                    price_cards(vertical=True)
         else:
             render_table_view()
             st.write("")

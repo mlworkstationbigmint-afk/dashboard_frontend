@@ -458,6 +458,13 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
 }}
 .st-key-fc_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
 
+/* grouped-forecasting right-side price-card stack: pin the container to the chart-iframe
+   height (compact chart 620 + st.iframe pad 12 = 632 — retune if forecast_chart's compact
+   height changes) and spread the three cards evenly down it. */
+.st-key-fc_cards_box {{
+    height: 632px !important; justify-content: space-between !important;
+}}
+
 /* grouped-forecasting Graphical/Tabular switch (adani_dev) -> sliding segmented PILL switch:
    grey capsule track, a label-width WHITE PILL that glides behind the active option, orange
    active text (same look as the classic tab pill). Built on st.segmented_control (NOT st.tabs):
