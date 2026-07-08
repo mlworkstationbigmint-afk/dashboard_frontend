@@ -166,6 +166,18 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   open. The blue topbar now sits at the very top edge of the viewport. NB the owner's screenshot
   showing the old spacing was the DEPLOYED app — these fixes (and the earlier compaction) only
   reach it once committed + pushed to `main`. → `portal/theme.py`.
+- **Third pass (top gap persisted on the deployment): the REAL top-gap culprits + sides eased to
+  1.2rem** — two things still held the top open: **(1) the `stx.CookieManager` component**
+  (`app.py:61`, key `portal_cm`) renders an invisible **iframe above the topbar on every run** — its
+  element container cost its own height + one block gap. Now `display:none` via
+  `.st-key-portal_cm` (+ `div[class*=…]` twin). Hidden iframes still load & run JS, so **cookie
+  reads/writes keep working** (verify login-persists-across-refresh + logout when checking live —
+  if cookies break, this rule is the first suspect; switch to `height:0;overflow:hidden` instead).
+  **(2) the app header** painted its Share/toolbar icons over the page even at `height:0` → now
+  fully `display:none` (element-agnostic `[data-testid="stHeader"], [data-testid="stAppHeader"]`).
+  Safe for the `:has(stStatusWidget)` loading overlay — `:has()` matches display:none subtrees.
+  Side padding eased `0.8rem → 1.2rem` per owner ("add bit margin on the sides").
+  → `portal/theme.py`.
 ### 2026-07-07 — Per-role white-label dashboards + admin-managed access (in progress)
 - **App now fills the whole screen width (full-bleed at any resolution)** — the custom
   `.block-container` cap `max-width:1180px` in `theme.py` `inject_css()` became `max-width:100%`

@@ -168,7 +168,12 @@ def inject_css():
    keeps this working if a newer build drops that class. */
 .block-container, [data-testid="stMainBlockContainer"] {{
     padding-top: 0 !important; margin-top: 0 !important; padding-bottom: 1rem; max-width: 100%;
-    padding-left: 0.8rem; padding-right: 0.8rem; }}
+    padding-left: 1.2rem; padding-right: 1.2rem; }}
+/* the CookieManager component (app.py, key portal_cm) is an invisible iframe rendered ABOVE the
+   topbar on every run — display:none removes its element container from the flex flow entirely
+   (height:0 would still cost one block gap). Hidden iframes still load + run JS, so cookie
+   reads/writes keep working. */
+.st-key-portal_cm, div[class*="st-key-portal_cm"] {{ display: none !important; }}
 /* no residual top offset from the app chrome: view container / main section flush to the
    viewport top; stDecoration is streamlit's coloured top strip. */
 [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ padding-top: 0 !important; margin-top: 0 !important; }}
@@ -186,8 +191,11 @@ def inject_css():
 }}
 /* login / password-reset cards: keep a readable fixed width now the page is full-bleed */
 .st-key-login_card, .st-key-reset_card {{ max-width: 460px; margin: 0 auto; }}
-header[data-testid="stHeader"], header[data-testid="stAppHeader"] {{
-    background: transparent; height: 0 !important; min-height: 0 !important; padding: 0 !important; }}
+/* kill the app header entirely (it painted its Share/toolbar icons over the top of the page
+   even at height:0). display:none keeps stStatusWidget in the DOM, so the :has() loading
+   overlay below still works. Selectors deliberately element-agnostic (header OR div). */
+[data-testid="stHeader"], [data-testid="stAppHeader"] {{
+    display: none !important; height: 0 !important; min-height: 0 !important; padding: 0 !important; }}
 #MainMenu, footer {{ visibility: hidden; }}
 section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display: none !important; }}
 
