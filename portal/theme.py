@@ -167,8 +167,12 @@ def inject_css():
    `.block-container` is the 1.58 emotion class; the stMainBlockContainer testid twin
    keeps this working if a newer build drops that class. */
 .block-container, [data-testid="stMainBlockContainer"] {{
-    padding-top: 0.4rem !important; padding-bottom: 1.2rem; max-width: 100%;
-    padding-left: 2.2rem; padding-right: 2.2rem; }}
+    padding-top: 0 !important; margin-top: 0 !important; padding-bottom: 1rem; max-width: 100%;
+    padding-left: 0.8rem; padding-right: 0.8rem; }}
+/* no residual top offset from the app chrome: view container / main section flush to the
+   viewport top; stDecoration is streamlit's coloured top strip. */
+[data-testid="stAppViewContainer"], [data-testid="stMain"] {{ padding-top: 0 !important; margin-top: 0 !important; }}
+[data-testid="stDecoration"] {{ display: none !important; }}
 /* compact vertical rhythm: streamlit's default 1rem gap between blocks -> 0.65rem.
    NB: the .st-key-fc_loc_box negative pull-up margin below is tuned to THIS gap —
    retune it if this changes. */
