@@ -67,10 +67,11 @@ Single deployment; the logged-in user's `role` selects everything at render time
   display:none + the CookieManager iframe (`st-key-portal_cm`, the real top-gap culprit) hidden,
   side padding 1.2rem, heading padding trimmed, `.st-key-fc_loc_box` pull-up retuned
   −58px→−52px to the new gap) and a
-  **right-aligned
-  location/full-name dropdown** (styled border + tint, **shared across Graphical+Tabular** so it works
+  **right-aligned location/full-name dropdown** (styled border + tint, **shared across Graphical+Tabular** so it works
   in the table view too, sorted alphabetically, defaulting to the first), then the **graph on top**
-  (no section title), then the **3 price cards below the tab block**, an in-chart legend, and
+  (no section title), then the **3 price cards stacked to the RIGHT of the chart** (2026-07-08:
+  moved from below the tab block — `st.columns([4,1])` + `price_cards(vertical=True)`; the Tabular
+  view keeps them below the table; y-axis ticks also gained an 8px label standoff), an in-chart legend, and
   year-stamped x-axis labels. The chart runs `forecast_chart(compact=True)` with the **week/zoom
   buttons sitting just ABOVE the plot** (rangeselector y=1.01/bottom) and a slim top margin so the
   plot stays **bigger** (h=620, top margin 46).

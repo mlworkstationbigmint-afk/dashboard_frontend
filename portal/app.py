@@ -342,7 +342,8 @@ def _style_fig(fig, height=430, money=True):
     )
     if money:
         fig.update_yaxes(tickprefix="Rs.", tickformat=",.0f")
-    fig.update_yaxes(gridcolor="#eef2f7", zeroline=False, showline=False, automargin=True)
+    fig.update_yaxes(gridcolor="#eef2f7", zeroline=False, showline=False, automargin=True,
+                     ticklabelstandoff=8)
     fig.update_xaxes(gridcolor="rgba(0,0,0,0)", showline=True, linecolor="#e2e8f0",
                      automargin=True, ticklabelstandoff=6)
     return fig
@@ -761,7 +762,8 @@ def page_forecasting():
     fwd = dl.load_forward(meta["ff"])
     acc_hist = dl.load_accuracy("6-week", meta["acc"])   # Accuracy_Table_6 (Table_16 retired)
 
-    def price_cards():
+    def price_cards(vertical=False):
+        # vertical=True stacks the three cards in one column (used beside the grouped chart).
         if not row:
             return
         last_actual = row.get("Last actual (Rs./ton)", row.get("Last actual (₹/ton)"))
@@ -771,13 +773,18 @@ def page_forecasting():
         p12 = row.get("+12wk forecast")
         nextwk_dir = dl.direction_flag(nextwk - last_actual) if (pd.notna(nextwk) and pd.notna(last_actual)) else row.get("Next-wk dir", "")
         p12_dir = dl.direction_flag(p12 - last_actual) if (pd.notna(p12) and pd.notna(last_actual)) else row.get("+12wk dir", "")
-        k1, k2, k3 = st.columns(3)
-        k1.markdown(theme.kpi_card("Last actual spot", f"Rs.{last_actual:,.0f}", ld, theme.icon("rupee")), unsafe_allow_html=True)
-        k2.markdown(theme.kpi_card("Next-week forecast", f"Rs.{nextwk:,.0f}", theme.direction_chip(nextwk_dir), theme.icon("clock")), unsafe_allow_html=True)
-        k3.markdown(theme.kpi_card("+12-week forecast", f"Rs.{p12:,.0f}", theme.direction_chip(p12_dir), theme.icon("trending")), unsafe_allow_html=True)
+        cards = [
+            ("Last actual spot", f"Rs.{last_actual:,.0f}", ld, theme.icon("rupee")),
+            ("Next-week forecast", f"Rs.{nextwk:,.0f}", theme.direction_chip(nextwk_dir), theme.icon("clock")),
+            ("+12-week forecast", f"Rs.{p12:,.0f}", theme.direction_chip(p12_dir), theme.icon("trending")),
+        ]
+        slots = [st, st, st] if vertical else st.columns(3)
+        for slot, (title, value, sub, ic) in zip(slots, cards):
+            slot.markdown(theme.kpi_card(title, value, sub, ic), unsafe_allow_html=True)
 
     # Default layout: price cards above the tabs. Grouped (adani_dev): the graph goes on top
-    # (right after the group tabs) and the cards drop below the tab block (rendered after it).
+    # (right after the group tabs) with the cards stacked to its RIGHT (Graphical view);
+    # the Tabular view keeps them below the table.
     if not grouped:
         price_cards()
         st.write("")
@@ -847,19 +854,22 @@ def page_forecasting():
             view = st.segmented_control("View", VIEW_OPTS, default=VIEW_OPTS[0],
                                         key="fc_view", label_visibility="collapsed")
         if (view or VIEW_OPTS[0]) == VIEW_OPTS[0]:   # deselection falls back to the graph
-            render_graph_view()
+            # Chart on the left, the three price cards stacked on its right.
+            chart_col, cards_col = st.columns([4, 1], gap="small", vertical_alignment="center")
+            with chart_col:
+                render_graph_view()
+            with cards_col:
+                price_cards(vertical=True)
         else:
             render_table_view()
+            st.write("")
+            price_cards()
     else:
         tab_graph, tab_table = st.tabs(VIEW_OPTS)
         with tab_graph:
             render_graph_view()
         with tab_table:
             render_table_view()
-
-    if grouped:                                   # adani_dev: price cards below the graph/table tabs
-        st.write("")
-        price_cards()
 
     # ---- Forecast rationale (placeholder; real analyst commentary supplied later) ----
     st.write("")

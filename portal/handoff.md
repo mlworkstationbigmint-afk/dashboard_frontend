@@ -178,6 +178,16 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   Safe for the `:has(stStatusWidget)` loading overlay — `:has()` matches display:none subtrees.
   Side padding eased `0.8rem → 1.2rem` per owner ("add bit margin on the sides").
   → `portal/theme.py`.
+- **Grouped forecasting: price cards moved from below the chart to its RIGHT + y-axis tick gap** —
+  in `page_forecasting()` the grouped **Graphical** view is now `st.columns([4, 1], gap="small",
+  vertical_alignment="center")`: chart left, the three price KPI cards **stacked vertically** on the
+  right (`price_cards(vertical=True)` — new param; vertical renders into `st` directly instead of
+  3 columns). The **Tabular** view keeps the cards below the table (they now render inside that
+  branch; the old shared below-the-tabs render was removed). Non-grouped layout untouched (cards
+  above the tabs). Chart width adapts via the existing ResizeObserver → `Plotly.Plots.resize`.
+  Also `_style_fig` y-axis gained `ticklabelstandoff=8` (the x-axis already had 6) — a sliver of
+  gap between the Rs. tick labels and the plot edge, per owner. `py_compile` clean.
+  → `portal/app.py` (`page_forecasting`, `_style_fig`).
 ### 2026-07-07 — Per-role white-label dashboards + admin-managed access (in progress)
 - **App now fills the whole screen width (full-bleed at any resolution)** — the custom
   `.block-container` cap `max-width:1180px` in `theme.py` `inject_css()` became `max-width:100%`
