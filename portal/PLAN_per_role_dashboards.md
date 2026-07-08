@@ -59,7 +59,10 @@ Single deployment; the logged-in user's `role` selects everything at render time
   the left (an `st.segmented_control` — NOT `st.tabs`, whose baseweb CSS hooks are dead on the deployed
   build (streamlit 1.59, react-aria markup) — styled as a grey capsule track + a white label-width pill
   gliding behind the active option; selectors cover both the 1.58 testid and the 1.59 `aria-checked`
-  markup, `.st-key-fc_view_box`) and a **right-aligned
+  markup, `.st-key-fc_view_box`; on 2026-07-08 everything was aligned on 1.59 — conda env +
+  requirements pins bumped to 1.59.0, and plain `st.tabs` pill CSS in `theme.py` gained the
+  react-aria selector generation too, so `st.tabs` is styleable again on the deployment) and a
+  **right-aligned
   location/full-name dropdown** (styled border + tint, **shared across Graphical+Tabular** so it works
   in the table view too, sorted alphabetically, defaulting to the first), then the **graph on top**
   (no section title), then the **3 price cards below the tab block**, an in-chart legend, and

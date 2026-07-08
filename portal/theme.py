@@ -350,35 +350,56 @@ div[class*="st-key-home_methodology"] button:hover em {{ filter:brightness(.97);
 .bm-table-lg tbody td {{ padding:13px 18px; }}
 
 /* ---------- tabs -> sliding segmented switch (white pill glides to the active tab) ---------- */
-/* Attribute-only selectors (no div/button tag) + !important on every declaration so baseweb's
-   own styled-component rules can't win — survives baseweb tag/structure changes across versions. */
-[data-baseweb="tab-list"] {{
+/* TWO selector generations, both kept. streamlit 1.58 renders baseweb tabs
+   (`data-baseweb="tab-*"` attributes); 1.59+ — what the deployed Cloud app runs — swapped
+   baseweb for react-aria: container [data-testid="stTabs"] > div[role="tablist"] (no
+   data-baseweb), tabs are div[data-testid="stTab"][role="tab"] with aria-selected, and the
+   moving underline is a div.react-aria-SelectionIndicator INSIDE the active tab (markup
+   captured live from a 1.59 sandbox — see handoff "data-baseweb tab* selectors are DEAD"
+   gotcha). Attribute-only selectors + !important on every declaration so the framework's
+   own styled-component rules can't win. */
+[data-baseweb="tab-list"],
+[data-testid="stTabs"] div[role="tablist"] {{
     position:relative !important; gap:6px !important; background:#e9edf4 !important;
     padding:5px !important; border-radius:13px !important; margin-bottom:6px !important;
     border-bottom:none !important; display:inline-flex !important; width:auto !important;
     box-shadow:inset 0 1px 2px rgba(16,24,40,.06) !important;
 }}
-/* baseweb's tab-highlight, repurposed from a bottom underline into a full-height pill.
-   baseweb positions it via `transform: translateX()` (NOT `left`) and updates `width`
-   as you switch tabs, so the transition MUST cover transform/width for the pill to glide. */
+/* the white pill, 1.58 generation: baseweb's tab-highlight, repurposed from a bottom underline
+   into a full-height pill. baseweb positions it via `transform: translateX()` (NOT `left`) and
+   updates `width` as you switch tabs, so the transition MUST cover transform/width to glide. */
 [data-baseweb="tab-highlight"] {{
     top:5px !important; bottom:5px !important; left:0 !important; height:auto !important;
     z-index:0 !important; border-radius:9px !important; background:#fff !important;
     box-shadow:0 1px 4px rgba(16,24,40,.16) !important;
     transition:transform .28s cubic-bezier(.4,0,.2,1), width .28s cubic-bezier(.4,0,.2,1) !important;
 }}
+/* the white pill, 1.59+ generation: react-aria's SelectionIndicator lives INSIDE the active
+   tab, so pin it to the tab's own box (inset:0; inline transform/size overridden) — it moves
+   with the selection rather than gliding across the track, but reads as the same white pill.
+   Needs the tab itself position:relative (set below). */
+[data-testid="stTabs"] .react-aria-SelectionIndicator {{
+    position:absolute !important; inset:0 !important; width:auto !important; height:auto !important;
+    transform:none !important; z-index:0 !important; border-radius:9px !important;
+    background:#fff !important; box-shadow:0 1px 4px rgba(16,24,40,.16) !important;
+}}
 [data-baseweb="tab-border"] {{ display:none !important; height:0 !important; background:transparent !important; }}
-[data-baseweb="tab"] {{
+[data-baseweb="tab"],
+div[data-testid="stTab"][role="tab"] {{
     position:relative !important; z-index:1 !important; font-size:14.5px !important; font-weight:600 !important;
     color:{NEUTRAL} !important; background:transparent !important; border:none !important;
     border-radius:9px !important; padding:9px 26px !important; margin:0 !important; height:auto !important;
     transition:color .2s ease !important;
 }}
-[data-baseweb="tab"]:not([aria-selected="true"]):hover {{ color:var(--bm-primary-dark) !important; }}
-[data-baseweb="tab"][aria-selected="true"] {{ color:var(--bm-accent) !important; font-weight:700 !important; }}
+/* 1.59: keep the tab label above the in-tab pill */
+div[data-testid="stTab"][role="tab"] > :not(.react-aria-SelectionIndicator) {{ position:relative; z-index:1; }}
+[data-baseweb="tab"]:not([aria-selected="true"]):hover,
+div[data-testid="stTab"][role="tab"]:not([aria-selected="true"]):hover {{ color:var(--bm-primary-dark) !important; }}
+[data-baseweb="tab"][aria-selected="true"],
+div[data-testid="stTab"][role="tab"][aria-selected="true"] {{ color:var(--bm-accent) !important; font-weight:700 !important; }}
 /* segmented selectors (Product) -> orange active. Two selector generations: streamlit 1.58
-   marks the active option with a stBaseButton-…Active testid; 1.59+ (react-aria) uses
-   data-variant="segmented_control" + aria-checked="true". */
+   marks the active option with a stBaseButton-…Active testid; 1.59+ (react-aria — the deployed
+   build) uses data-variant="segmented_control" + aria-checked="true". */
 button[data-testid="stBaseButton-segmented_controlActive"],
 button[data-variant="segmented_control"][aria-checked="true"] {{
     color:var(--bm-accent) !important; border-color:var(--bm-accent) !important;
@@ -428,7 +449,8 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
     pointer-events:none; z-index:0;
 }}
 /* pill parking: streamlit 1.58 marks the active option with a stBaseButton-…Active testid;
-   1.59+ (react-aria segmented control) uses aria-checked="true" instead — match BOTH. */
+   1.59+ (react-aria segmented control — the deployed build) uses aria-checked="true"
+   instead — match BOTH. */
 .st-key-fc_view_box div[role="radiogroup"]:has(button:last-of-type[data-testid="stBaseButton-segmented_controlActive"])::before,
 .st-key-fc_view_box div[role="radiogroup"]:has(button:last-of-type[aria-checked="true"])::before {{
     transform:translateX(135px);                 /* right half: 4 + (270-8)/2 */

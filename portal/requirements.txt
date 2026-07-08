@@ -1,4 +1,4 @@
-streamlit>=1.30
+streamlit==1.59.0   # mirrors the canonical root requirements.txt (Cloud runs 1.59; CSS verified on it)
 pandas
 numpy
 openpyxl

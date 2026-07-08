@@ -838,10 +838,11 @@ def page_forecasting():
     VIEW_OPTS = ["Graphical view", "Tabular view"]
     if grouped:
         # Sliding pill switch (segmented control styled in theme.py .st-key-fc_view_box).
-        # Built on st.segmented_control, NOT st.tabs: the tab pill/toggle CSS keys on baseweb
-        # `data-baseweb` attributes that newer Streamlit builds dropped, so it silently falls
-        # back to underline tabs there — the segmented control's stTButtonGroup/stBaseButton
-        # testids are Streamlit's own and style reliably everywhere.
+        # Built on st.segmented_control, NOT st.tabs: it keys on Streamlit-owned
+        # radiogroup/testid/aria markup that styles reliably on both the 1.58 (baseweb) and
+        # 1.59+ (react-aria, the deployed build) generations. theme.py's plain-tabs pill CSS
+        # now also carries 1.59 selectors (stTab / react-aria-SelectionIndicator), but this
+        # switch predates that fix and stays on the segmented control.
         with st.container(key="fc_view_box"):
             view = st.segmented_control("View", VIEW_OPTS, default=VIEW_OPTS[0],
                                         key="fc_view", label_visibility="collapsed")

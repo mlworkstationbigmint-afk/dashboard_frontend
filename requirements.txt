@@ -1,9 +1,10 @@
 # Deps for Streamlit Community Cloud (pip). Local dev uses the conda
 # `neuralforecast` env; these mirror its versions.
-# streamlit is PINNED: the tab / segmented-pill CSS is verified against 1.58's
-# baseweb DOM (see portal/handoff.md "Accent = orange" gotcha). Bumping it may
-# require re-checking the data-baseweb="tab*" selectors.
-streamlit==1.58.0
+# streamlit is PINNED: 1.59.0 is what the deployed Cloud app actually runs (it ignored
+# the old 1.58.0 pin — see portal/handoff.md 1.59 gotcha). The tab / segmented-pill CSS
+# covers BOTH DOM generations (1.58 baseweb + 1.59 react-aria); bumping past 1.59 may
+# require re-checking the stTab / react-aria + segmented-control selectors.
+streamlit==1.59.0
 pandas>=2.0,<3.0
 numpy>=1.24,<2.0
 plotly>=5.8
