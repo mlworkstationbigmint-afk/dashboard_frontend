@@ -443,9 +443,9 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
 .st-key-fc_loc_box {{
     /* -52px = 0.65rem compact block gap (~10px, set on stVerticalBlock above) + own ~42px
        height (was -58px under the default 1rem gap) — retune if either changes.
-       ~100-char wide (780px) so the full descriptive product names (app.py FORECAST_LOCATION_LABELS)
+       ~90-char wide (700px) so the full descriptive product names (app.py FORECAST_LOCATION_LABELS)
        show in full on one line; capped at the viewport so it never overflows. */
-    width:780px; max-width:100%; margin-left:auto; margin-bottom:-52px; position:relative; z-index:5;
+    width:700px; max-width:100%; margin-left:auto; margin-bottom:-52px; position:relative; z-index:5;
 }}
 .st-key-fc_loc_box div[data-baseweb="select"] > div {{
     border:1.6px solid var(--bm-primary) !important; background:var(--bm-primary-soft) !important;

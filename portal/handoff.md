@@ -151,7 +151,7 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   Rebars = "Rebar, {Exy-Mumbai … BF Route | Exw-Mumbai … IF Route | Exw-Raipur … IF Route}"; Structure =
   "Structure-Angle, Exw-Raipur, India, IS 2062/2011 E-250 Gr A,150x150 Angle, IF Route". **These are the
   only editable knob** — change the strings in that dict. `theme.py` `.st-key-fc_loc_box` widened
-  `250px → 780px` (~100 chars, `max-width:100%`) so even the longest name shows in full on one line;
+  `250px → 700px` (~90 chars, `max-width:100%`) so even the longest name shows in full on one line;
   value font 12.5px + a global `li[role="option"]` rule lets popover options wrap/show in full. The dropdown key still
   maps back to the short `STEEL_PRODUCTS` key, so data lookups (`products[product]`, ff/acc) are
   unchanged; only the *displayed* label changed.
