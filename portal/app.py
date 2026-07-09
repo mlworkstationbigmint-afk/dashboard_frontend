@@ -577,20 +577,23 @@ def perf_chart(view):
 
 
 def delta_bar(view):
-    """Weekly delta (forecast - spot) bars, colour-graded by ABSOLUTE error: green = small |delta|
-    (accurate), through amber, to red = large |delta| (inaccurate). Bars still point up/down by sign."""
+    """Actual-vs-forecast deviation (rounded-forecast − spot) bars, colour-graded by ABSOLUTE
+    deviation with a GREEN-HEAVY scale: most of the range is green (small/accurate), amber only
+    near the top, red for the very largest. Bars still point up/down by sign. Taller (h=320) so the
+    smaller deviations are still visible."""
     try:
         import plotly.graph_objects as go
-        absd = view["Delta"].abs()
+        deltas = view["Forecast"].map(_round50) - view["Actual"]
+        absd = deltas.abs()
         cmax = float(absd.max()) or 1.0
         fig = go.Figure(go.Bar(
-            x=view["Date"], y=view["Delta"],
+            x=view["Date"], y=list(deltas),
             marker=dict(color=list(absd), cmin=0, cmax=cmax, showscale=False, line=dict(width=0),
-                        colorscale=[[0.0, theme.SUCCESS], [0.5, "#F59E0B"], [1.0, theme.DANGER]]),
-            hovertemplate="Rs.%{y:,.0f}<extra>Forecast - Spot</extra>"))
-        fig.update_layout(height=200, margin=dict(l=8, r=8, t=8, b=8),
+                        colorscale=[[0.0, theme.SUCCESS], [0.55, "#8DC63F"], [0.8, "#F5A623"], [1.0, theme.DANGER]]),
+            hovertemplate="Rs.%{y:,.0f}<extra>Forecast − Spot</extra>"))
+        fig.update_layout(height=320, margin=dict(l=8, r=8, t=8, b=8),
                           plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
-                          hovermode="x unified", bargap=0.35,
+                          hovermode="x unified", bargap=0.3,
                           hoverlabel=dict(bgcolor="white", bordercolor="#e2e8f0"),
                           font=dict(size=11, color="#334155"))
         fig.update_yaxes(tickprefix="Rs.", tickformat=",.0f", gridcolor="#eef2f7", zeroline=True, zerolinecolor="#cbd5e1")
@@ -601,25 +604,28 @@ def delta_bar(view):
 
 
 def accuracy_chart(view):
-    """Per-week forecast accuracy (%) = 100 - |forecast-vs-spot % error|, as a gradient bar chart:
-    highest accuracy = green, through amber, down to red for the least-accurate week."""
+    """Weekly forecast absolute accuracy (%) = 100 - |forecast-vs-spot % error|, as a GREEN-HEAVY
+    gradient bar chart (highest = green). Compact (h=200) and the y-axis is zoomed into the high band
+    (values are always up in the high-90s) so the week-to-week variation is actually visible."""
     try:
         import plotly.graph_objects as go
         acc_pct = 100 - view["DeltaPct"].abs()
         lo, hi = float(acc_pct.min()), float(acc_pct.max())
         if hi - lo < 1e-9:                        # all-equal -> avoid a degenerate colour scale
             lo, hi = lo - 1, hi + 1
+        cmin = lo - (hi - lo) * 0.35              # push the worst week up out of the deep red (green-heavy)
+        y_lo = min(95.0, float(int(lo)))          # zoom the axis in — everything sits above ~95%
         fig = go.Figure(go.Bar(
             x=view["Date"], y=list(acc_pct),
-            marker=dict(color=list(acc_pct), cmin=lo, cmax=hi, showscale=False, line=dict(width=0),
-                        colorscale=[[0.0, theme.DANGER], [0.5, "#F59E0B"], [1.0, theme.SUCCESS]]),
+            marker=dict(color=list(acc_pct), cmin=cmin, cmax=hi, showscale=False, line=dict(width=0),
+                        colorscale=[[0.0, theme.DANGER], [0.22, "#F5A623"], [0.5, "#8DC63F"], [1.0, theme.SUCCESS]]),
             hovertemplate="%{x|%d-%b-%y}<br><b>Accuracy: %{y:.1f}%</b><extra></extra>"))
-        fig.update_layout(height=300, margin=dict(l=8, r=8, t=8, b=8),
+        fig.update_layout(height=200, margin=dict(l=8, r=8, t=8, b=8),
                           plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
                           hovermode="x unified", bargap=0.3,
                           hoverlabel=dict(bgcolor="white", bordercolor="#e2e8f0"),
                           font=dict(size=11, color="#334155"))
-        fig.update_yaxes(ticksuffix="%", gridcolor="#eef2f7", zeroline=True, zerolinecolor="#cbd5e1")
+        fig.update_yaxes(range=[y_lo, 100], ticksuffix="%", gridcolor="#eef2f7")
         fig.update_xaxes(gridcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     except Exception:
@@ -1420,16 +1426,20 @@ def page_performance():
     if _grouped_forecasting(user["role"]):
         groups = _grouped_products(products)
         gkeys = list(groups.keys())
-        group = st.segmented_control("Commodity group", gkeys, default=gkeys[0],
-                                     key="perf_group", label_visibility="collapsed")
+        # group tab-strip (left) + full-name location dropdown (right) on ONE row
+        gcol, lcol = st.columns([1, 1.2], vertical_alignment="center")
+        with gcol:
+            group = st.segmented_control("Commodity group", gkeys, default=gkeys[0],
+                                         key="perf_group", label_visibility="collapsed")
         group = group if group in groups else gkeys[0]
         loc_map = {_loc_label(group, n): n for n in groups[group]}   # full label -> product key
         loc_labels = sorted(loc_map)
         loc_key = f"perf_loc_{group.replace(' ', '_')}"
         if st.session_state.get(loc_key) not in loc_labels:          # default/sanitise before the widget
             st.session_state[loc_key] = loc_labels[0]
-        with st.container(key="perf_loc_box"):
-            st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
+        with lcol:
+            with st.container(key="perf_loc_box"):
+                st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
         product = loc_map[st.session_state[loc_key]]
     else:
         keys = list(products.keys())
@@ -1458,11 +1468,12 @@ def page_performance():
     st.write("")
     theme.section_title("Actual vs forecast", theme.icon("trending"))
     perf_chart(view)
-    theme.section_title("Weekly delta (forecast - spot)", theme.icon("insights") if False else theme.icon("gauge"))
+    theme.section_title("Actual vs Forecast deviation", theme.icon("gauge"))
     delta_bar(view)
-    theme.section_title("Weekly forecast accuracy (%)", theme.icon("target"))
+    st.markdown("<div class='bm-footnote'>All prices rounded off to Rs.50.</div>", unsafe_allow_html=True)
+    theme.section_title("Weekly forecast absolute accuracy", theme.icon("target"))
     accuracy_chart(view)
-    theme.section_title("Weekly directional accuracy", theme.icon("gauge"))
+    theme.section_title("Weekly directional hit accuracy", theme.icon("gauge"))
     directional_accuracy_bar(view)
 
     theme.section_title("Week-wise detail", theme.icon("calendar"))

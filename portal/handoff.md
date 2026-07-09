@@ -147,18 +147,20 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   runs at the start of the next rerun, BEFORE the controls render), so `cur`, the disabled flags and
   the sliced page always agree in the same render. Page is also clamped + persisted up front so a
   shrunken row count can't strand you past the last page.
-- **Performance page: grouped picker + gradient bars.** (1) The product picker now matches the
-  forecasting page for grouped roles (`_grouped_forecasting`): a **group tab-strip** (`key="perf_group"`)
-  + a **full-name location dropdown** (`_loc_label`, `key="perf_loc_{group}"`, in a `perf_loc_box`
-  container styled like `fc_loc_box` but left-aligned, no negative pull-up); non-grouped roles keep the
-  flat `perf_prod` selector. (2) **Weekly forecast accuracy** switched from a line to a **gradient bar
-  chart** (`accuracy_chart`) — `go.Bar` with `marker.color = accuracy%`, colorscale red→amber→**green**
-  over `cmin/cmax = min/max` accuracy, so the **highest-accuracy week is green**, worst is red. (3)
-  **Weekly delta** (`delta_bar`) recoloured from up/down (red/green by sign) to a **gradient by |delta|**
-  — green (small error) → amber → red (large error), `cmin=0, cmax=max|delta|`; bars still point up/down
-  by sign. Both bar charts render via `st.plotly_chart` (the accuracy chart dropped the hover-ball
-  `_render_with_highlighter`, which is line-only). `theme.py`: `.st-key-perf_loc_box` added and the
-  fc/perf dropdown inner styling merged into shared selectors.
+- **Performance page: grouped picker + green-heavy gradient bars + section renames.** (1) The product
+  picker matches the forecasting page for grouped roles (`_grouped_forecasting`): a **group tab-strip**
+  (`key="perf_group"`) + **full-name location dropdown** (`_loc_label`, `key="perf_loc_{group}"`) — now
+  laid out **on one row via `st.columns([1, 1.2])`**, tabs left / dropdown **right-aligned** in its
+  column (`.st-key-perf_loc_box` = `max-width:640px; margin-left:auto`, no negative pull-up); non-grouped
+  roles keep the flat `perf_prod` selector. (2) **"Weekly forecast absolute accuracy"** (renamed) is a
+  **green-heavy gradient bar** (`accuracy_chart`): colorscale red→amber→green with `cmin` pushed 0.35·range
+  BELOW the min (so the worst week is amber, not deep red), highest = green; **h 300→200** and the
+  **y-axis zoomed to `[min(95, floor(min)) … 100]`** since accuracy is always high-90s (variation now
+  visible). (3) **"Actual vs Forecast deviation"** (renamed from Weekly delta; footnote "All prices
+  rounded off to Rs.50") — `delta_bar` now uses **rounded-forecast − spot**, coloured by |deviation| on a
+  **green-heavy** scale (green 0→0.55, amber 0.8, red 1.0), **h 200→320** so small deviations read. (4)
+  **"Weekly directional hit accuracy"** (renamed). Both bar charts render via `st.plotly_chart`.
+  `theme.py`: `.st-key-perf_loc_box` + fc/perf dropdown inner styling share selectors.
 - **FIX: intermittent `KeyError: 'auth'` at startup** — added `[server] fileWatcherType = "none"` to
   `.streamlit/config.toml`. The error came from Python's import machinery (`sys.modules.pop('auth')`
   in `_load_unlocked`) when Streamlit's watchdog file-watcher purged `sys.modules` mid-import during a

@@ -127,6 +127,8 @@ surfaces follow the role. Acceptable for the current build.
   render — Prev was showing active on page 1, Next on the last page); and the intermittent
   `KeyError: 'auth'` at startup fixed with `[server] fileWatcherType = "none"` in `.streamlit/config.toml`
   (watchdog was purging `sys.modules` mid-import during git-pull redeploys). The **Performance page** also
-  gained the forecasting-style **grouped picker** (group tab-strip + full-name location dropdown), and its
-  **weekly-accuracy chart became a gradient bar** (highest = green) with the **weekly-delta bars regraded
-  by |error|** (green = small, red = large). Full detail in `handoff.md` changelog 2026-07-09.
+  gained the forecasting-style **grouped picker** (group tab-strip + full-name location dropdown, on one
+  row — tabs left / dropdown right), **green-heavy gradient bars** (accuracy: highest green, y-axis zoomed
+  to the high-90s, shorter; deviation: rounded-forecast−spot, green = small error, taller), and section
+  renames (Actual vs Forecast deviation / Weekly forecast absolute accuracy / Weekly directional hit
+  accuracy). Full detail in `handoff.md` changelog 2026-07-09.

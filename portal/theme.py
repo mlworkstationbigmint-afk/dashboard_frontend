@@ -452,9 +452,9 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
        show in full on one line; capped at the viewport so it never overflows. */
     width:660px; max-width:100%; margin-left:auto; margin-bottom:-52px; position:relative; z-index:5;
 }}
-/* Performance page reuses the same dropdown, left-aligned under the group tab-strip (no slider row
-   to sit beside, so no negative pull-up). */
-.st-key-perf_loc_box {{ width:660px; max-width:100%; margin:2px 0 8px 0; }}
+/* Performance page reuses the same dropdown, RIGHT-aligned in its own column on the SAME row as the
+   group tab-strip (st.columns handles the row, so no negative pull-up needed). */
+.st-key-perf_loc_box {{ width:100%; max-width:640px; margin-left:auto; }}
 .st-key-fc_loc_box div[data-baseweb="select"] > div,
 .st-key-perf_loc_box div[data-baseweb="select"] > div {{
     border:1.6px solid var(--bm-primary) !important; background:var(--bm-primary-soft) !important;
