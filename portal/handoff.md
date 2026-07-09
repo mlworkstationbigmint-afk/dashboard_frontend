@@ -151,10 +151,25 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   Rebars = "Rebar, {Exy-Mumbai … BF Route | Exw-Mumbai … IF Route | Exw-Raipur … IF Route}"; Structure =
   "Structure-Angle, Exw-Raipur, India, IS 2062/2011 E-250 Gr A,150x150 Angle, IF Route". **These are the
   only editable knob** — change the strings in that dict. `theme.py` `.st-key-fc_loc_box` widened
-  `250px → 700px` (~90 chars, `max-width:100%`) so even the longest name shows in full on one line;
+  `250px → 660px` (~85 chars, `max-width:100%`) so even the longest name shows in full on one line;
   value font 12.5px + a global `li[role="option"]` rule lets popover options wrap/show in full. The dropdown key still
   maps back to the short `STEEL_PRODUCTS` key, so data lookups (`products[product]`, ff/acc) are
-  unchanged; only the *displayed* label changed.
+  unchanged; only the *displayed* label changed. **(update: 660px = ~85 chars, per owner.)**
+- **Forecast-horizon tab + right rail restructure (grouped graphical view).** The right-side price
+  rail changed: (1) the **"+12-week forecast" card was removed**; (2) a **1W/4W/8W/12W segmented tab**
+  (`st.segmented_control` `key="fc_horizon"`, `format_func` `n→"{n}W"`, default 1) now sits **above the
+  cards**; (3) the second card is now a **"{n}-week forecast"** whose value/direction tracks the tab —
+  `app.py` `_forecast_at(n)` reads the n-th row of the 12-week `fwd` path **positionally** (row 0 = week
+  1, clamped to len; n=1 falls back to the summary "Next-wk forecast"), direction = `dl.direction_flag(fc
+  − last_actual)`. The **"Last actual spot" card is unchanged** by the tab. `price_cards(vertical, horizon)`
+  now emits **2** cards (was 3) and adds the `bm-vcards-sm` class; the horizontal branch uses
+  `st.columns(len(cards))`. (4) Cards **made smaller** via `theme.py` `.bm-vcards-sm` (padding 11×13,
+  value 20px, icon 26px, labels 12/11.5px; rail left-aligned, full-width). (5) The **Forecast rationale
+  moved into the right rail directly under the cards** (compact 12px) — new nested `render_rationale(compact)`
+  helper; it's rendered full-width below only for the OTHER views (guarded by a `rationale_shown` flag).
+  Chart/rail split widened `st.columns([5,1]) → [5,1.25]`. NB: the graph itself is unchanged — the tab
+  drives the card only (the forecast line already plots all 12 forward weeks). Non-grouped + grouped
+  Tabular views now also show 2 cards (no +12w), horizon fixed at 1 (next-week).
 - **"Calculators" → "Scenario Simulation"** everywhere user-facing: nav label (`NAV` 2nd field —
   **internal page key stays `"Calculators"`** so routing / `PAGES` / `profile["pages"]` are untouched),
   Home module-card title, `page_calculators()` H2, and the three tool subheaders

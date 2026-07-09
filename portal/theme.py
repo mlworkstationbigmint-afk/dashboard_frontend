@@ -443,9 +443,9 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
 .st-key-fc_loc_box {{
     /* -52px = 0.65rem compact block gap (~10px, set on stVerticalBlock above) + own ~42px
        height (was -58px under the default 1rem gap) — retune if either changes.
-       ~90-char wide (700px) so the full descriptive product names (app.py FORECAST_LOCATION_LABELS)
+       ~85-char wide (660px) so the full descriptive product names (app.py FORECAST_LOCATION_LABELS)
        show in full on one line; capped at the viewport so it never overflows. */
-    width:700px; max-width:100%; margin-left:auto; margin-bottom:-52px; position:relative; z-index:5;
+    width:660px; max-width:100%; margin-left:auto; margin-bottom:-52px; position:relative; z-index:5;
 }}
 .st-key-fc_loc_box div[data-baseweb="select"] > div {{
     border:1.6px solid var(--bm-primary) !important; background:var(--bm-primary-soft) !important;
@@ -473,6 +473,14 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
 .bm-vcards {{ display: flex; flex-direction: column; gap: 14px;
     max-width: 280px; margin-left: auto; }}
 .bm-vcards .bm-card {{ height: auto; }}
+/* smaller variant: the grouped graphical right rail now holds a horizon tab + 2 cards + the
+   rationale, so the cards are trimmed down and fill the (left-aligned) rail width. */
+.bm-vcards.bm-vcards-sm {{ max-width: 100%; margin-left: 0; gap: 10px; }}
+.bm-vcards-sm .bm-card {{ padding: 11px 13px; border-radius: 12px; }}
+.bm-vcards-sm .bm-kpi-value {{ font-size: 20px; }}
+.bm-vcards-sm .bm-kpi-icon {{ width: 26px; height: 26px; font-size: 15px; }}
+.bm-vcards-sm .bm-kpi-label {{ font-size: 12px; }}
+.bm-vcards-sm .bm-kpi-sub {{ font-size: 11.5px; margin-top: 3px; }}
 
 /* grouped-forecasting Graphical/Tabular switch (adani_dev) -> sliding segmented PILL switch:
    grey capsule track, a label-width WHITE PILL that glides behind the active option, orange
