@@ -126,7 +126,12 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   the same width and the inter-button gaps are uniform. A small **8px spacer** (`st.markdown` div) now
   sits between the brand bar and the nav row so the nav sits a touch lower. → `app.py` `top_nav()` +
   the line just above `top_nav()`.
-- **Zoom-button (1W/4W/8W/12W/26W/YTD/ALL) click "shift" fixed — rangeselector replaced by HTML buttons.**
+- **Home module cards centred + equal-height one-liners** — the 4 module card-buttons
+  (`.st-key-homemod_*` in `theme.py`) now **centre all content** (`align-items:center;
+  text-align:center`, was flex-start/left) and the one-liner `p` reserves **3 lines**
+  (`min-height:4.5em` = 3 × 1.5 line-height) with the text flex-centred inside that box — so the
+  descriptions are equal height regardless of wording and the **"Open →" CTAs line up across all four
+  cards**. Card min-height + `height:100%` already equalise the card heights.
   A first pass tried CSS (`outline:none` / `user-select:none`) on the SVG `.rangeselector` buttons; it
   did **not** stop the jitter — Plotly re-renders the whole button group on every click and re-measures
   each button, so the strip shifts a pixel or two regardless of CSS. **Fix:** dropped Plotly's
