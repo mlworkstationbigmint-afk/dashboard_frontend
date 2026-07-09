@@ -126,5 +126,7 @@ surfaces follow the role. Acceptable for the current build.
   + Prev/Next). **Fixes:** Prev/Next rebuilt on `on_click` callbacks (disabled-state/page no longer lag a
   render — Prev was showing active on page 1, Next on the last page); and the intermittent
   `KeyError: 'auth'` at startup fixed with `[server] fileWatcherType = "none"` in `.streamlit/config.toml`
-  (watchdog was purging `sys.modules` mid-import during git-pull redeploys). Full detail in `handoff.md`
-  changelog 2026-07-09.
+  (watchdog was purging `sys.modules` mid-import during git-pull redeploys). The **Performance page** also
+  gained the forecasting-style **grouped picker** (group tab-strip + full-name location dropdown), and its
+  **weekly-accuracy chart became a gradient bar** (highest = green) with the **weekly-delta bars regraded
+  by |error|** (green = small, red = large). Full detail in `handoff.md` changelog 2026-07-09.

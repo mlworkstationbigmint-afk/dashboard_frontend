@@ -577,11 +577,17 @@ def perf_chart(view):
 
 
 def delta_bar(view):
+    """Weekly delta (forecast - spot) bars, colour-graded by ABSOLUTE error: green = small |delta|
+    (accurate), through amber, to red = large |delta| (inaccurate). Bars still point up/down by sign."""
     try:
         import plotly.graph_objects as go
-        colors = [theme.DANGER if d > 0 else theme.SUCCESS for d in view["Delta"]]
-        fig = go.Figure(go.Bar(x=view["Date"], y=view["Delta"], marker_color=colors,
-                               hovertemplate="Rs.%{y:,.0f}<extra>Forecast - Spot</extra>"))
+        absd = view["Delta"].abs()
+        cmax = float(absd.max()) or 1.0
+        fig = go.Figure(go.Bar(
+            x=view["Date"], y=view["Delta"],
+            marker=dict(color=list(absd), cmin=0, cmax=cmax, showscale=False, line=dict(width=0),
+                        colorscale=[[0.0, theme.SUCCESS], [0.5, "#F59E0B"], [1.0, theme.DANGER]]),
+            hovertemplate="Rs.%{y:,.0f}<extra>Forecast - Spot</extra>"))
         fig.update_layout(height=200, margin=dict(l=8, r=8, t=8, b=8),
                           plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
                           hovermode="x unified", bargap=0.35,
@@ -595,22 +601,29 @@ def delta_bar(view):
 
 
 def accuracy_chart(view):
-    """Per-week forecast accuracy (%) = 100 - |forecast-vs-spot % error|."""
+    """Per-week forecast accuracy (%) = 100 - |forecast-vs-spot % error|, as a gradient bar chart:
+    highest accuracy = green, through amber, down to red for the least-accurate week."""
     try:
         import plotly.graph_objects as go
         acc_pct = 100 - view["DeltaPct"].abs()
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
-            x=[_dt(d) for d in view["Date"]], y=list(acc_pct), name="Accuracy",
-            mode="lines+markers", line=dict(color=theme.SUCCESS, width=2.6, shape="spline", smoothing=0.4),
-            marker=dict(size=6, color=theme.SUCCESS, line=dict(width=4, color="rgba(31,157,85,0.16)")),
-            hovertemplate="%{x|%d-%b-%y}<br><b>Accuracy: %{y:.1f}%</b><extra></extra>",
-            hoverlabel=dict(bgcolor="white", bordercolor="#cdeedd", font=dict(color=theme.SUCCESS))))
-        f = _style_fig(fig, height=300, money=False)
-        f.update_yaxes(ticksuffix="%")
-        _render_with_highlighter(f, height=300, dom_id="acc_chart")
+        lo, hi = float(acc_pct.min()), float(acc_pct.max())
+        if hi - lo < 1e-9:                        # all-equal -> avoid a degenerate colour scale
+            lo, hi = lo - 1, hi + 1
+        fig = go.Figure(go.Bar(
+            x=view["Date"], y=list(acc_pct),
+            marker=dict(color=list(acc_pct), cmin=lo, cmax=hi, showscale=False, line=dict(width=0),
+                        colorscale=[[0.0, theme.DANGER], [0.5, "#F59E0B"], [1.0, theme.SUCCESS]]),
+            hovertemplate="%{x|%d-%b-%y}<br><b>Accuracy: %{y:.1f}%</b><extra></extra>"))
+        fig.update_layout(height=300, margin=dict(l=8, r=8, t=8, b=8),
+                          plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
+                          hovermode="x unified", bargap=0.3,
+                          hoverlabel=dict(bgcolor="white", bordercolor="#e2e8f0"),
+                          font=dict(size=11, color="#334155"))
+        fig.update_yaxes(ticksuffix="%", gridcolor="#eef2f7", zeroline=True, zerolinecolor="#cbd5e1")
+        fig.update_xaxes(gridcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     except Exception:
-        st.line_chart((100 - view["DeltaPct"].abs()).to_frame("Accuracy %").set_index(view["Date"]))
+        st.bar_chart((100 - view["DeltaPct"].abs()).to_frame("Accuracy %").set_index(view["Date"]))
 
 
 def directional_accuracy_bar(view):
@@ -1401,11 +1414,29 @@ def page_performance():
                 icon=":material/info:")
         theme.footer()
         return
-    keys = list(products.keys())
-    default = keys[0]
-    product = st.segmented_control("Product", keys, default=default, key="perf_prod",
-                                   label_visibility="collapsed")
-    product = product if product in products else default
+    # Same commodity picker as the forecasting page for grouped roles: a group tab-strip
+    # (HRC / HR Plate / Rebar / Structure) + a full-name location dropdown; other roles keep the
+    # flat product selector.
+    if _grouped_forecasting(user["role"]):
+        groups = _grouped_products(products)
+        gkeys = list(groups.keys())
+        group = st.segmented_control("Commodity group", gkeys, default=gkeys[0],
+                                     key="perf_group", label_visibility="collapsed")
+        group = group if group in groups else gkeys[0]
+        loc_map = {_loc_label(group, n): n for n in groups[group]}   # full label -> product key
+        loc_labels = sorted(loc_map)
+        loc_key = f"perf_loc_{group.replace(' ', '_')}"
+        if st.session_state.get(loc_key) not in loc_labels:          # default/sanitise before the widget
+            st.session_state[loc_key] = loc_labels[0]
+        with st.container(key="perf_loc_box"):
+            st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
+        product = loc_map[st.session_state[loc_key]]
+    else:
+        keys = list(products.keys())
+        default = keys[0]
+        product = st.segmented_control("Product", keys, default=default, key="perf_prod",
+                                       label_visibility="collapsed")
+        product = product if product in products else default
     meta = products[product]
 
     df = dl.load_accuracy("6-week", meta["acc"])   # Accuracy_Table_6 only (window toggle removed)

@@ -452,21 +452,27 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
        show in full on one line; capped at the viewport so it never overflows. */
     width:660px; max-width:100%; margin-left:auto; margin-bottom:-52px; position:relative; z-index:5;
 }}
-.st-key-fc_loc_box div[data-baseweb="select"] > div {{
+/* Performance page reuses the same dropdown, left-aligned under the group tab-strip (no slider row
+   to sit beside, so no negative pull-up). */
+.st-key-perf_loc_box {{ width:660px; max-width:100%; margin:2px 0 8px 0; }}
+.st-key-fc_loc_box div[data-baseweb="select"] > div,
+.st-key-perf_loc_box div[data-baseweb="select"] > div {{
     border:1.6px solid var(--bm-primary) !important; background:var(--bm-primary-soft) !important;
     border-radius:9px !important; box-shadow:0 1px 4px rgba(2,76,161,.12) !important;
 }}
-.st-key-fc_loc_box div[data-baseweb="select"] > div:hover {{
+.st-key-fc_loc_box div[data-baseweb="select"] > div:hover,
+.st-key-perf_loc_box div[data-baseweb="select"] > div:hover {{
     border-color:var(--bm-accent) !important;
 }}
-.st-key-fc_loc_box div[data-baseweb="select"] div[value], .st-key-fc_loc_box [data-baseweb="select"] span {{
+.st-key-fc_loc_box div[data-baseweb="select"] div[value], .st-key-fc_loc_box [data-baseweb="select"] span,
+.st-key-perf_loc_box div[data-baseweb="select"] div[value], .st-key-perf_loc_box [data-baseweb="select"] span {{
     color:var(--bm-primary-dark) !important; font-weight:700 !important; font-size:12.5px !important;
 }}
 /* dropdown popover options: show the full descriptive name (no clipping), comfortable line height */
 div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
     font-size:12.5px !important; line-height:1.4 !important; white-space:normal !important;
 }}
-.st-key-fc_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
+.st-key-fc_loc_box svg, .st-key-perf_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
 
 /* grouped-forecasting right-side price-card stack: ONE HTML flex column (emitted whole by
    app.py price_cards(vertical=True)). Our own markup, so no dependence on how Streamlit

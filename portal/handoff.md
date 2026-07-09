@@ -147,6 +147,18 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   runs at the start of the next rerun, BEFORE the controls render), so `cur`, the disabled flags and
   the sliced page always agree in the same render. Page is also clamped + persisted up front so a
   shrunken row count can't strand you past the last page.
+- **Performance page: grouped picker + gradient bars.** (1) The product picker now matches the
+  forecasting page for grouped roles (`_grouped_forecasting`): a **group tab-strip** (`key="perf_group"`)
+  + a **full-name location dropdown** (`_loc_label`, `key="perf_loc_{group}"`, in a `perf_loc_box`
+  container styled like `fc_loc_box` but left-aligned, no negative pull-up); non-grouped roles keep the
+  flat `perf_prod` selector. (2) **Weekly forecast accuracy** switched from a line to a **gradient bar
+  chart** (`accuracy_chart`) — `go.Bar` with `marker.color = accuracy%`, colorscale red→amber→**green**
+  over `cmin/cmax = min/max` accuracy, so the **highest-accuracy week is green**, worst is red. (3)
+  **Weekly delta** (`delta_bar`) recoloured from up/down (red/green by sign) to a **gradient by |delta|**
+  — green (small error) → amber → red (large error), `cmin=0, cmax=max|delta|`; bars still point up/down
+  by sign. Both bar charts render via `st.plotly_chart` (the accuracy chart dropped the hover-ball
+  `_render_with_highlighter`, which is line-only). `theme.py`: `.st-key-perf_loc_box` added and the
+  fc/perf dropdown inner styling merged into shared selectors.
 - **FIX: intermittent `KeyError: 'auth'` at startup** — added `[server] fileWatcherType = "none"` to
   `.streamlit/config.toml`. The error came from Python's import machinery (`sys.modules.pop('auth')`
   in `_load_unlocked`) when Streamlit's watchdog file-watcher purged `sys.modules` mid-import during a
