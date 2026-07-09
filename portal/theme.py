@@ -607,6 +607,8 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
     padding:11px 20px; border-radius:9px; font-weight:600; font-size:14px; box-shadow:0 2px 8px rgba(238,78,36,.25); }}
 .bm-link-btn a:hover {{ filter:brightness(.95); }}
 .bm-footnote {{ color:{NEUTRAL}; font-size:12px; margin-top:8px; }}
+/* sortable/paginated table meta line ("Rows 1-52 of 90 · Page 1/2") */
+.bm-tbl-meta {{ color:{NEUTRAL}; font-size:12.5px; text-align:center; }}
 .bm-footer {{ margin-top:26px; padding-top:14px; border-top:1px solid #e2e8f0; color:{NEUTRAL};
     font-size:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }}
 .bm-footer a {{ color:var(--bm-primary); text-decoration:none; }}

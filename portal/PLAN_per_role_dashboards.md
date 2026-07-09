@@ -120,4 +120,7 @@ surfaces follow the role. Acceptable for the current build.
   horizontal) cards that drives **both** the second card's value (`_forecast_at(n)`, positional on the
   12-wk `fwd` path) **and the graph** (`render_graph_view(horizon)` → `fwd.head(n)`, forecast drawn out to
   n weeks), and the **Forecast rationale moved into the rail as the 3rd card** (heading inside the card).
-  Full detail in `handoff.md` changelog 2026-07-09.
+  Finally, **all displayed forecasts are rounded to Rs.50** (`_round50`) and **both data tables**
+  (forecasting Tabular view + Performance week-wise detail) are now **sortable over the whole dataset +
+  paginated at 52 rows/page** via a reusable `render_sortable_table` (sort-by picker + asc/desc flip icon
+  + Prev/Next). Full detail in `handoff.md` changelog 2026-07-09.

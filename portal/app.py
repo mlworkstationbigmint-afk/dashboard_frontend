@@ -354,6 +354,14 @@ def _dt(t):
     return t.to_pydatetime() if hasattr(t, "to_pydatetime") else t
 
 
+def _round50(x):
+    """Round a forecast value to the nearest Rs.50 (NaN/None pass through unchanged).
+    All displayed forecasts are rounded to 50 (cards, tables, chart line + hover)."""
+    if x is None or pd.isna(x):
+        return x
+    return int(round(x / 50.0)) * 50
+
+
 def _spot_trace(dates, vals, fill=False):
     import plotly.graph_objects as go
     extra = dict(fill="tozeroy", fillcolor="rgba(94,146,214,0.10)") if fill else {}
@@ -457,7 +465,7 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
     try:
         import plotly.graph_objects as go
         fc_dates = list(hist["Date"]) + list(fwd["Date"])
-        fc_vals = list(hist["Forecast"]) + list(fwd["Forecast"])
+        fc_vals = [_round50(v) for v in (list(hist["Forecast"]) + list(fwd["Forecast"]))]
         fig = go.Figure()
         fig.add_trace(_spot_trace(hist["Date"], hist["Actual"], fill=True))
         fig.add_trace(go.Scatter(
@@ -465,7 +473,7 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
             line=dict(color=theme.FORECAST_LINE, width=2.8, dash="dash", shape="spline", smoothing=0.4),
             marker=dict(size=5, color=theme.FORECAST_LINE, line=dict(width=4, color=theme.FORECAST_HALO)),
             cliponaxis=False,
-            hovertemplate="%{x|%d-%b-%y}<br><b>Forecast Price: Rs.%{y:,.2f}</b><extra></extra>",
+            hovertemplate="%{x|%d-%b-%y}<br><b>Forecast Price: Rs.%{y:,.0f}</b><extra></extra>",
             hoverlabel=dict(bgcolor="white", bordercolor="#f3c2bd", font=dict(color=theme.FORECAST_LINE))))
 
         # dotted divider + faint shaded band where the 12-week-ahead forecast begins
@@ -558,10 +566,10 @@ def perf_chart(view):
         fig = go.Figure()
         fig.add_trace(_spot_trace(view["Date"], view["Actual"]))
         fig.add_trace(go.Scatter(
-            x=[_dt(d) for d in view["Date"]], y=list(view["Forecast"]), name="Forecast",
+            x=[_dt(d) for d in view["Date"]], y=[_round50(v) for v in view["Forecast"]], name="Forecast",
             mode="lines+markers", line=dict(color=theme.FORECAST_LINE, width=2.6, dash="dash"),
             marker=dict(size=6, color=theme.FORECAST_LINE, line=dict(width=4, color=theme.FORECAST_HALO)),
-            hovertemplate="%{x|%d-%b-%y}<br><b>Forecast Price: Rs.%{y:,.2f}</b><extra></extra>",
+            hovertemplate="%{x|%d-%b-%y}<br><b>Forecast Price: Rs.%{y:,.0f}</b><extra></extra>",
             hoverlabel=dict(bgcolor="white", bordercolor="#f3c2bd", font=dict(color=theme.FORECAST_LINE))))
         _render_with_highlighter(_style_fig(fig, height=320), height=320, dom_id="perf_chart")
     except Exception:
@@ -793,6 +801,90 @@ def _loc_label(group, name):
     return FORECAST_LOCATION_LABELS.get(name, _location_label(group, name))
 
 
+def render_sortable_table(df, columns, key, rows_per_page=52, row_class=None,
+                          table_class="bm-table", footnote=""):
+    """Render a DataFrame as a styled HTML table with **whole-dataset** column sorting + pagination.
+
+    columns: list of dicts, each: {
+        "field":    df column name,
+        "label":    header text,
+        "align":    "l" | "r" | "c"  (default "l"),
+        "fmt":      callable(value, row_series) -> cell HTML,
+        "sortable": bool (default True; non-sortable cols aren't offered in the sort picker),
+        "sort_by":  optional df column to sort on instead of `field`,
+    }
+    key: unique prefix for widgets/session_state.
+    row_class: optional callable(row_series) -> str applied to the <tr>.
+
+    Sorting is applied to the ENTIRE frame first, THEN the current page is sliced — so descending
+    really does surface the last rows on page 1. Each page holds `rows_per_page` rows (52 = 1 year).
+    """
+    if df is None or len(df) == 0:
+        st.info("No rows to display.")
+        return
+
+    sortable = [c for c in columns if c.get("sortable", True)]
+    labels = [c["label"] for c in sortable]
+    desc_key, page_key, sig_key = f"{key}_desc", f"{key}_page", f"{key}_sig"
+    st.session_state.setdefault(desc_key, False)
+    st.session_state.setdefault(page_key, 0)
+
+    # ---- controls: sort-by | flip | meta | prev | next ----
+    c1, c2, c3, c4, c5 = st.columns([2.4, 0.7, 3, 1.3, 1.3], vertical_alignment="center")
+    with c1:
+        sort_label = st.selectbox("Sort by", labels, key=f"{key}_sortcol", label_visibility="collapsed")
+    with c2:
+        if st.button(":material/swap_vert:", key=f"{key}_flip",
+                     help="Flip ascending / descending", width="stretch"):
+            st.session_state[desc_key] = not st.session_state[desc_key]
+    desc = st.session_state[desc_key]
+
+    # a change of sort column OR direction jumps back to page 1 (so a flip shows the new first rows)
+    if st.session_state.get(sig_key) != (sort_label, desc):
+        st.session_state[sig_key] = (sort_label, desc)
+        st.session_state[page_key] = 0
+
+    total = len(df)
+    n_pages = max(1, (total + rows_per_page - 1) // rows_per_page)
+    cur = min(max(int(st.session_state.get(page_key, 0)), 0), n_pages - 1)
+    page = cur
+    with c4:
+        if st.button(":material/chevron_left: Prev", key=f"{key}_prev",
+                     disabled=cur <= 0, width="stretch"):
+            page = max(0, cur - 1)
+    with c5:
+        if st.button("Next :material/chevron_right:", key=f"{key}_next",
+                     disabled=cur >= n_pages - 1, width="stretch"):
+            page = min(n_pages - 1, cur + 1)
+    st.session_state[page_key] = page
+    with c3:
+        lo, hi = page * rows_per_page + 1, min((page + 1) * rows_per_page, total)
+        st.markdown(f"<div class='bm-tbl-meta'>Rows <b>{lo}&ndash;{hi}</b> of {total} "
+                    f"&middot; Page {page + 1}/{n_pages}</div>", unsafe_allow_html=True)
+
+    # ---- sort the WHOLE frame, then slice the page ----
+    sel = next((c for c in sortable if c["label"] == sort_label), sortable[0])
+    df_sorted = df.sort_values(by=sel.get("sort_by", sel["field"]), ascending=not desc,
+                               kind="stable", na_position="last")
+    page_df = df_sorted.iloc[page * rows_per_page:(page + 1) * rows_per_page]
+
+    # ---- build HTML ----
+    acls = {"l": "", "r": "bm-r", "c": "bm-c"}
+    arrow = " &#9660;" if desc else " &#9650;"           # ▼ / ▲ on the active column
+    thead = "".join(f"<th class='{acls.get(c.get('align', 'l'), '')}'>{c['label']}"
+                    f"{arrow if c is sel else ''}</th>" for c in columns)
+    body = ""
+    for _, r in page_df.iterrows():
+        rc = f" class='{row_class(r)}'" if row_class else ""
+        tds = "".join(f"<td class='{acls.get(c.get('align', 'l'), '')}'>"
+                      f"{c['fmt'](r.get(c['field']), r)}</td>" for c in columns)
+        body += f"<tr{rc}>{tds}</tr>"
+    st.markdown(f"<table class='{table_class}'><thead><tr>{thead}</tr></thead>"
+                f"<tbody>{body}</tbody></table>", unsafe_allow_html=True)
+    if footnote:
+        st.markdown(f"<div class='bm-footnote'>{footnote}</div>", unsafe_allow_html=True)
+
+
 def page_forecasting():
     products = allowed_products(user["role"])
     if not products:
@@ -838,6 +930,7 @@ def page_forecasting():
             fc = fwd.iloc[min(max(int(n), 1), len(fwd)) - 1].get("Forecast")
         if (fc is None or pd.isna(fc)) and n == 1:
             fc = row.get("Next-wk forecast")     # fall back to the summary's next-week value
+        fc = _round50(fc)                        # forecasts are shown rounded to the nearest Rs.50
         d = dl.direction_flag(fc - la) if (pd.notna(fc) and pd.notna(la)) else "Flat"
         return fc, d
 
@@ -895,40 +988,44 @@ def page_forecasting():
                         unsafe_allow_html=True)
 
     def render_table_view():
-        # One continuous table: history (actual+forecast+delta, blank direction) flows into
-        # the 12-week-ahead forecast (forecast+direction, blank actual+delta).
+        # One continuous table: history (actual+forecast+delta, blank direction) flows into the
+        # 12-week-ahead forecast (forecast+direction, blank actual+delta). Forecasts rounded to Rs.50;
+        # Δ = Actual − rounded forecast. Sortable (whole dataset) + paginated (52 rows/page).
         theme.section_title("Actual vs forecast (history &rarr; 12-week ahead)", theme.icon("calendar"))
         hist_t = acc_hist.dropna(subset=["Actual"])
-        body = ""
+        rows = []
         for r in hist_t.itertuples():
-            fc = f"Rs.{r.Forecast:,.0f}" if pd.notna(r.Forecast) else ""
-            if pd.notna(r.Forecast):
-                d = r.Actual - r.Forecast
-                delta = f"{'+' if d >= 0 else ''}{d:,.0f}"
-            else:
-                delta = ""
-            body += (f"<tr><td>{r.Date:%d %b %Y}</td>"
-                     f"<td class='bm-r'>Rs.{r.Actual:,.0f}</td>"
-                     f"<td class='bm-r'>{fc}</td>"
-                     f"<td class='bm-r'>{delta}</td>"
-                     f"<td class='bm-c'></td></tr>")
+            fc = _round50(r.Forecast)
+            rows.append({"Date": r.Date, "Actual": r.Actual, "Forecast": fc,
+                         "Delta": (r.Actual - fc) if pd.notna(fc) else float("nan"),
+                         "Direction": "", "_fwd": False})
         for r in fwd.itertuples():
-            body += (f"<tr class='bm-fc-row'><td>{r.Date:%d %b %Y}</td>"
-                     f"<td class='bm-r'></td>"
-                     f"<td class='bm-r'>Rs.{r.Forecast:,.0f}</td>"
-                     f"<td class='bm-r'></td>"
-                     f"<td class='bm-c'>{theme.direction_chip(r.Direction)}</td></tr>")
-        st.markdown(
-            "<table class='bm-table bm-table-lg'><thead><tr><th>Date</th>"
-            "<th class='bm-r'>Actual (Rs./t)</th><th class='bm-r'>Forecast (Rs./t)</th>"
-            "<th class='bm-r'>&Delta; (Actual &minus; Forecast)</th><th class='bm-c'>Direction</th></tr></thead>"
-            f"<tbody>{body}</tbody></table>",
-            unsafe_allow_html=True,
-        )
-        st.markdown(f"<div class='bm-footnote'>Top {len(hist_t)} rows = realised spot vs forecast "
-                    "(same window as the chart); shaded rows = 12-week-ahead forecast (no actuals yet). "
-                    "&Delta; = actual &minus; forecast. Headline line = Ensemble (Weighted Mean).</div>",
-                    unsafe_allow_html=True)
+            rows.append({"Date": r.Date, "Actual": float("nan"), "Forecast": _round50(r.Forecast),
+                         "Delta": float("nan"), "Direction": r.Direction, "_fwd": True})
+        tdf = pd.DataFrame(rows)
+
+        def _money(v, _r):
+            return f"Rs.{v:,.0f}" if pd.notna(v) else ""
+
+        def _delta(v, _r):
+            return f"{'+' if v >= 0 else ''}{v:,.0f}" if pd.notna(v) else ""
+
+        columns = [
+            {"field": "Date", "label": "Date",
+             "fmt": lambda v, _r: f"{pd.Timestamp(v):%d %b %Y}"},
+            {"field": "Actual", "label": "Actual (Rs./t)", "align": "r", "fmt": _money},
+            {"field": "Forecast", "label": "Forecast (Rs./t)", "align": "r", "fmt": _money},
+            {"field": "Delta", "label": "Δ (Actual − Forecast)", "align": "r", "fmt": _delta},
+            {"field": "Direction", "label": "Direction", "align": "c", "sortable": False,
+             "fmt": lambda v, _r: theme.direction_chip(v) if v else ""},
+        ]
+        render_sortable_table(
+            tdf, columns, key="fc_tbl", rows_per_page=52,
+            row_class=lambda r: "bm-fc-row" if r.get("_fwd") else "",
+            table_class="bm-table bm-table-lg",
+            footnote=("Shaded rows = 12-week-ahead forecast (no actuals yet). Forecasts rounded to "
+                      "Rs.50; &Delta; = actual &minus; forecast. Sort any column; the sort applies to the "
+                      "whole dataset before paging (52 rows/page). Headline line = Ensemble (Weighted Mean)."))
 
     def render_rationale():
         # Full-width Forecast-rationale section (non-grouped + grouped Tabular views).
@@ -1331,23 +1428,27 @@ def page_performance():
     directional_accuracy_bar(view)
 
     theme.section_title("Week-wise detail", theme.icon("calendar"))
-    rows_html = ""
-    for r in view.itertuples():
-        rows_html += (
-            f"<tr><td>{r.Date:%d %b %Y}</td>"
-            f"<td class='bm-r'>Rs.{r.Actual:,.0f}</td>"
-            f"<td class='bm-r'>Rs.{r.Forecast:,.0f}</td>"
-            f"<td class='bm-r'>{'+' if r.Delta>=0 else ''}{r.Delta:,.0f} ({r.DeltaPct:+.1f}%)</td></tr>"
-        )
-    st.markdown(
-        "<table class='bm-table'><thead><tr><th>Date</th>"
-        "<th class='bm-r'>Spot</th><th class='bm-r'>Forecast</th>"
-        "<th class='bm-r'>Delta</th></tr></thead>"
-        f"<tbody>{rows_html}</tbody></table>",
-        unsafe_allow_html=True,
-    )
-    st.markdown("<div class='bm-footnote'>Delta = Forecast - Spot.</div>",
-                unsafe_allow_html=True)
+    # Forecast rounded to Rs.50; Delta (and %) recomputed off the rounded forecast so the row is
+    # self-consistent. Sortable over the whole dataset + paginated (52 rows/page).
+    pdf = view[["Date", "Actual", "Forecast"]].copy()
+    pdf["Forecast"] = pdf["Forecast"].map(_round50)
+    pdf["Delta"] = pdf["Forecast"] - pdf["Actual"]
+    pdf["DeltaPct"] = pdf["Delta"] / pdf["Actual"] * 100
+
+    def _money(v, _r):
+        return f"Rs.{v:,.0f}" if pd.notna(v) else ""
+
+    columns = [
+        {"field": "Date", "label": "Date", "fmt": lambda v, _r: f"{pd.Timestamp(v):%d %b %Y}"},
+        {"field": "Actual", "label": "Spot", "align": "r", "fmt": _money},
+        {"field": "Forecast", "label": "Forecast", "align": "r", "fmt": _money},
+        {"field": "Delta", "label": "Delta", "align": "r",
+         "fmt": lambda v, r: (f"{'+' if v >= 0 else ''}{v:,.0f} ({r.get('DeltaPct'):+.1f}%)")
+         if pd.notna(v) else ""},
+    ]
+    render_sortable_table(pdf, columns, key="perf_tbl", rows_per_page=52,
+                          footnote="Delta = Forecast &minus; Spot (forecast rounded to Rs.50). "
+                                   "Sort applies to the whole dataset before paging (52 rows/page).")
     theme.footer()
 
 

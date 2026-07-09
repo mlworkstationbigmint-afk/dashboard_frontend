@@ -120,7 +120,25 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
-### 2026-07-09 — Go-live polish: nav centring, Scenario Simulation rename, week-of-month date, logo de-boxed, prototype text removed, forecasting H2 removed, zoom buttons re-done as HTML (no jitter)
+### 2026-07-09 — Go-live polish: nav centring, Scenario Simulation rename, week-of-month date, logo de-boxed, prototype text removed, forecasting H2 removed, zoom buttons re-done as HTML (no jitter), forecasts rounded to Rs.50, sortable+paginated data tables
+- **Forecasts rounded to the nearest Rs.50** — new `app.py` `_round50(x)` (NaN/None pass through).
+  Applied to every DISPLAYED forecast: the price cards (`_forecast_at`), the main chart's forecast
+  line + hover (`forecast_chart` `fc_vals`, hover now `,.0f`), the performance chart's forecast line +
+  hover (`perf_chart`), and both data tables (below). Actuals/spot are left untouched; accuracy KPIs
+  (MAPA etc.) still compute off the raw forecast — only the shown numbers are rounded.
+- **Data tables → sortable (whole-dataset) + paginated, 52 rows/page** — new reusable
+  `app.py` `render_sortable_table(df, columns, key, rows_per_page=52, row_class, table_class, footnote)`.
+  Controls row above each table: a **"Sort by" selectbox** (offers the sortable columns), a **flip
+  icon button** (`:material/swap_vert:`) toggling asc/desc with a ▲/▼ on the active column header, a
+  meta line ("Rows 1–52 of N · Page p/n"), and **Prev/Next** buttons. Sorting runs on the ENTIRE frame
+  (`df.sort_values(..., na_position="last")`) BEFORE the page is sliced, so descending really surfaces
+  the last rows; a change of sort column or direction jumps back to page 1. State per table in
+  session_state (`{key}_sortcol/_desc/_page/_sig`). Wired into: (1) the **forecasting Tabular view**
+  (`render_table_view` now builds one unified frame — history rows + forward rows tagged `_fwd` for the
+  `bm-fc-row` shading — Forecast rounded, Δ = Actual − rounded FC; Direction column non-sortable), and
+  (2) the **Performance "Week-wise detail"** table (Forecast rounded, Delta/% recomputed off it).
+  New `theme.py` `.bm-tbl-meta` style for the meta line. The Admin user table (`st.dataframe`) already
+  sorts natively and was left as-is.
 - **Top nav centred with equal gaps** — `app.py` `top_nav()` column widths changed from
   `[1] + [1.35]*(n-1)` (Home deliberately narrower) to **`[1]*len(items)`** so every nav button is
   the same width and the inter-button gaps are uniform. A small **8px spacer** (`st.markdown` div) now
