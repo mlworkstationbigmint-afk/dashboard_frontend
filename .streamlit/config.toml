@@ -8,3 +8,11 @@ baseRadius = "0.6rem"
 
 [client]
 toolbarMode = "minimal"
+
+[server]
+# Disable the source file-watcher. On Streamlit Cloud code changes arrive via a full redeploy
+# (process restart), so hot-reload is unnecessary — and the watcher's module purging races with the
+# top-level imports during a git-pull deploy, intermittently raising `KeyError: 'auth'` (and similar)
+# from Python's import machinery (sys.modules.pop during a concurrent module reload). Turning the
+# watcher off removes that race.
+fileWatcherType = "none"

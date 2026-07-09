@@ -123,4 +123,8 @@ surfaces follow the role. Acceptable for the current build.
   Finally, **all displayed forecasts are rounded to Rs.50** (`_round50`) and **both data tables**
   (forecasting Tabular view + Performance week-wise detail) are now **sortable over the whole dataset +
   paginated at 52 rows/page** via a reusable `render_sortable_table` (sort-by picker + asc/desc flip icon
-  + Prev/Next). Full detail in `handoff.md` changelog 2026-07-09.
+  + Prev/Next). **Fixes:** Prev/Next rebuilt on `on_click` callbacks (disabled-state/page no longer lag a
+  render — Prev was showing active on page 1, Next on the last page); and the intermittent
+  `KeyError: 'auth'` at startup fixed with `[server] fileWatcherType = "none"` in `.streamlit/config.toml`
+  (watchdog was purging `sys.modules` mid-import during git-pull redeploys). Full detail in `handoff.md`
+  changelog 2026-07-09.

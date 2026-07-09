@@ -139,6 +139,21 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   (2) the **Performance "Week-wise detail"** table (Forecast rounded, Delta/% recomputed off it).
   New `theme.py` `.bm-tbl-meta` style for the meta line. The Admin user table (`st.dataframe`) already
   sorts natively and was left as-is.
+- **FIX: Prev/Next pagination now uses `on_click` callbacks** (`render_sortable_table`). The first cut
+  computed the buttons' `disabled` flags + the page slice from `cur` (the page BEFORE the click) but
+  updated `page` inline AFTER rendering the buttons — so for one render the state lagged: Prev looked
+  active on page 1, Next looked active on the last page, and a click could appear to "do nothing".
+  Now Prev/Next mutate `st.session_state[{key}_page]` via an `on_click` `_bump(±1)` callback (which
+  runs at the start of the next rerun, BEFORE the controls render), so `cur`, the disabled flags and
+  the sliced page always agree in the same render. Page is also clamped + persisted up front so a
+  shrunken row count can't strand you past the last page.
+- **FIX: intermittent `KeyError: 'auth'` at startup** — added `[server] fileWatcherType = "none"` to
+  `.streamlit/config.toml`. The error came from Python's import machinery (`sys.modules.pop('auth')`
+  in `_load_unlocked`) when Streamlit's watchdog file-watcher purged `sys.modules` mid-import during a
+  git-pull redeploy (the traceback fired right at "Pulling code changes from Github"). On Streamlit
+  Cloud, code changes arrive as a full process restart, so the watcher is unnecessary; disabling it
+  removes the reload race. (Trade-off: no local hot-reload on file save — fine here, the app is
+  verified on the deployment, not run locally.)
 - **Top nav centred with equal gaps** — `app.py` `top_nav()` column widths changed from
   `[1] + [1.35]*(n-1)` (Home deliberately narrower) to **`[1]*len(items)`** so every nav button is
   the same width and the inter-button gaps are uniform. A small **8px spacer** (`st.markdown` div) now

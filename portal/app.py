@@ -846,17 +846,24 @@ def render_sortable_table(df, columns, key, rows_per_page=52, row_class=None,
 
     total = len(df)
     n_pages = max(1, (total + rows_per_page - 1) // rows_per_page)
+    # Clamp any stale page (e.g. after the row count shrank) BEFORE rendering, and persist it.
+    # Prev/Next mutate the page via on_click CALLBACKS, which run at the start of the next rerun —
+    # before this code — so `cur` is already up to date and the disabled states + the sliced page
+    # always agree with the buttons in the SAME render (fixes: Prev active on page 1 / Next active on
+    # the last page, and clicks that appeared to do nothing).
     cur = min(max(int(st.session_state.get(page_key, 0)), 0), n_pages - 1)
-    page = cur
+    st.session_state[page_key] = cur
+
+    def _bump(delta, npages=n_pages):
+        st.session_state[page_key] = min(max(st.session_state.get(page_key, 0) + delta, 0), npages - 1)
+
     with c4:
-        if st.button(":material/chevron_left: Prev", key=f"{key}_prev",
-                     disabled=cur <= 0, width="stretch"):
-            page = max(0, cur - 1)
+        st.button(":material/chevron_left: Prev", key=f"{key}_prev", disabled=cur <= 0,
+                  width="stretch", on_click=_bump, args=(-1,))
     with c5:
-        if st.button("Next :material/chevron_right:", key=f"{key}_next",
-                     disabled=cur >= n_pages - 1, width="stretch"):
-            page = min(n_pages - 1, cur + 1)
-    st.session_state[page_key] = page
+        st.button("Next :material/chevron_right:", key=f"{key}_next", disabled=cur >= n_pages - 1,
+                  width="stretch", on_click=_bump, args=(1,))
+    page = cur
     with c3:
         lo, hi = page * rows_per_page + 1, min((page + 1) * rows_per_page, total)
         st.markdown(f"<div class='bm-tbl-meta'>Rows <b>{lo}&ndash;{hi}</b> of {total} "
