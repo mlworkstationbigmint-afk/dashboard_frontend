@@ -163,13 +163,22 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   1, clamped to len; n=1 falls back to the summary "Next-wk forecast"), direction = `dl.direction_flag(fc
   − last_actual)`. The **"Last actual spot" card is unchanged** by the tab. `price_cards(vertical, horizon)`
   now emits **2** cards (was 3) and adds the `bm-vcards-sm` class; the horizontal branch uses
-  `st.columns(len(cards))`. (4) Cards **made smaller** via `theme.py` `.bm-vcards-sm` (padding 11×13,
-  value 20px, icon 26px, labels 12/11.5px; rail left-aligned, full-width). (5) The **Forecast rationale
-  moved into the right rail directly under the cards** (compact 12px) — new nested `render_rationale(compact)`
-  helper; it's rendered full-width below only for the OTHER views (guarded by a `rationale_shown` flag).
-  Chart/rail split widened `st.columns([5,1]) → [5,1.25]`. NB: the graph itself is unchanged — the tab
-  drives the card only (the forecast line already plots all 12 forward weeks). Non-grouped + grouped
-  Tabular views now also show 2 cards (no +12w), horizon fixed at 1 (next-week).
+  `st.columns(len(cards))`. (4) Cards **made smaller AND horizontal** via `theme.py` `.bm-vcards-sm`
+  (padding 11×13, value 20px, icon 26px; `display:flex;flex-wrap:wrap` so the icon+label header sits on
+  top and the **value (left) + date / direction-chip (right, `margin-left:auto`) share one row** instead
+  of the sub stacking below; rail left-aligned, full-width). (5) The **Forecast rationale is now the 3rd
+  card** in the rail (`_rationale_card_html()` — heading INSIDE the card via `.bm-kpi-top` icon+label,
+  matching the other two; body `.bm-rationale-body` 12px), appended into the same `.bm-vcards` column via
+  `price_cards(..., extra_card=…)`. The **"Placeholder rationale — analyst commentary…" footnote was
+  removed.** `render_rationale()` (no args now) is the full-width version used by the OTHER views only
+  (guarded by `rationale_shown`). Chart/rail split `st.columns([5,1]) → [5,1.25]`.
+  **(6) The horizon tab now ALSO drives the GRAPH:** `render_graph_view(horizon)` passes `fwd.head(n)` to
+  `forecast_chart`, so the forecast is drawn out to **n weeks forward only** (1W → 1-wk nub, 12W → full);
+  the shaded-region annotation is now dynamic `f"{len(fwd)}-wk ahead"`. The horizon is read from
+  `st.session_state["fc_horizon"]` BEFORE the chart renders (the tab widget lives in the right rail,
+  rendered after the chart) — default 1. The historical forecast fit is always fully drawn; only the
+  forward extent + x-range end change. Non-grouped + grouped Tabular views still show 2 cards (no +12w),
+  horizon fixed at 1 (next-week), full forecast.
 - **"Calculators" → "Scenario Simulation"** everywhere user-facing: nav label (`NAV` 2nd field —
   **internal page key stays `"Calculators"`** so routing / `PAGES` / `profile["pages"]` are untouched),
   Home module-card title, `page_calculators()` H2, and the three tool subheaders

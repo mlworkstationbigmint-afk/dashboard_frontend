@@ -113,6 +113,8 @@ surfaces follow the role. Acceptable for the current build.
   with HTML `<button>`s wired to `Plotly.relayout`). Also the grouped **location dropdown now shows full
   descriptive product names** (`app.FORECAST_LOCATION_LABELS`; box widened 250→660px ≈ 85 chars) — this dict is the
   editable knob for those labels. The grouped **graphical right rail** was also restructured: the
-  **+12-week card removed**, a **1W/4W/8W/12W forecast-horizon tab** added above the (now smaller) cards
-  that drives the second card's value (`_forecast_at(n)`, positional on the 12-wk `fwd` path), and the
-  **Forecast rationale moved into the rail under the cards**. Full detail in `handoff.md` changelog 2026-07-09.
+  **+12-week card removed**, a **1W/4W/8W/12W forecast-horizon tab** added above the (now smaller,
+  horizontal) cards that drives **both** the second card's value (`_forecast_at(n)`, positional on the
+  12-wk `fwd` path) **and the graph** (`render_graph_view(horizon)` → `fwd.head(n)`, forecast drawn out to
+  n weeks), and the **Forecast rationale moved into the rail as the 3rd card** (heading inside the card).
+  Full detail in `handoff.md` changelog 2026-07-09.

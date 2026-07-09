@@ -474,13 +474,19 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
     max-width: 280px; margin-left: auto; }}
 .bm-vcards .bm-card {{ height: auto; }}
 /* smaller variant: the grouped graphical right rail now holds a horizon tab + 2 cards + the
-   rationale, so the cards are trimmed down and fill the (left-aligned) rail width. */
+   rationale, so the cards are trimmed down and fill the (left-aligned) rail width. Each card lays
+   out HORIZONTALLY — icon+label header on top, then the value on the left with the date / direction
+   chip on its RIGHT (not stacked below). */
 .bm-vcards.bm-vcards-sm {{ max-width: 100%; margin-left: 0; gap: 10px; }}
-.bm-vcards-sm .bm-card {{ padding: 11px 13px; border-radius: 12px; }}
-.bm-vcards-sm .bm-kpi-value {{ font-size: 20px; }}
+.bm-vcards-sm .bm-card {{ padding: 11px 13px; border-radius: 12px;
+    display: flex; flex-wrap: wrap; align-items: center; }}
+.bm-vcards-sm .bm-kpi-top {{ flex: 0 0 100%; margin-bottom: 4px; }}
+.bm-vcards-sm .bm-kpi-value {{ font-size: 20px; line-height: 1.1; }}
 .bm-vcards-sm .bm-kpi-icon {{ width: 26px; height: 26px; font-size: 15px; }}
 .bm-vcards-sm .bm-kpi-label {{ font-size: 12px; }}
-.bm-vcards-sm .bm-kpi-sub {{ font-size: 11.5px; margin-top: 3px; }}
+.bm-vcards-sm .bm-kpi-sub {{ font-size: 11.5px; margin: 0 0 0 auto; }}   /* date / dir chip -> right side */
+.bm-vcards-sm .bm-desc {{ flex: 1 1 100%; }}
+.bm-vcards-sm .bm-rationale-body {{ font-size: 12px; line-height: 1.55; margin-top: 2px; }}
 
 /* grouped-forecasting Graphical/Tabular switch (adani_dev) -> sliding segmented PILL switch:
    grey capsule track, a label-width WHITE PILL that glides behind the active option, orange

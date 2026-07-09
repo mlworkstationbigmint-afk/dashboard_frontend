@@ -473,7 +473,7 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
         if len(fwd):
             fig.add_vrect(x0=split_x, x1=_dt(fwd["Date"].iloc[-1]),
                           fillcolor="rgba(238,78,36,0.05)", line_width=0, layer="below")
-            fig.add_annotation(x=split_x, y=1, yref="paper", text="12-wk ahead",
+            fig.add_annotation(x=split_x, y=1, yref="paper", text=f"{len(fwd)}-wk ahead",
                                showarrow=False, xanchor="left", yanchor="top", xshift=6,
                                font=dict(size=11, color=theme.ACCENT))
         fig.add_vline(x=split_x, line=dict(color="#94a3b8", width=1.3, dash="dot"))
@@ -837,10 +837,11 @@ def page_forecasting():
         d = dl.direction_flag(fc - la) if (pd.notna(fc) and pd.notna(la)) else "Flat"
         return fc, d
 
-    def price_cards(vertical=False, horizon=1):
+    def price_cards(vertical=False, horizon=1, extra_card=""):
         # Two cards: Last actual spot + the {horizon}-week-forward forecast. The old +12-week card
         # was removed; the forecast card's horizon is driven by the 1W/4W/8W/12W tab (grouped
-        # graphical view). vertical=True stacks them in one HTML column beside the chart.
+        # graphical view). vertical=True stacks them in one HTML column beside the chart; extra_card
+        # (raw HTML, e.g. the Forecast-rationale card) is appended inside that same column.
         if not row:
             return
         last_actual = row.get("Last actual (Rs./ton)", row.get("Last actual (₹/ton)"))
@@ -856,6 +857,7 @@ def page_forecasting():
             # how Streamlit nests its container/block DOM.
             st.markdown("<div class='bm-vcards bm-vcards-sm'>"
                         + "".join(theme.kpi_card(t, v, s, i) for t, v, s, i in cards)
+                        + extra_card
                         + "</div>", unsafe_allow_html=True)
         else:
             for slot, (title, value, sub, ic) in zip(st.columns(len(cards)), cards):
@@ -874,10 +876,13 @@ def page_forecasting():
         with st.container(key="fc_loc_box"):
             st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")
 
-    def render_graph_view():
+    def render_graph_view(horizon=None):
         if grouped:
             # No section title; the zoom (week) buttons sit just ABOVE the plot (compact mode).
-            forecast_chart(acc_hist, fwd, legend_inside=True, year_labels=True, compact=True)
+            # The 1W/4W/8W/12W horizon tab limits how far FORWARD the forecast is drawn: show only
+            # the first `horizon` weeks of the 12-week path (None => all).
+            fwd_view = fwd.head(int(horizon)) if horizon else fwd
+            forecast_chart(acc_hist, fwd_view, legend_inside=True, year_labels=True, compact=True)
         else:
             theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
             forecast_chart(acc_hist, fwd)
@@ -921,18 +926,23 @@ def page_forecasting():
                     "&Delta; = actual &minus; forecast. Headline line = Ensemble (Weighted Mean).</div>",
                     unsafe_allow_html=True)
 
-    def render_rationale(compact=False):
-        # Forecast rationale card (placeholder; real analyst commentary wired in later). compact=True
-        # is the slimmer version shown in the right rail under the price cards (grouped graph view).
+    def render_rationale():
+        # Full-width Forecast-rationale section (non-grouped + grouped Tabular views).
         rationale = RATIONALES.get(product, RATIONALES["_default"])
         theme.section_title("Forecast rationale", theme.icon("notes"))
-        fs = "12px" if compact else "13.5px"
         st.markdown(
-            f"<div class='bm-card'><div class='bm-desc' style='font-size:{fs};line-height:1.6;'>{rationale}</div></div>",
+            f"<div class='bm-card'><div class='bm-desc' style='font-size:13.5px;line-height:1.65;'>{rationale}</div></div>",
             unsafe_allow_html=True,
         )
-        st.markdown("<div class='bm-footnote'>Placeholder rationale &mdash; analyst commentary to be wired in a later phase.</div>",
-                    unsafe_allow_html=True)
+
+    def _rationale_card_html():
+        # The rationale as a 3rd KPI-style card (heading INSIDE the card, like the other two),
+        # appended into the grouped graphical right rail's .bm-vcards column.
+        rationale = RATIONALES.get(product, RATIONALES["_default"])
+        return ("<div class='bm-card'><div class='bm-kpi-top'>"
+                f"<span class='bm-kpi-icon'>{theme.icon('notes')}</span>"
+                "<span class='bm-kpi-label'>Forecast rationale</span></div>"
+                f"<div class='bm-desc bm-rationale-body'>{rationale}</div></div>")
 
     VIEW_OPTS = ["Graphical view", "Tabular view"]
     rationale_shown = False
@@ -947,17 +957,19 @@ def page_forecasting():
             view = st.segmented_control("View", VIEW_OPTS, default=VIEW_OPTS[0],
                                         key="fc_view", label_visibility="collapsed")
         if (view or VIEW_OPTS[0]) == VIEW_OPTS[0]:   # deselection falls back to the graph
-            # Chart on the left; on the right a compact rail: a 1W/4W/8W/12W forecast-horizon tab,
-            # the two (smaller) price cards, then the forecast rationale directly beneath them.
+            # The 1W/4W/8W/12W horizon tab drives BOTH the graph (forecast drawn out to N weeks) and
+            # the forecast card. The tab widget lives in the right rail (rendered after the chart),
+            # so read its current value from session_state BEFORE the chart is drawn.
+            horizon = int(st.session_state.get("fc_horizon") or 1)
+            # Chart on the left; right rail = horizon tab, two (smaller) price cards, rationale card.
             chart_col, cards_col = st.columns([5, 1.25], gap="small")
             with chart_col:
-                render_graph_view()
+                render_graph_view(horizon)
             with cards_col:
-                horizon = st.segmented_control(
-                    "Forecast horizon", [1, 4, 8, 12], format_func=lambda n: f"{n}W",
-                    default=1, key="fc_horizon", label_visibility="collapsed")
-                price_cards(vertical=True, horizon=horizon or 1)
-                render_rationale(compact=True)
+                st.segmented_control("Forecast horizon", [1, 4, 8, 12],
+                                     format_func=lambda n: f"{n}W", default=1,
+                                     key="fc_horizon", label_visibility="collapsed")
+                price_cards(vertical=True, horizon=horizon, extra_card=_rationale_card_html())
             rationale_shown = True
         else:
             render_table_view()
@@ -971,10 +983,10 @@ def page_forecasting():
             render_table_view()
 
     # Rationale full-width below for every view EXCEPT the grouped graphical one (it already put the
-    # rationale in the right rail, under the cards).
+    # rationale in the right rail, as the 3rd card under the price cards).
     if not rationale_shown:
         st.write("")
-        render_rationale(compact=False)
+        render_rationale()
     theme.footer()
 
 
