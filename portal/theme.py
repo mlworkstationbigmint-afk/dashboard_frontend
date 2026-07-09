@@ -280,12 +280,14 @@ div[class*="st-key-homemod_"] button:hover {{
     border-color:var(--bm-primary) !important; background:var(--bm-primary-soft) !important;
     transform:translateY(-3px); box-shadow:0 10px 26px rgba(2,76,161,.12);
 }}
-/* leading material icon -> larger, on its own row above the text */
-div[class*="st-key-homemod_"] button [data-testid="stIconMaterial"] {{
-    font-size:30px !important; width:30px; height:30px; color:var(--bm-primary); margin-bottom:14px;
-}}
+/* heading row: the material icon is embedded inside the bold title, so lay the title out as a
+   flex row (icon + heading together) with the icon sized/coloured to sit beside the bigger heading */
 div[class*="st-key-homemod_"] button strong {{
-    display:block; font-size:18px; color:var(--bm-primary-dark); font-weight:700; margin-bottom:6px;
+    display:flex; align-items:center; gap:9px;
+    font-size:21px; color:var(--bm-primary-dark); font-weight:700; margin-bottom:8px;
+}}
+div[class*="st-key-homemod_"] button strong [data-testid="stIconMaterial"] {{
+    font-size:26px !important; width:26px; height:26px; color:var(--bm-primary); flex:0 0 auto;
 }}
 div[class*="st-key-homemod_"] button p {{ font-size:13.5px; color:{NEUTRAL}; line-height:1.5; margin:0; font-weight:400; }}
 /* "Open ->" call-to-action (rendered from the *Open ->* em in the label) */

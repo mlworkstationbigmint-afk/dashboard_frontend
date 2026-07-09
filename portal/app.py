@@ -677,20 +677,23 @@ def page_home():
 
     st.write("")
     theme.section_title("Modules", theme.icon("home"))
+    # Descriptions are kept ~the same length (≈65 chars) so they wrap to the same number of lines in
+    # every card, keeping the cards visually aligned.
     modules = [
-        ("Price forecasting", "Spot vs 12-week Ensemble forecast for the steel products.", "trending_up", "Price Forecasting"),
+        ("Price forecasting", "Spot price vs the 12-week Ensemble forecast for each steel product.", "trending_up", "Price Forecasting"),
         ("Analyst calls", "Monthly market-outlook calls, key insights and downloadable decks.", "campaign", "Analyst Calls"),
-        ("Performance", "Week-wise accuracy: spot vs forecast, weekly delta, MAPA and directional hit-rate.", "insights", "Performance Dashboard"),
-        ("Scenario Simulation", "Import vs landed-cost, production cost & margin, and price-elasticity tools.", "calculate", "Calculators"),
+        ("Performance", "Week-wise accuracy of spot vs forecast: delta, MAPA and hit-rate.", "insights", "Performance Dashboard"),
+        ("Scenario Simulation", "Import vs landed-cost, production cost & margin, plus elasticity.", "calculate", "Calculators"),
     ]
     modules = [m for m in modules if m[3] in allowed_pages]   # only role-visible modules
     if modules:
         for col, (title, desc, mi, target) in zip(st.columns(len(modules)), modules):
             with col:
-                # whole card is one clickable button (styled via .st-key-homemod_* in theme.py)
-                # label = **title** (strong/block) + brief (p text) + *Open ->* (em/block CTA)
-                if st.button(f"**{title}** {desc} *Open →*", key=f"homemod_{target.replace(' ', '_')}",
-                             icon=f":material/{mi}:", width="stretch"):
+                # whole card is one clickable button (styled via .st-key-homemod_* in theme.py). The
+                # material icon is embedded INSIDE the bold title (not the icon= param) so it sits on the
+                # heading line; label = **[icon] title** (strong/block) + brief (p text) + *Open ->* (em/block CTA).
+                if st.button(f"**:material/{mi}: {title}** {desc} *Open →*",
+                             key=f"homemod_{target.replace(' ', '_')}", width="stretch"):
                     st.session_state.page = target
                     st.rerun()
 

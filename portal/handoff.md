@@ -126,16 +126,20 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   the same width and the inter-button gaps are uniform. A small **8px spacer** (`st.markdown` div) now
   sits between the brand bar and the nav row so the nav sits a touch lower. → `app.py` `top_nav()` +
   the line just above `top_nav()`.
-- **Home module cards — left-aligned + vertically centred** — the 4 module card-buttons
-  (`.st-key-homemod_*` in `theme.py`) keep the earlier **vertical-stack** format (icon → title → one-liner
-  → "Open →", **left-aligned**) but the content is now **vertically centred** in the card
-  (`justify-content:center`, was `flex-start`). ⚠ A first attempt this day mis-read "centre" as
-  horizontal + made the one-liner `<p>` a flexbox (`display:flex` + `min-height:4.5em`) to force 3 lines
-  — that turned the whole label (title/desc/"Open") into a squished ROW (the desc is an inline text node
-  in the SAME `<p>` as the block `strong`/`em`, so it can't be isolated/height-reserved without
-  restructuring the markdown label). Reverted; `<p>` is back to plain. Per-description equal-height /
-  CTA-alignment was NOT re-attempted (would need the button label split into separate markdown
-  paragraphs, which the original author avoided — likely unreliable in button labels).
+- **Home module cards — icon on the heading, bigger heading, left-aligned + vertically centred, equal-length one-liners.**
+  The 4 module card-buttons (`.st-key-homemod_*` in `theme.py`) keep the **vertical-stack** format
+  (title → one-liner → "Open →"), **left-aligned**, content **vertically centred** in the card
+  (`justify-content:center`). Changes this pass: (a) the **material icon is now embedded INSIDE the bold
+  title** — `app.py` label is `**:material/{mi}: {title}** {desc} *Open →*` with the `icon=` param
+  dropped (proven pattern — `top_nav()` already puts `:material/…:` inside a button label); the title
+  `strong` is styled `display:flex;align-items:center;gap:9px` so icon + heading sit on one row, icon
+  26px. (b) **Heading bigger**: `strong` font 18px → **21px**. (c) **Descriptions rewritten to ≈65 chars
+  each** so all four wrap to the same number of lines and the cards line up (equal length is what keeps
+  them aligned — the desc is inline text in the same `<p>` as the block `strong`/`em`, so it can't be
+  height-reserved without splitting the label into separate markdown paragraphs, which is unreliable in
+  button labels). ⚠ Earlier same-day misfire: mis-read "centre" as horizontal + made the `<p>` a flexbox
+  to force 3 lines, which squished the whole label into a row — reverted.
+- **Zoom-button (1W/4W/8W/12W/26W/YTD/ALL) click "shift" fixed — rangeselector replaced by HTML buttons.**
   A first pass tried CSS (`outline:none` / `user-select:none`) on the SVG `.rangeselector` buttons; it
   did **not** stop the jitter — Plotly re-renders the whole button group on every click and re-measures
   each button, so the strip shifts a pixel or two regardless of CSS. **Fix:** dropped Plotly's
