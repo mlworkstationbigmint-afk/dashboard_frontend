@@ -110,4 +110,6 @@ surfaces follow the role. Acceptable for the current build.
   on the blue bar); **all "prototype" UI text removed** for launch; the **"Price forecasting" H2 dropped**
   from the forecasting page; and the forecasting **zoom buttons (1W/4W/…) rebuilt as fixed HTML buttons**
   above the chart (Plotly's SVG rangeselector jittered on click — CSS didn't help, so it was replaced
-  with HTML `<button>`s wired to `Plotly.relayout`). Full detail in `handoff.md` changelog 2026-07-09.
+  with HTML `<button>`s wired to `Plotly.relayout`). Also the grouped **location dropdown now shows full
+  descriptive product names** (`app.FORECAST_LOCATION_LABELS`; box widened 250→480px) — this dict is the
+  editable knob for those labels. Full detail in `handoff.md` changelog 2026-07-09.

@@ -143,6 +143,18 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **"Price forecasting" H2 removed** from the forecasting page (`page_forecasting()` — the group
   tab-strip + view switch already make the context obvious; the page title also lives in the browser tab
   + Home). Just deleted the `st.markdown("## Price forecasting")` line.
+- **Grouped "location" dropdown now shows full descriptive product names** — new `app.py`
+  `FORECAST_LOCATION_LABELS` (keyed by `dl.STEEL_PRODUCTS` key) + `_loc_label(group, name)` helper
+  (full name if configured, else the short `_location_label` fallback). `loc_map` in
+  `page_forecasting()` now keys on those. Names per owner: HRC = "HRC, Exy-Mumbai, India, IS2062, Gr
+  E250 Br.,2.5-8mm / CTL"; HR Plate = "HR Plate, Exy-Mumbai, India, Gr E250 Br.,5-10mm (HSM)"; the 3
+  Rebars = "Rebar, {Exy-Mumbai … BF Route | Exw-Mumbai … IF Route | Exw-Raipur … IF Route}"; Structure =
+  "Structure-Angle, Exw-Raipur, India, IS 2062/2011 E-250 Gr A,150x150 Angle, IF Route". **These are the
+  only editable knob** — change the strings in that dict. `theme.py` `.st-key-fc_loc_box` widened
+  `250px → 480px` (+ `max-width:100%`) and its value font dropped to 12.5px so the ~58-char Rebar names
+  fit; a global `li[role="option"]` rule lets popover options wrap/show in full. The dropdown key still
+  maps back to the short `STEEL_PRODUCTS` key, so data lookups (`products[product]`, ff/acc) are
+  unchanged; only the *displayed* label changed.
 - **"Calculators" → "Scenario Simulation"** everywhere user-facing: nav label (`NAV` 2nd field —
   **internal page key stays `"Calculators"`** so routing / `PAGES` / `profile["pages"]` are untouched),
   Home module-card title, `page_calculators()` H2, and the three tool subheaders

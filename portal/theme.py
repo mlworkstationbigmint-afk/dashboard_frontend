@@ -442,8 +442,9 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
    usable in both views. z-index keeps it clickable above the tabs block that renders after it. */
 .st-key-fc_loc_box {{
     /* -52px = 0.65rem compact block gap (~10px, set on stVerticalBlock above) + own ~42px
-       height (was -58px under the default 1rem gap) — retune if either changes. */
-    width:250px; margin-left:auto; margin-bottom:-52px; position:relative; z-index:5;
+       height (was -58px under the default 1rem gap) — retune if either changes.
+       Widened to 480px to fit the full descriptive product names (app.py FORECAST_LOCATION_LABELS). */
+    width:480px; max-width:100%; margin-left:auto; margin-bottom:-52px; position:relative; z-index:5;
 }}
 .st-key-fc_loc_box div[data-baseweb="select"] > div {{
     border:1.6px solid var(--bm-primary) !important; background:var(--bm-primary-soft) !important;
@@ -453,7 +454,11 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
     border-color:var(--bm-accent) !important;
 }}
 .st-key-fc_loc_box div[data-baseweb="select"] div[value], .st-key-fc_loc_box [data-baseweb="select"] span {{
-    color:var(--bm-primary-dark) !important; font-weight:700 !important;
+    color:var(--bm-primary-dark) !important; font-weight:700 !important; font-size:12.5px !important;
+}}
+/* dropdown popover options: show the full descriptive name (no clipping), comfortable line height */
+div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
+    font-size:12.5px !important; line-height:1.4 !important; white-space:normal !important;
 }}
 .st-key-fc_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
 

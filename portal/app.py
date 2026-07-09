@@ -771,6 +771,24 @@ def _location_label(group, name):
     return name
 
 
+# Full descriptive product names shown in the grouped forecasting "location" dropdown, keyed by
+# the dl.STEEL_PRODUCTS key. Anything not listed falls back to the short _location_label (e.g. a
+# newly added product). Edit these strings to change what the dropdown displays.
+FORECAST_LOCATION_LABELS = {
+    "HRC":                   "HRC, Exy-Mumbai, India, IS2062, Gr E250 Br.,2.5-8mm / CTL",
+    "HR Plate":              "HR Plate, Exy-Mumbai, India, Gr E250 Br.,5-10mm (HSM)",
+    "Rebar BF Mumbai":       "Rebar, Exy-Mumbai, India, IS 1786 Fe 500D,12-32mm, BF Route",
+    "Rebar IF Mumbai":       "Rebar, Exw-Mumbai, India, Fe 500, IS 1786,12-25mm, IF Route",
+    "Rebar IF Raipur":       "Rebar, Exw-Raipur, India, Fe 500, IS 1786,12-25mm, IF Route",
+    "Structure (IF Raipur)": "Structure-Angle, Exw-Raipur, India, IS 2062/2011 E-250 Gr A,150x150 Angle, IF Route",
+}
+
+
+def _loc_label(group, name):
+    """The dropdown label for a product: the full descriptive name if configured, else short."""
+    return FORECAST_LOCATION_LABELS.get(name, _location_label(group, name))
+
+
 def page_forecasting():
     products = allowed_products(user["role"])
     if not products:
@@ -786,7 +804,7 @@ def page_forecasting():
         group = st.segmented_control("Commodity group", gkeys, default=gkeys[0],
                                      key="fc_group", label_visibility="collapsed")
         group = group if group in groups else gkeys[0]
-        loc_map = {_location_label(group, n): n for n in groups[group]}   # label -> product key
+        loc_map = {_loc_label(group, n): n for n in groups[group]}   # full label -> product key
         loc_labels = sorted(loc_map)
         loc_key = f"fc_loc_{group.replace(' ', '_')}"
         if st.session_state.get(loc_key) not in loc_labels:   # default/sanitise before the widget
