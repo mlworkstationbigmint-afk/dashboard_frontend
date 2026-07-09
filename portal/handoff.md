@@ -161,6 +161,16 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   **green-heavy** scale (green 0→0.55, amber 0.8, red 1.0), **h 200→320** so small deviations read. (4)
   **"Weekly directional hit accuracy"** (renamed). Both bar charts render via `st.plotly_chart`.
   `theme.py`: `.st-key-perf_loc_box` + fc/perf dropdown inner styling share selectors.
+- **Performance charts: same width + tighter y-labels + inline legend + footnote dropped.** The four
+  charts (perf line + delta + accuracy + directional) previously each auto-expanded their left margin to
+  their own y-label width ("Rs.62,000" vs "98%" vs "Correct"), so they rendered at DIFFERENT widths and
+  didn't line up. Now all use a **fixed left margin `_PERF_ML = 68`px with `margin.autoexpand=False`** →
+  identical plot width; `r=16, b=30` shared too. The **y-label gap** (`ticklabelstandoff`) dropped from
+  `_style_fig`'s **8 → 3** on every performance chart (consistent, tight). The **"Actual vs forecast"
+  line chart's legend moved INSIDE** the plot (top-left, translucent-white bg, `y=0.98`) with a slim
+  `t=14` top margin. The **"All prices rounded off to Rs.50" footnote was removed** (rounding is applied
+  silently). Heights kept (perf/delta 320, accuracy/directional 200). NB `ticklabelstandoff` is already
+  used by `_style_fig`, so the installed Plotly supports it.
 - **FIX: intermittent `KeyError: 'auth'` at startup** — added `[server] fileWatcherType = "none"` to
   `.streamlit/config.toml`. The error came from Python's import machinery (`sys.modules.pop('auth')`
   in `_load_unlocked`) when Streamlit's watchdog file-watcher purged `sys.modules` mid-import during a

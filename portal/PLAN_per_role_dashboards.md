@@ -131,4 +131,6 @@ surfaces follow the role. Acceptable for the current build.
   row — tabs left / dropdown right), **green-heavy gradient bars** (accuracy: highest green, y-axis zoomed
   to the high-90s, shorter; deviation: rounded-forecast−spot, green = small error, taller), and section
   renames (Actual vs Forecast deviation / Weekly forecast absolute accuracy / Weekly directional hit
-  accuracy). Full detail in `handoff.md` changelog 2026-07-09.
+  accuracy). All four performance charts share a **fixed left margin (`_PERF_ML=68`, autoexpand off) so
+  they render at the same width**, a tighter y-label standoff (8→3), the line chart's **legend moved
+  inside**, and the rounded-price footnote removed. Full detail in `handoff.md` changelog 2026-07-09.

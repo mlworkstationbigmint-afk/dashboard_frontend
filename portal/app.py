@@ -354,6 +354,12 @@ def _dt(t):
     return t.to_pydatetime() if hasattr(t, "to_pydatetime") else t
 
 
+# Fixed left margin (px) shared by ALL performance-page charts so they render at the SAME width,
+# regardless of how wide each one's y-axis labels are ("Rs.62,000" vs "98%" vs "Correct"). Wide
+# enough for the price labels; used with margin autoexpand=False so it never varies per chart.
+_PERF_ML = 68
+
+
 def _round50(x):
     """Round a forecast value to the nearest Rs.50 (NaN/None pass through unchanged).
     All displayed forecasts are rounded to 50 (cards, tables, chart line + hover)."""
@@ -571,7 +577,15 @@ def perf_chart(view):
             marker=dict(size=6, color=theme.FORECAST_LINE, line=dict(width=4, color=theme.FORECAST_HALO)),
             hovertemplate="%{x|%d-%b-%y}<br><b>Forecast Price: Rs.%{y:,.0f}</b><extra></extra>",
             hoverlabel=dict(bgcolor="white", bordercolor="#f3c2bd", font=dict(color=theme.FORECAST_LINE))))
-        _render_with_highlighter(_style_fig(fig, height=320), height=320, dom_id="perf_chart")
+        f = _style_fig(fig, height=320)
+        # fixed left margin (autoexpand off) so every performance chart is the SAME width; legend
+        # moved INSIDE the plot's white space (top-left); smaller y-label standoff (was 8 -> 3).
+        f.update_layout(margin=dict(l=_PERF_ML, r=16, t=14, b=30, autoexpand=False),
+                        legend=dict(orientation="h", x=0.015, xanchor="left", y=0.98, yanchor="top",
+                                    bgcolor="rgba(255,255,255,0.78)", bordercolor="#e2e8f0",
+                                    borderwidth=1, font=dict(size=11.5)))
+        f.update_yaxes(automargin=False, ticklabelstandoff=3)
+        _render_with_highlighter(f, height=320, dom_id="perf_chart")
     except Exception:
         st.line_chart(view.set_index("Date")[["Actual", "Forecast"]])
 
@@ -591,12 +605,13 @@ def delta_bar(view):
             marker=dict(color=list(absd), cmin=0, cmax=cmax, showscale=False, line=dict(width=0),
                         colorscale=[[0.0, theme.SUCCESS], [0.55, "#8DC63F"], [0.8, "#F5A623"], [1.0, theme.DANGER]]),
             hovertemplate="Rs.%{y:,.0f}<extra>Forecast − Spot</extra>"))
-        fig.update_layout(height=320, margin=dict(l=8, r=8, t=8, b=8),
+        fig.update_layout(height=320, margin=dict(l=_PERF_ML, r=16, t=10, b=30, autoexpand=False),
                           plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
                           hovermode="x unified", bargap=0.3,
                           hoverlabel=dict(bgcolor="white", bordercolor="#e2e8f0"),
                           font=dict(size=11, color="#334155"))
-        fig.update_yaxes(tickprefix="Rs.", tickformat=",.0f", gridcolor="#eef2f7", zeroline=True, zerolinecolor="#cbd5e1")
+        fig.update_yaxes(tickprefix="Rs.", tickformat=",.0f", gridcolor="#eef2f7", zeroline=True,
+                         zerolinecolor="#cbd5e1", automargin=False, ticklabelstandoff=3)
         fig.update_xaxes(gridcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     except Exception:
@@ -620,12 +635,13 @@ def accuracy_chart(view):
             marker=dict(color=list(acc_pct), cmin=cmin, cmax=hi, showscale=False, line=dict(width=0),
                         colorscale=[[0.0, theme.DANGER], [0.22, "#F5A623"], [0.5, "#8DC63F"], [1.0, theme.SUCCESS]]),
             hovertemplate="%{x|%d-%b-%y}<br><b>Accuracy: %{y:.1f}%</b><extra></extra>"))
-        fig.update_layout(height=200, margin=dict(l=8, r=8, t=8, b=8),
+        fig.update_layout(height=200, margin=dict(l=_PERF_ML, r=16, t=10, b=30, autoexpand=False),
                           plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
                           hovermode="x unified", bargap=0.3,
                           hoverlabel=dict(bgcolor="white", bordercolor="#e2e8f0"),
                           font=dict(size=11, color="#334155"))
-        fig.update_yaxes(range=[y_lo, 100], ticksuffix="%", gridcolor="#eef2f7")
+        fig.update_yaxes(range=[y_lo, 100], ticksuffix="%", gridcolor="#eef2f7",
+                         automargin=False, ticklabelstandoff=3)
         fig.update_xaxes(gridcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     except Exception:
@@ -648,13 +664,14 @@ def directional_accuracy_bar(view):
             texts.append(f"Predicted {r.PredDir} &middot; Actual {r.ActualDir} &middot; {'Correct' if hit else 'Wrong'}")
         fig = go.Figure(go.Bar(x=view["Date"], y=ys, marker_color=colors, customdata=texts,
                                hovertemplate="%{customdata}<extra></extra>"))
-        fig.update_layout(height=200, margin=dict(l=8, r=8, t=8, b=8),
+        fig.update_layout(height=200, margin=dict(l=_PERF_ML, r=16, t=10, b=30, autoexpand=False),
                           plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
                           hovermode="x unified", bargap=0.45,
                           hoverlabel=dict(bgcolor="white", bordercolor="#e2e8f0"),
                           font=dict(size=11, color="#334155"))
         fig.update_yaxes(tickvals=[-1, 1], ticktext=["Wrong", "Correct"], range=[-1.4, 1.4],
-                         gridcolor="#eef2f7", zeroline=True, zerolinecolor="#cbd5e1")
+                         gridcolor="#eef2f7", zeroline=True, zerolinecolor="#cbd5e1",
+                         automargin=False, ticklabelstandoff=3)
         fig.update_xaxes(gridcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     except Exception:
@@ -1470,7 +1487,6 @@ def page_performance():
     perf_chart(view)
     theme.section_title("Actual vs Forecast deviation", theme.icon("gauge"))
     delta_bar(view)
-    st.markdown("<div class='bm-footnote'>All prices rounded off to Rs.50.</div>", unsafe_allow_html=True)
     theme.section_title("Weekly forecast absolute accuracy", theme.icon("target"))
     accuracy_chart(view)
     theme.section_title("Weekly directional hit accuracy", theme.icon("gauge"))
