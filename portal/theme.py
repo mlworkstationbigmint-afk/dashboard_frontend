@@ -269,9 +269,9 @@ div[class*="st-key-logout_top"] button:hover p {{ color:var(--bm-accent) !import
 /* ---------- home module card-buttons (whole card is one clickable button) ---------- */
 /* layout: icon on top -> **title** (strong) -> brief (p text) -> *Open ->* (em CTA) */
 div[class*="st-key-homemod_"] button {{
-    height:100%; min-height:196px; flex-direction:column;
+    height:100%; min-height:230px; flex-direction:column;
     align-items:flex-start; justify-content:center; gap:0;
-    text-align:left; white-space:normal; padding:22px 22px 20px; border-radius:16px;
+    text-align:left; white-space:normal; padding:26px 24px 24px; border-radius:16px;
     border:1px solid #e8edf3 !important; background:#fff !important;
     box-shadow:0 1px 2px rgba(16,24,40,.05); font-weight:400;
     transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
@@ -359,6 +359,9 @@ div[class*="st-key-home_methodology"] button:hover em {{ filter:brightness(.97);
 /* section heading */
 .bm-h {{ font-size:15px; font-weight:600; color:var(--bm-primary-dark); margin:6px 0 6px 0;
     display:flex; align-items:center; gap:8px; }}
+/* Home "Modules" heading: larger + more breathing room so the section fills the page */
+.bm-modules-h {{ font-size:22px; font-weight:700; margin:24px 0 16px 0; gap:10px; }}
+.bm-modules-h svg {{ stroke-width:2.2; }}
 
 /* ---------- tables ---------- */
 .bm-table {{ width:100%; border-collapse:collapse; font-size:13.5px; background:#fff;

@@ -104,7 +104,8 @@ surfaces follow the role. Acceptable for the current build.
 ## Post-plan UI polish
 - **2026-07-09 (go-live pass):** top nav centred with equal-width buttons + an 8px drop below the
   brand bar; the Home **module cards**: icon embedded in the (bigger) bold heading, left-aligned +
-  vertically centred, one-liners rewritten to ≈equal length so they wrap identically and align;
+  vertically centred, one-liners rewritten to ≈equal length (~2 lines) so they wrap identically and
+  align, taller cards + enlarged "Modules" heading to fill the page;
   the "Calculators" page **relabelled "Scenario Simulation"** everywhere user-facing
   (**internal page key `"Calculators"` kept** — routing/`PAGES`/`profile["pages"]` unchanged); the
   "Last updated on" / "Last actual spot" dates now render as **"Week N, Mon YYYY"**

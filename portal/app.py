@@ -676,14 +676,15 @@ def page_home():
     s4.markdown(theme.kpi_card("Last updated on", last_update, "latest actual spot date", theme.icon("calendar")), unsafe_allow_html=True)
 
     st.write("")
-    theme.section_title("Modules", theme.icon("home"))
-    # Descriptions are kept ~the same length (≈65 chars) so they wrap to the same number of lines in
-    # every card, keeping the cards visually aligned.
+    st.markdown(f"<div class='bm-h bm-modules-h'>{theme.icon('home', 22)} Modules</div>",
+                unsafe_allow_html=True)
+    # Descriptions are kept ~the same length (≈95 chars, ~2 lines) so they wrap to the same number of
+    # lines in every card, keeping the cards visually aligned and the cards nicely filled.
     modules = [
-        ("Price forecasting", "Spot price vs the 12-week Ensemble forecast for each steel product.", "trending_up", "Price Forecasting"),
-        ("Analyst calls", "Monthly market-outlook calls, key insights and downloadable decks.", "campaign", "Analyst Calls"),
-        ("Performance", "Week-wise accuracy of spot vs forecast: delta, MAPA and hit-rate.", "insights", "Performance Dashboard"),
-        ("Scenario Simulation", "Import vs landed-cost, production cost & margin, plus elasticity.", "calculate", "Calculators"),
+        ("Price forecasting", "Spot price versus the 12-week Ensemble forecast for every tracked steel product, updated weekly.", "trending_up", "Price Forecasting"),
+        ("Analyst calls", "Monthly market-outlook calls with the key insights, price drivers and downloadable slide decks.", "campaign", "Analyst Calls"),
+        ("Performance", "Week-wise forecast accuracy: spot versus forecast, weekly delta, MAPA and directional hit-rate.", "insights", "Performance Dashboard"),
+        ("Scenario Simulation", "Import versus landed-cost parity, production cost and margin, plus price-elasticity what-if tools.", "calculate", "Calculators"),
     ]
     modules = [m for m in modules if m[3] in allowed_pages]   # only role-visible modules
     if modules:

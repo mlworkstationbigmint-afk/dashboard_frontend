@@ -133,12 +133,15 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   title** — `app.py` label is `**:material/{mi}: {title}** {desc} *Open →*` with the `icon=` param
   dropped (proven pattern — `top_nav()` already puts `:material/…:` inside a button label); the title
   `strong` is styled `display:flex;align-items:center;gap:9px` so icon + heading sit on one row, icon
-  26px. (b) **Heading bigger**: `strong` font 18px → **21px**. (c) **Descriptions rewritten to ≈65 chars
-  each** so all four wrap to the same number of lines and the cards line up (equal length is what keeps
-  them aligned — the desc is inline text in the same `<p>` as the block `strong`/`em`, so it can't be
-  height-reserved without splitting the label into separate markdown paragraphs, which is unreliable in
-  button labels). ⚠ Earlier same-day misfire: mis-read "centre" as horizontal + made the `<p>` a flexbox
-  to force 3 lines, which squished the whole label into a row — reverted.
+  26px. (b) **Heading bigger**: `strong` font 18px → **21px**. (c) **Descriptions rewritten to ≈95 chars
+  each (~2 lines)** so all four wrap to the same number of lines, the cards line up AND the cards look
+  fuller (equal length is what keeps them aligned — the desc is inline text in the same `<p>` as the
+  block `strong`/`em`, so it can't be height-reserved without splitting the label into separate markdown
+  paragraphs, which is unreliable in button labels). (d) **Fill the page:** card `min-height` 196→**230px**
+  + padding bumped, and the **"Modules" heading enlarged** — rendered as `.bm-h.bm-modules-h` (22px bold,
+  `margin:24px 0 16px`, icon 22px) instead of the default `section_title` size. ⚠ Earlier same-day
+  misfire: mis-read "centre" as horizontal + made the `<p>` a flexbox to force 3 lines, which squished
+  the whole label into a row — reverted.
 - **Zoom-button (1W/4W/8W/12W/26W/YTD/ALL) click "shift" fixed — rangeselector replaced by HTML buttons.**
   A first pass tried CSS (`outline:none` / `user-select:none`) on the SVG `.rangeselector` buttons; it
   did **not** stop the jitter — Plotly re-renders the whole button group on every click and re-measures
