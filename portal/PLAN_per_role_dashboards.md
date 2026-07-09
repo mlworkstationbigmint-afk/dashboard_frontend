@@ -103,8 +103,8 @@ surfaces follow the role. Acceptable for the current build.
 
 ## Post-plan UI polish
 - **2026-07-09 (go-live pass):** top nav centred with equal-width buttons + an 8px drop below the
-  brand bar; the Home **module cards centred with equal-height (3-line) one-liners** so the "Open →"
-  CTAs align; the "Calculators" page **relabelled "Scenario Simulation"** everywhere user-facing
+  brand bar; the Home **module cards kept left-aligned but vertically centred** (`justify-content:center`);
+  the "Calculators" page **relabelled "Scenario Simulation"** everywhere user-facing
   (**internal page key `"Calculators"` kept** — routing/`PAGES`/`profile["pages"]` unchanged); the
   "Last updated on" / "Last actual spot" dates now render as **"Week N, Mon YYYY"**
   (`app._week_of_month_label`); the Adani co-brand logo's **white square/chip removed** (sits directly

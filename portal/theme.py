@@ -270,8 +270,8 @@ div[class*="st-key-logout_top"] button:hover p {{ color:var(--bm-accent) !import
 /* layout: icon on top -> **title** (strong) -> brief (p text) -> *Open ->* (em CTA) */
 div[class*="st-key-homemod_"] button {{
     height:100%; min-height:196px; flex-direction:column;
-    align-items:center; justify-content:flex-start; gap:0;
-    text-align:center; white-space:normal; padding:22px 22px 20px; border-radius:16px;
+    align-items:flex-start; justify-content:center; gap:0;
+    text-align:left; white-space:normal; padding:22px 22px 20px; border-radius:16px;
     border:1px solid #e8edf3 !important; background:#fff !important;
     box-shadow:0 1px 2px rgba(16,24,40,.05); font-weight:400;
     transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
@@ -287,10 +287,7 @@ div[class*="st-key-homemod_"] button [data-testid="stIconMaterial"] {{
 div[class*="st-key-homemod_"] button strong {{
     display:block; font-size:18px; color:var(--bm-primary-dark); font-weight:700; margin-bottom:6px;
 }}
-/* reserve 3 lines for every module one-liner (min-height 4.5em = 3 * 1.5 line-height) and centre the
-   text within that box, so the descriptions are equal height and the "Open ->" CTAs line up across all 4 cards */
-div[class*="st-key-homemod_"] button p {{ font-size:13.5px; color:{NEUTRAL}; line-height:1.5; margin:0; font-weight:400;
-    min-height:4.5em; display:flex; align-items:center; justify-content:center; }}
+div[class*="st-key-homemod_"] button p {{ font-size:13.5px; color:{NEUTRAL}; line-height:1.5; margin:0; font-weight:400; }}
 /* "Open ->" call-to-action (rendered from the *Open ->* em in the label) */
 div[class*="st-key-homemod_"] button em {{
     display:block; font-style:normal; font-weight:700; color:var(--bm-accent);
