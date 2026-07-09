@@ -268,7 +268,7 @@ def render():
         st.session_state.setdefault(f"freight_{r}", fob_data[r]["freight"])
         st.session_state.setdefault(f"fta_{r}", fob_data[r]["fta_default"])
 
-    st.subheader("India: Import Price Calculator - Hot-Rolled Coil")
+    st.subheader("India: Import Price Scenario Simulation - Hot-Rolled Coil")
 
     summary_ph = st.container()
     banner_ph = st.container()

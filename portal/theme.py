@@ -242,8 +242,7 @@ section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display
 }}
 .bm-topbar-l {{ display:flex; align-items:center; gap:13px; }}
 .bm-cobrand-x {{ color:#cfe0f5; font-size:17px; font-weight:600; }}
-.bm-adani-chip {{ background:#fff; border-radius:8px; padding:5px 11px; display:inline-flex;
-    align-items:center; box-shadow:0 1px 3px rgba(0,0,0,.14); }}
+.bm-adani-chip {{ display:inline-flex; align-items:center; }}
 .bm-portal-title {{ color:#fff; font-size:15px; font-weight:600; opacity:.96; }}
 .bm-topbar-r {{ color:#cfe0f5; font-size:12.5px; text-align:right; line-height:1.4; }}
 .bm-topbar-r b {{ color:#fff; }}
@@ -672,7 +671,7 @@ def section_title(text: str, icon: str = ""):
 def footer():
     st.markdown(
         "<div class='bm-footer'>"
-        "<span>AI-generated forecasts are indicative. Prototype build &mdash; data shown is a static snapshot.</span>"
+        "<span>AI-generated forecasts are indicative.</span>"
         "<span>&copy; BigMint - Adani &middot; AI Labs &nbsp;|&nbsp; <a href='https://www.bigmint.co/' target='_blank'>bigmint.co</a></span>"
         "</div>",
         unsafe_allow_html=True,

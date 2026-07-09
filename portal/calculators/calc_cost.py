@@ -54,7 +54,7 @@ def render():
             if f"p2_{k}_u" in st.session_state:
                 st.session_state[f"p2_{k}_u"] = master_unit
 
-    st.subheader("Steel Production Cost & Margin Calculator")
+    st.subheader("Steel Production Cost & Margin Scenario Simulation")
     with st.container(border=True):
         c1, c2, c3, c4 = st.columns(4)
         product = c1.selectbox("Product", ["HRC", "Rebar"])

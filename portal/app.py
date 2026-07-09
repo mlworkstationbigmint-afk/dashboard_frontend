@@ -1,6 +1,6 @@
 """
 BigMint - AI Labs : Price Forecasting: Steel
-Dedicated portal prototype (UI demo) for Adani.
+Dedicated Adani portal.
 
 Run:  streamlit run portal/app.py     (from the dashboard base folder)
 """
@@ -298,7 +298,7 @@ NAV = [
     ("Price Forecasting", "Forecasting", "trending_up"),
     ("Analyst Calls", "Analyst calls", "campaign"),
     ("Performance Dashboard", "Performance", "insights"),
-    ("Calculators", "Calculators", "calculate"),
+    ("Calculators", "Scenario Simulation", "calculate"),
     ("Methodology", "Methodology", "schema"),
 ]
 
@@ -308,7 +308,7 @@ def top_nav():
     items = [it for it in NAV if it[0] in allowed]
     if user.get("role") == "Admin":                       # Admin tab is admin-only
         items.append(("Admin", "Admin", "admin_panel_settings"))
-    widths = [1] + [1.35] * (len(items) - 1)              # keep Home a touch narrower
+    widths = [1] * len(items)                             # equal-width buttons -> equal gaps, centred
     cols = st.columns(widths)
     for i, (name, label, mi) in enumerate(items):
         active = st.session_state.page == name
@@ -318,6 +318,7 @@ def top_nav():
             st.rerun()
 
 
+st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)   # drop the nav a touch below the brand bar
 top_nav()
 st.write("")
 
@@ -371,7 +372,11 @@ _HL_TEMPLATE = """
 /* bottom rangeslider preview: show the line + fill only, hide the per-point dots (only matches charts that have a rangeslider) */
 .rangeslider-container path.point{display:none !important;}
 /* and draw the forecast line solid in the slider (overrides its dashed stroke; main chart stays dashed) */
-.rangeslider-container path.js-line{stroke-dasharray:none !important;}</style>
+.rangeslider-container path.js-line{stroke-dasharray:none !important;}
+/* zoom (rangeselector) buttons: kill the click focus-outline + text selection so the active
+   button no longer appears to shift/flicker when a 1W/4W/... button is clicked */
+.rangeselector .button,.rangeselector .button *{outline:none !important;-webkit-tap-highlight-color:transparent;}
+.rangeselector text{-webkit-user-select:none;-moz-user-select:none;user-select:none;}</style>
 <div id="__DIV__" style="width:100%;height:__H__px;"></div>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <script>
@@ -603,6 +608,15 @@ def directional_accuracy_bar(view):
 # ---------------------------------------------------------------------------
 # PAGE: HOME
 # ---------------------------------------------------------------------------
+def _week_of_month_label(d) -> str:
+    """Format a date as 'Week N, Mon YYYY' (N = 1-5, the week within its month)."""
+    if d is None or pd.isna(d):
+        return "-"
+    d = pd.Timestamp(d)
+    week = (d.day - 1) // 7 + 1
+    return f"Week {week}, {d:%b %Y}"
+
+
 def page_home():
     products = allowed_products(user["role"])          # role-scoped commodities
     n_products = len(products)
@@ -615,7 +629,7 @@ def page_home():
     # "Last updated on" = the newest date an ACTUAL spot exists, read from the accuracy
     # table itself — so updating that file moves this date with no other edits needed.
     last_actual = dl.last_actual_date()
-    last_update = last_actual.strftime("%d %b %Y") if last_actual is not None else "-"
+    last_update = _week_of_month_label(last_actual)
     mapas = []
     n_weeks = 0
     for _, meta in products.items():
@@ -638,7 +652,7 @@ def page_home():
         ("Price forecasting", "Spot vs 12-week Ensemble forecast for the steel products.", "trending_up", "Price Forecasting"),
         ("Analyst calls", "Monthly market-outlook calls, key insights and downloadable decks.", "campaign", "Analyst Calls"),
         ("Performance", "Week-wise accuracy: spot vs forecast, weekly delta, MAPA and directional hit-rate.", "insights", "Performance Dashboard"),
-        ("Calculators", "Import vs landed-cost, production cost & margin, and price-elasticity tools.", "calculate", "Calculators"),
+        ("Scenario Simulation", "Import vs landed-cost, production cost & margin, and price-elasticity tools.", "calculate", "Calculators"),
     ]
     modules = [m for m in modules if m[3] in allowed_pages]   # only role-visible modules
     if modules:
@@ -768,7 +782,7 @@ def page_forecasting():
             return
         last_actual = row.get("Last actual (Rs./ton)", row.get("Last actual (₹/ton)"))
         last_date = pd.to_datetime(row.get("Last actual date"), errors="coerce")
-        ld = last_date.strftime("%d %b %Y") if pd.notna(last_date) else "-"
+        ld = _week_of_month_label(last_date)
         nextwk = row.get("Next-wk forecast")
         p12 = row.get("+12wk forecast")
         nextwk_dir = dl.direction_flag(nextwk - last_actual) if (pd.notna(nextwk) and pd.notna(last_actual)) else row.get("Next-wk dir", "")
@@ -1253,7 +1267,7 @@ def page_performance():
 # PAGE: CALCULATORS
 # ---------------------------------------------------------------------------
 def page_calculators():
-    st.markdown("## Calculators")
+    st.markdown("## Scenario Simulation")
     t1, t2, t3 = st.tabs(["Import vs Landed Cost (HRC)", "Production Cost & Margin", "Price Elasticity (HRC)"])
     with t1:
         calc_import_price.render()
@@ -1342,7 +1356,7 @@ def page_methodology():
         for tag, title, desc in horizons
     ) + "</div>"
     st.markdown(hz, unsafe_allow_html=True)
-    st.markdown("<div class='bm-footnote'>This Adani prototype surfaces the <b>12-week</b> horizon on the "
+    st.markdown("<div class='bm-footnote'>This Adani dashboard surfaces the <b>12-week</b> horizon on the "
                 "headline Ensemble (Weighted Mean) line.</div>", unsafe_allow_html=True)
 
     st.write("")

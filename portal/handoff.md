@@ -1,7 +1,7 @@
 # BigMint – AI Labs Price Forecasting: Steel — Handoff
 
-Standalone **Streamlit UI prototype** for Adani. Data is a static, cached snapshot of the
-dashboard's existing forecast/accuracy files — no live backend.
+Standalone **Streamlit UI** for Adani. Data is a cached snapshot of the
+dashboard's existing forecast/accuracy files.
 
 ## Run
 ```bash
@@ -119,7 +119,41 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **Accent = orange**: `primaryColor` is now `#EE4E24` (ACCENT orange) in config.toml — it natively drives **primary buttons (Sign in / Log out / active nav) + tab highlights + segmented selected state** orange. The **brand topbar stays blue** because it uses the `PRIMARY` (#024CA1) constant in `theme.py` CSS, *not* `primaryColor`. **Tabs** are a **sliding segmented switch**: `div[data-baseweb="tab-highlight"]` is *repurposed* from baseweb's bottom underline into a full-height **white pill** (`top/bottom:5px; height:auto; border-radius; bg #fff`) — baseweb (Streamlit 1.58) repositions it with **`transform: translateX(...)`** (NOT `left`) and updates `width` when you switch tabs, so the pill **slides only if the `transition` targets `transform`** (`transition:transform .28s, width .28s`). **Verified live (2026-06-30):** at 0.28s the highlight's `translateX` eases smoothly between tab positions (e.g. 5px↔149px). Tab buttons sit above it (`z-index:1`, transparent bg) with orange active text; `tab-border` is hidden; the grey track is `div[data-baseweb="tab-list"]` (`position:relative` anchors the pill). Do **not** re-hide `tab-highlight`, and **keep the transition on `transform`** — a `transition:left/width` (the old value) never fires because baseweb moves the pill via `transform`, so the pill snaps instead of sliding. The segmented selector (Product) gets orange via `stBaseButton-segmented_controlActive`. If tabs look wrong after a Streamlit upgrade, re-check BOTH selector generations — the `data-baseweb="tab*"` rules (1.58) and the `stTabs`/`stTab`/`.react-aria-SelectionIndicator` rules (1.59+, added 2026-07-08; see the next gotcha). (Was previously blue buttons + orange underline-tabs; accent flipped + tabs → sliding pill 2026-06-26.)
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
-## Changelog (prototype iterations)
+## Changelog
+### 2026-07-09 — Go-live polish: nav centring, Scenario Simulation rename, week-of-month date, logo de-boxed, prototype text removed
+- **Top nav centred with equal gaps** — `app.py` `top_nav()` column widths changed from
+  `[1] + [1.35]*(n-1)` (Home deliberately narrower) to **`[1]*len(items)`** so every nav button is
+  the same width and the inter-button gaps are uniform. A small **8px spacer** (`st.markdown` div) now
+  sits between the brand bar and the nav row so the nav sits a touch lower. → `app.py` `top_nav()` +
+  the line just above `top_nav()`.
+- **Zoom-button (1W/4W/8W/12W/26W/YTD/ALL) click "shift" fixed** — the Plotly rangeselector buttons
+  live in the chart iframe (`_HL_TEMPLATE` in `app.py`); the perceived jitter on click was the
+  browser focus-outline / text-selection on the active button. Added iframe `<style>` rules:
+  `.rangeselector .button, .rangeselector .button * { outline:none; -webkit-tap-highlight-color:transparent; }`
+  and `.rangeselector text { user-select:none; }`. (Geometry is unchanged — active vs inactive only
+  swaps fill colour — so this removes the visible artefact without touching layout.)
+- **"Calculators" → "Scenario Simulation"** everywhere user-facing: nav label (`NAV` 2nd field —
+  **internal page key stays `"Calculators"`** so routing / `PAGES` / `profile["pages"]` are untouched),
+  Home module-card title, `page_calculators()` H2, and the three tool subheaders
+  (`calc_import_price.py`, `calc_elasticity.py`, `calc_cost.py`). README module bullet updated too.
+- **"Last updated" now shows week-of-month** — new `app.py` `_week_of_month_label(d)` →
+  `"Week N, Mon YYYY"` (N = `(day-1)//7 + 1`, 1–5). Wired into the Home **"Last updated on"** KPI and
+  the forecasting **"Last actual spot"** card date (both previously `%d %b %Y`). Sidebar "Data as of"
+  left as the exact date (technical/data-source detail).
+- **Adani logo de-boxed** — `.bm-adani-chip` in `theme.py` dropped the white background / padding /
+  rounded corners / shadow (`background:#fff; border-radius:8px; padding:5px 11px; box-shadow…`) and is
+  now just `display:inline-flex; align-items:center;`. The gradient "adani" wordmark now sits directly
+  on the blue brand bar (no square). ⚠ If legibility of the cyan left edge on the blue bar is a
+  concern, revisit — but per request the box is removed.
+- **All "prototype" UI text removed** (going live): footer disclaimer trimmed to "AI-generated
+  forecasts are indicative." (dropped "Prototype build — data shown is a static snapshot.");
+  Methodology footnote "This Adani **prototype** surfaces…" → "This Adani **dashboard** surfaces…";
+  `app.py` module docstring and `portal/README.md`/this handoff's header de-prototyped. Historical
+  changelog entries left intact.
+- All edited modules `py_compile` clean.
+  → `app.py`, `theme.py`, `calculators/calc_import_price.py`, `calculators/calc_elasticity.py`,
+  `calculators/calc_cost.py`, `README.md`.
+
 ### 2026-07-08 — Full alignment on Streamlit 1.59 (pin + env + dual-generation tab CSS)
 - **Everything now targets 1.59.0, the version the Cloud deployment actually runs.** Root
   `requirements.txt` pin bumped `1.58.0` → **`1.59.0`** (comment rewritten; `portal/requirements.txt`

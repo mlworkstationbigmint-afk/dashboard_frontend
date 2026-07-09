@@ -1,7 +1,7 @@
-# BigMint - AI Labs : Price Forecasting: Steel (Adani portal prototype)
+# BigMint - AI Labs : Price Forecasting: Steel (Adani portal)
 
-Standalone Streamlit UI prototype. Data is a static, cached snapshot of the
-dashboard's existing forecast/accuracy files - no live connection.
+Standalone Streamlit UI. Data is a cached snapshot of the
+dashboard's existing forecast/accuracy files.
 
 ## Run
 ```bash
@@ -24,7 +24,7 @@ streamlit run portal/app.py
 - **Price forecasting** - Steel: spot vs 12-week Ensemble (Wgt-Mean) forecast + direction for the six products.
 - **Analyst calls** - placeholder repository (summaries + PPT/PDF), to be wired later.
 - **Performance dashboard** - week-wise Spot / Forecast / Delta / Direction + MAPA & directional-accuracy KPIs (6 or 16-week window).
-- **Calculators** - Import Price (HRC), Production Cost & Margin, Price Elasticity (HRC).
+- **Scenario Simulation** - Import Price (HRC), Production Cost & Margin, Price Elasticity (HRC).
 
 ## Layout
 ```

@@ -101,7 +101,7 @@ def render():
     st.markdown(CALC_CSS, unsafe_allow_html=True)
     model, columns = load_model()
 
-    st.subheader("Price Elasticity Calculator - Hot Rolled Coil")
+    st.subheader("Price Elasticity Scenario Simulation - Hot Rolled Coil")
 
     for col in columns:
         if col not in st.session_state:

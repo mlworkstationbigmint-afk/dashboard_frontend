@@ -90,7 +90,7 @@ Single deployment; the logged-in user's `role` selects everything at render time
 ## Known limitation
 `.streamlit/config.toml` `primaryColor` is a build-time global, so native Streamlit widgets (default
 primary buttons/tabs) keep the global orange for all roles. The brand topbar and all custom-CSS
-surfaces follow the role. Acceptable for the prototype.
+surfaces follow the role. Acceptable for the current build.
 
 ## Verification
 1. `python -m py_compile portal/app.py portal/theme.py portal/db.py portal/data_loader.py`.
@@ -100,3 +100,12 @@ surfaces follow the role. Acceptable for the prototype.
    differ. Admin sets Adani to a 2-commodity subset → adani sees only those. Admin tags a call
    `[Analyst]` → adani can't see it, analyst can, admin preview still shows it. Stale hidden page →
    falls back to Home.
+
+## Post-plan UI polish
+- **2026-07-09 (go-live pass):** top nav centred with equal-width buttons + an 8px drop below the
+  brand bar; the "Calculators" page **relabelled "Scenario Simulation"** everywhere user-facing
+  (**internal page key `"Calculators"` kept** — routing/`PAGES`/`profile["pages"]` unchanged); the
+  "Last updated on" / "Last actual spot" dates now render as **"Week N, Mon YYYY"**
+  (`app._week_of_month_label`); the Adani co-brand logo's **white square/chip removed** (sits directly
+  on the blue bar); the Plotly zoom-button (1W/4W/…) click-jitter suppressed via iframe CSS; and **all
+  "prototype" UI text removed** for launch. Full detail in `handoff.md` changelog 2026-07-09.
