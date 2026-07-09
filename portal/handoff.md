@@ -120,18 +120,29 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
-### 2026-07-09 — Go-live polish: nav centring, Scenario Simulation rename, week-of-month date, logo de-boxed, prototype text removed
+### 2026-07-09 — Go-live polish: nav centring, Scenario Simulation rename, week-of-month date, logo de-boxed, prototype text removed, forecasting H2 removed, zoom buttons re-done as HTML (no jitter)
 - **Top nav centred with equal gaps** — `app.py` `top_nav()` column widths changed from
   `[1] + [1.35]*(n-1)` (Home deliberately narrower) to **`[1]*len(items)`** so every nav button is
   the same width and the inter-button gaps are uniform. A small **8px spacer** (`st.markdown` div) now
   sits between the brand bar and the nav row so the nav sits a touch lower. → `app.py` `top_nav()` +
   the line just above `top_nav()`.
-- **Zoom-button (1W/4W/8W/12W/26W/YTD/ALL) click "shift" fixed** — the Plotly rangeselector buttons
-  live in the chart iframe (`_HL_TEMPLATE` in `app.py`); the perceived jitter on click was the
-  browser focus-outline / text-selection on the active button. Added iframe `<style>` rules:
-  `.rangeselector .button, .rangeselector .button * { outline:none; -webkit-tap-highlight-color:transparent; }`
-  and `.rangeselector text { user-select:none; }`. (Geometry is unchanged — active vs inactive only
-  swaps fill colour — so this removes the visible artefact without touching layout.)
+- **Zoom-button (1W/4W/8W/12W/26W/YTD/ALL) click "shift" fixed — rangeselector replaced by HTML buttons.**
+  A first pass tried CSS (`outline:none` / `user-select:none`) on the SVG `.rangeselector` buttons; it
+  did **not** stop the jitter — Plotly re-renders the whole button group on every click and re-measures
+  each button, so the strip shifts a pixel or two regardless of CSS. **Fix:** dropped Plotly's
+  `rangeselector` from the figure entirely and render the zoom buttons as **plain HTML `<button>`s in a
+  fixed `.rangebtns` row ABOVE the plot**, inside the chart iframe (`_HL_TEMPLATE`). Each button carries
+  `data-start`/`data-end` (ISO datetimes computed in `forecast_chart`: `end` = last forecast date, `start`
+  = `end − N·7 days − forecast span`, plus YTD = Jan-1 and ALL = full history) and a click handler that
+  does `Plotly.relayout(gd, {"xaxis.range":[start,end]})` + toggles the `.active` class. Fixed geometry ⇒
+  **zero movement**. Wiring: `_render_with_highlighter(fig, …, range_buttons=[…])` builds the row and
+  injects `__RANGEBTNS__` + `__ACCENT__` (active-pill colour) into the template; iframe height grows by
+  `extra_h=40` for the row; default active button = **ALL** (matches the initial full-range view). Plot
+  top margin cut (compact `46→18`) now the buttons live outside the plot; the in-chart legend/annotation
+  keep their inside-plot positions. `perf_chart` passes no `range_buttons`, so it's unaffected.
+- **"Price forecasting" H2 removed** from the forecasting page (`page_forecasting()` — the group
+  tab-strip + view switch already make the context obvious; the page title also lives in the browser tab
+  + Home). Just deleted the `st.markdown("## Price forecasting")` line.
 - **"Calculators" → "Scenario Simulation"** everywhere user-facing: nav label (`NAV` 2nd field —
   **internal page key stays `"Calculators"`** so routing / `PAGES` / `profile["pages"]` are untouched),
   Home module-card title, `page_calculators()` H2, and the three tool subheaders

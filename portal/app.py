@@ -373,16 +373,31 @@ _HL_TEMPLATE = """
 .rangeslider-container path.point{display:none !important;}
 /* and draw the forecast line solid in the slider (overrides its dashed stroke; main chart stays dashed) */
 .rangeslider-container path.js-line{stroke-dasharray:none !important;}
-/* zoom (rangeselector) buttons: kill the click focus-outline + text selection so the active
-   button no longer appears to shift/flicker when a 1W/4W/... button is clicked */
-.rangeselector .button,.rangeselector .button *{outline:none !important;-webkit-tap-highlight-color:transparent;}
-.rangeselector text{-webkit-user-select:none;-moz-user-select:none;user-select:none;}</style>
+/* zoom (week) buttons: custom HTML above the plot, fixed geometry so they NEVER shift on click
+   (Plotly's own SVG rangeselector re-renders + jitters when a button is clicked). */
+.rangebtns{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px 2px;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+.rangebtns button{font-size:11.5px;font-weight:600;color:#1f2937;background:#eef2f7;
+  border:1px solid #e2e8f0;border-radius:7px;padding:3px 11px;cursor:pointer;line-height:1.45;
+  outline:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;
+  transition:background .12s ease,color .12s ease,border-color .12s ease;}
+.rangebtns button:hover{border-color:#cbd5e1;background:#e6ebf2;}
+.rangebtns button.active{background:__ACCENT__;border-color:__ACCENT__;color:#fff;}</style>
+__RANGEBTNS__
 <div id="__DIV__" style="width:100%;height:__H__px;"></div>
 <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <script>
 const fig = __FIGJSON__;
 const gd = document.getElementById("__DIV__");
 Plotly.newPlot(gd, fig.data, fig.layout, {displayModeBar:false, responsive:true});
+// wire the custom zoom buttons -> relayout the x-range (no jitter, unlike the SVG rangeselector)
+(function(){var rb=document.getElementById("rb___DIV__");if(!rb)return;
+  var btns=rb.querySelectorAll("button");
+  btns.forEach(function(b){b.addEventListener("click",function(){
+    for(var i=0;i<btns.length;i++)btns[i].classList.remove("active");
+    b.classList.add("active");
+    Plotly.relayout(gd,{"xaxis.range":[b.getAttribute("data-start"),b.getAttribute("data-end")]});
+  });});})();
 function hexA(c,a){ if(!c) return 'rgba(225,43,32,'+a+')'; if(c[0]!=='#') return c; var h=c.slice(1); if(h.length===3){h=h.split('').map(function(x){return x+x;}).join('');} var n=parseInt(h,16); return 'rgba('+((n>>16)&255)+','+((n>>8)&255)+','+(n&255)+','+a+')'; }
 gd.on('plotly_hover', function(d){ var p=d.points[0]; var col=(p.fullData.line&&p.fullData.line.color)||'#E12B20'; Plotly.restyle(gd, {x:[[p.x],[p.x]], y:[[p.y],[p.y]], 'marker.color':[hexA(col,0.20), col]}, [__HALO__,__CORE__]); });
 gd.on('plotly_unhover', function(){ Plotly.restyle(gd, {x:[[],[]], y:[[],[]]}, [__HALO__,__CORE__]); });
@@ -393,8 +408,10 @@ window.addEventListener('resize', function(){ Plotly.Plots.resize(gd); });
 """
 
 
-def _render_with_highlighter(fig, height=430, dom_id="chart"):
-    """Render a Plotly figure via a custom JS layer that adds a hover-following ball."""
+def _render_with_highlighter(fig, height=430, dom_id="chart", range_buttons=None):
+    """Render a Plotly figure via a custom JS layer that adds a hover-following ball.
+    range_buttons (optional): a list of {label, start, end, active} dicts rendered as a fixed
+    HTML zoom-button row above the plot (replaces Plotly's jittery SVG rangeselector)."""
     import plotly.graph_objects as go
     fig.update_layout(autosize=True)
     fig.add_trace(go.Scatter(x=[], y=[], mode="markers", hoverinfo="skip", showlegend=False,
@@ -402,7 +419,17 @@ def _render_with_highlighter(fig, height=430, dom_id="chart"):
     fig.add_trace(go.Scatter(x=[], y=[], mode="markers", hoverinfo="skip", showlegend=False,
                              cliponaxis=False, marker=dict(size=9, color=theme.FORECAST_LINE, line=dict(width=2, color="#ffffff"))))
     halo_idx, core_idx = len(fig.data) - 2, len(fig.data) - 1
+    rangebtns_html, extra_h = "", 0
+    if range_buttons:
+        parts = []
+        for b in range_buttons:
+            cls = " class='active'" if b.get("active") else ""
+            parts.append("<button%s data-start='%s' data-end='%s'>%s</button>"
+                         % (cls, b["start"], b["end"], html.escape(b["label"])))
+        rangebtns_html = "<div class='rangebtns' id='rb_%s'>%s</div>" % (dom_id, "".join(parts))
+        extra_h = 40
     doc = (_HL_TEMPLATE.replace("__DIV__", dom_id).replace("__H__", str(height))
+           .replace("__RANGEBTNS__", rangebtns_html).replace("__ACCENT__", theme.ACCENT)
            .replace("__FIGJSON__", fig.to_json())
            .replace("__HALO__", str(halo_idx)).replace("__CORE__", str(core_idx)))
     # st.iframe replaces the deprecated components.v1.html (removal announced for mid-2026;
@@ -414,7 +441,7 @@ def _render_with_highlighter(fig, height=430, dom_id="chart"):
     doc_dir.mkdir(exist_ok=True)
     doc_path = doc_dir / f"{token}_{dom_id}.html"
     doc_path.write_text(doc, encoding="utf-8")
-    st.iframe(doc_path, height=height + 12)
+    st.iframe(doc_path, height=height + 12 + extra_h)
 
 
 def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=False):
@@ -473,15 +500,31 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
         fc_span = max(int((pd.Timestamp(last_fc) - pd.Timestamp(last_actual)).days), 0)
         all_days = max(int((pd.Timestamp(last_fc) - pd.Timestamp(start_all)).days), 1)
 
-        def _wk_button(n, label):
-            return dict(count=min(n * 7 + fc_span, all_days), step="day",
-                        stepmode="backward", label=label)
+        # Zoom (week) buttons are rendered as custom HTML buttons ABOVE the plot (see
+        # _render_with_highlighter / _HL_TEMPLATE), NOT Plotly's own SVG rangeselector: the
+        # rangeselector redraws its buttons on every click and visibly jitters/shifts, whereas
+        # plain HTML buttons have fixed geometry and never move. Each button just relayouts
+        # xaxis.range to [end - N weeks (+ the forecast span), last forecast date], so the
+        # 12-week forecast stays pinned and only the amount of history shown changes.
+        end_ts = pd.Timestamp(last_fc)
+
+        def _bk(n):
+            return end_ts - pd.Timedelta(days=min(n * 7 + fc_span, all_days))
+
+        def _btn(label, start_ts, active=False):
+            return {"label": label, "active": active,
+                    "start": pd.Timestamp(start_ts).strftime("%Y-%m-%d %H:%M:%S"),
+                    "end": end_ts.strftime("%Y-%m-%d %H:%M:%S")}
+
+        range_buttons = [
+            _btn("1W", _bk(1)), _btn("4W", _bk(4)), _btn("8W", _bk(8)),
+            _btn("12W", _bk(12)), _btn("26W", _bk(26)),
+            _btn("YTD", pd.Timestamp(year=end_ts.year, month=1, day=1)),
+            _btn("ALL", start_all, active=True),   # default view = full history
+        ]
 
         h = 620 if compact else 560
-        top_m = 46 if compact else 82            # compact: slim margin, buttons JUST above the plot
-        rs_y = 1.01 if compact else 1.18         # just above the plot when compact, higher otherwise
-        rs_ya = "bottom"
-        rs_x = 0.01 if compact else 0
+        top_m = 18 if compact else 82            # buttons now sit OUTSIDE the plot -> slimmer top margin
         fig = _style_fig(fig, height=h)
         fig.update_xaxes(
             # exact range (no autorange padding) so the backward zoom anchors on the last forecast date
@@ -492,31 +535,17 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
             rangeslider=dict(visible=True, thickness=0.10, bgcolor="#f1f5f9",
                              bordercolor="#e2e8f0", borderwidth=1,
                              range=[_dt(start_all), _dt(last_fc)]),
-            rangeselector=dict(
-                buttons=[
-                    _wk_button(1, "1W"), _wk_button(4, "4W"), _wk_button(8, "8W"),
-                    _wk_button(12, "12W"), _wk_button(26, "26W"),
-                    dict(count=1, label="YTD", step="year", stepmode="todate"),
-                    dict(count=all_days, label="ALL", step="day", stepmode="backward"),
-                ],
-                x=rs_x, xanchor="left", y=rs_y, yanchor=rs_ya,
-                bgcolor="#eef2f7", activecolor=theme.ACCENT,
-                bordercolor="#e2e8f0", borderwidth=1,
-                font=dict(size=11.5, color="#1f2937"),
-            ),
         )
-        # raise the top margin to clear the zoom buttons. legend_inside places the legend inside
-        # the plot's white region (the top-right slot is taken by the location dropdown in the
-        # grouped layout); otherwise keep it at the top-right above the chart.
+        # legend_inside places the legend inside the plot's white region (the top-right slot is
+        # taken by the location dropdown in the grouped layout); otherwise keep it above the chart.
         if legend_inside:
-            ly = 0.99                            # top-left inside the plot (buttons sit above it)
-            legend = dict(orientation="h", x=0.012, xanchor="left", y=ly, yanchor="top",
+            legend = dict(orientation="h", x=0.012, xanchor="left", y=0.99, yanchor="top",
                           bgcolor="rgba(255,255,255,0.74)", bordercolor="#e2e8f0", borderwidth=1,
                           font=dict(size=11.5))
         else:
             legend = dict(x=1, xanchor="right", y=1.18, yanchor="bottom")
         fig.update_layout(margin=dict(l=14, r=22, t=top_m, b=18), legend=legend)
-        _render_with_highlighter(fig, height=h, dom_id="fc_chart")
+        _render_with_highlighter(fig, height=h, dom_id="fc_chart", range_buttons=range_buttons)
     except Exception:
         h = hist.set_index("Date")[["Actual", "Forecast"]]
         f = fwd.set_index("Date")[["Forecast"]].rename(columns={"Forecast": "Forecast (12-wk)"})
@@ -743,7 +772,6 @@ def _location_label(group, name):
 
 
 def page_forecasting():
-    st.markdown("## Price forecasting")
     products = allowed_products(user["role"])
     if not products:
         st.info("No commodities are enabled for your account yet. Please contact an administrator.",

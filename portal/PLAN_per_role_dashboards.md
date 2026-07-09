@@ -107,5 +107,7 @@ surfaces follow the role. Acceptable for the current build.
   (**internal page key `"Calculators"` kept** — routing/`PAGES`/`profile["pages"]` unchanged); the
   "Last updated on" / "Last actual spot" dates now render as **"Week N, Mon YYYY"**
   (`app._week_of_month_label`); the Adani co-brand logo's **white square/chip removed** (sits directly
-  on the blue bar); the Plotly zoom-button (1W/4W/…) click-jitter suppressed via iframe CSS; and **all
-  "prototype" UI text removed** for launch. Full detail in `handoff.md` changelog 2026-07-09.
+  on the blue bar); **all "prototype" UI text removed** for launch; the **"Price forecasting" H2 dropped**
+  from the forecasting page; and the forecasting **zoom buttons (1W/4W/…) rebuilt as fixed HTML buttons**
+  above the chart (Plotly's SVG rangeselector jittered on click — CSS didn't help, so it was replaced
+  with HTML `<button>`s wired to `Plotly.relayout`). Full detail in `handoff.md` changelog 2026-07-09.
