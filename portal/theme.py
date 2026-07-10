@@ -350,11 +350,32 @@ div[class*="st-key-home_methodology"] button:hover em {{ filter:brightness(.97);
 .bm-card .bm-desc {{ color:{NEUTRAL}; font-size:13px; }}
 
 /* analyst-call detailed summary: label + one-line section rows */
-.bm-call-secs {{ margin:8px 0 2px 0; }}
-.bm-call-sec {{ display:flex; gap:12px; padding:7px 0; border-top:1px dashed #eef2f7; font-size:13.5px; line-height:1.45; }}
+.bm-call-title {{ font-size:16px; font-weight:700; color:var(--bm-primary-dark); line-height:1.35; }}
+.bm-call-kinds {{ text-align:right; color:#94a3b8; font-size:11px; font-weight:600; letter-spacing:.04em;
+    text-transform:uppercase; padding-top:4px; }}
+.bm-call-summary {{ color:#334155; font-size:13.5px; line-height:1.6; margin:8px 0 2px; }}
+.bm-call-secs {{ margin:12px 0 2px 0; }}
+.bm-call-sec {{ display:flex; gap:16px; padding:10px 2px; border-top:1px dashed #e6ebf2; font-size:13.5px; line-height:1.5; }}
 .bm-call-sec:first-child {{ border-top:none; }}
-.bm-call-sec-l {{ flex:0 0 140px; font-weight:700; color:var(--bm-primary-dark); }}
+.bm-call-sec-l {{ flex:0 0 150px; font-weight:700; color:var(--bm-primary-dark); }}
 .bm-call-sec-t {{ color:{NEUTRAL}; }}
+.bm-call-sep {{ border-top:1px solid #eef2f7; margin:14px 0 12px; }}
+/* analyst-call cards: spacing + modern buttons with orange hover (scoped to the card key so nav /
+   Sign-in / Log-out buttons are untouched) */
+div[class*="st-key-callcard"] {{ margin-bottom:16px; }}
+div[class*="st-key-callcard"] .stButton button,
+div[class*="st-key-callcard"] .stDownloadButton button,
+div[class*="st-key-callcard"] .stLinkButton a {{
+    border-radius:10px; border:1px solid #d7dee8; background:#fff; color:var(--bm-primary-dark);
+    font-weight:600; box-shadow:0 1px 2px rgba(16,24,40,.05);
+    transition:border-color .15s ease, color .15s ease, background .15s ease, box-shadow .15s ease, transform .15s ease; }}
+div[class*="st-key-callcard"] .stButton button:hover:not(:disabled),
+div[class*="st-key-callcard"] .stDownloadButton button:hover:not(:disabled),
+div[class*="st-key-callcard"] .stLinkButton a:hover {{
+    border-color:var(--bm-accent); color:var(--bm-accent); background:rgba(238,78,36,.06);
+    box-shadow:0 6px 16px rgba(238,78,36,.18); transform:translateY(-1px); }}
+div[class*="st-key-callcard"] .stButton button:disabled,
+div[class*="st-key-callcard"] .stDownloadButton button:disabled {{ opacity:.5; }}
 
 /* section heading */
 .bm-h {{ font-size:15px; font-weight:600; color:var(--bm-primary-dark); margin:6px 0 6px 0;

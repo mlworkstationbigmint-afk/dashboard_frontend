@@ -1189,14 +1189,16 @@ def _call_date_value(call):
 
 def _render_call_card(call, sig):
     """Render one analyst-call card (shared by the Analyst page and the Admin preview)."""
-    with st.container(border=True):
+    cid = call.get("id", "x")
+    # keyed container -> unique `st-key-callcard_*` class so button styling stays scoped to the card
+    with st.container(border=True, key=f"callcard_{cid}"):
         top = st.columns([4, 2])
-        top[0].markdown(f"**{html.escape(_call_date_label(call))} &mdash; "
-                        f"{html.escape(call.get('title', ''))}**", unsafe_allow_html=True)
-        top[1].markdown("<div style='text-align:right;color:#64748b;font-size:12px;'>Report &middot; "
-                        "Pitchdeck &middot; Video</div>", unsafe_allow_html=True)
+        top[0].markdown(f"<div class='bm-call-title'>{html.escape(_call_date_label(call))} &mdash; "
+                        f"{html.escape(call.get('title', ''))}</div>", unsafe_allow_html=True)
+        top[1].markdown("<div class='bm-call-kinds'>Report &middot; Pitchdeck &middot; Video</div>",
+                        unsafe_allow_html=True)
         if call.get("summary"):
-            st.markdown(f"<div class='bm-desc' style='font-size:13.5px;'>{html.escape(call['summary'])}</div>",
+            st.markdown(f"<div class='bm-call-summary'>{html.escape(call['summary'])}</div>",
                         unsafe_allow_html=True)
         secs = call.get("sections", {})
         rows = "".join(
@@ -1206,7 +1208,7 @@ def _render_call_card(call, sig):
         )
         if rows:
             st.markdown(f"<div class='bm-call-secs'>{rows}</div>", unsafe_allow_html=True)
-        cid = call.get("id", "x")
+        st.markdown("<div class='bm-call-sep'></div>", unsafe_allow_html=True)
         b1, b2, b3, _ = st.columns([2, 2, 1.2, 1])
         _deck_button(b1, "Download Market Summary Report", call.get("pdf", ""), sig, "application/pdf",
                      ":material/picture_as_pdf:", f"pdf_{cid}")

@@ -127,6 +127,17 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-10 (latest+++++) — Analyst-call cards: visual polish (spacing + modern buttons, orange hover)
+- **`_render_call_card` restyled** (`app.py` + `theme.py`). The bordered container now takes a
+  `key=f"callcard_{cid}"` so its `st-key-callcard_*` class can **scope button CSS to the card only**
+  (nav / Sign-in / Log-out buttons untouched — see the calculators gotcha). New/updated `theme.py`
+  classes: **`.bm-call-title`** (16px bold, replaces the old `**bold**`), **`.bm-call-kinds`**
+  (uppercase caption), **`.bm-call-summary`** (line-height 1.6), roomier **`.bm-call-sec`** rows
+  (padding 7→10px, gap 12→16px, label 140→150px), and a **`.bm-call-sep`** divider before the action
+  row (added via an empty div in `app.py`). Buttons (`.stButton` / `.stDownloadButton` / `.stLinkButton`
+  inside the card): rounded 10px, subtle border + shadow, and **hover → orange** (accent border/text,
+  tinted bg, `translateY(-1px)` lift); disabled deck buttons stay muted (`opacity:.5`, no hover). All
+  button styling is behind the `div[class*="st-key-callcard"]` scope.
 ### 2026-07-10 (latest++++) — Footer co-brand is user-specific (BigMint-only before login)
 - **`theme.footer()` now derives its co-brand from the logged-in role** instead of the hardcoded
   "© BigMint - Adani". Reads `st.session_state.user` → `profile_for(role)["cobrand_label"]`: Adani role
