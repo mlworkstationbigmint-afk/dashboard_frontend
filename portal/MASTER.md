@@ -127,7 +127,15 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
-### 2026-07-10 — Scenario Simulation: tabs renamed + reordered; Price Sensitivity Reset + Rs. contributions
+### 2026-07-10 — Scenario Simulation: tabs renamed + reordered; Price Sensitivity Reset + Rs. contributions; Methodology sentiment removed
+- **Methodology page — all "sentiment" mentions removed** (`app.py` `page_methodology()`). Edited the
+  hero paragraph (dropped "combined with market sentiment"), the pipeline steps ("Signal engineering"
+  desc lost "+ sentiment"; "ML + sentiment" step → **"Machine learning"** / "Multiple models predict
+  each product."), **removed the "Market sentiment" key-factor card** (`mic`) leaving 5 factors, the
+  Transparency "Explainable by design" card ("cost and supply&ndash;demand factors"), and the closing
+  disclaimer ("unexpected events or market disruptions"). NB: the **`RATIONALES` placeholder** on the
+  Price Forecasting page still says "Trade &amp; sentiment / market sentiment" (`app.py` ~762) — left
+  as-is, out of scope (methodology only).
 - **Price Sensitivity (`calc_elasticity.py`): Reset button + Driver Contribution now in Rs.** (a) A
   **"Reset"** button under the "Market Shocks (%)" heading zeroes every shock slider via an `on_click`
   callback (`_reset_shocks` sets each slider's `st.session_state[col] = 0.0` — must be a callback, not

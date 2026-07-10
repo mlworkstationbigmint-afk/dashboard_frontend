@@ -1542,7 +1542,7 @@ def page_methodology():
         "<div class='bm-meth-hero'>"
         "<h3>How the forecast is built</h3>"
         "<p>BigMint AI Labs forecasts steel prices with a <b>hybrid approach</b> &mdash; machine-learning "
-        "models trained on 15+ years of BigMint-assessed price data, combined with market sentiment. "
+        "models trained on 15+ years of BigMint-assessed price data. "
         "Each forecast distils cost, supply&ndash;demand, global and macro signals into a single, transparent "
         "price path with a documented rationale.</p></div>",
         unsafe_allow_html=True,
@@ -1561,8 +1561,8 @@ def page_methodology():
     theme.section_title("The forecasting pipeline", theme.icon("trending"))
     steps = [
         ("factory",  "Market data",        "Real-time trades, confirmed deals &amp; 15+ yrs of assessed prices."),
-        ("gauge",    "Signal engineering", "Cost, supply&ndash;demand, global &amp; macro factors + sentiment."),
-        ("target",   "ML + sentiment",     "Multiple models predict each product; sentiment adjusts."),
+        ("gauge",    "Signal engineering", "Cost, supply&ndash;demand, global &amp; macro factors."),
+        ("target",   "Machine learning",   "Multiple models predict each product."),
         ("trending", "Ensemble",           "Models blended into the headline Ensemble (Weighted Mean)."),
         ("calendar", "12-wk forecast",     "Forward price path with up / down / flat direction."),
         ("notes",    "Accuracy tracking",  "Every forecast back-checked against realised spot."),
@@ -1588,7 +1588,6 @@ def page_methodology():
         ("home",     "Global prices",           "Import / export parity &amp; international benchmarks."),
         ("gauge",    "Supply &amp; demand",      "Output, inventory and end-use demand balance."),
         ("calendar", "Macro-economic",          "Rates, FX, growth and policy signals."),
-        ("mic",      "Market sentiment",        "Tone from deals, news and participant behaviour."),
     ]
     grid = "<div class='bm-factor-grid'>" + "".join(
         f"<div class='bm-factor'><div class='ic'>{theme.icon(ic, 20)}</div>"
@@ -1619,7 +1618,7 @@ def page_methodology():
     tcol[0].markdown(
         "<div class='bm-card'><h4>Explainable by design</h4>"
         "<div class='bm-desc'>Every forecast ships with a <b>rationale</b> &mdash; a breakdown of the key "
-        "cost, supply&ndash;demand and sentiment factors behind the move &mdash; so the logic behind each "
+        "cost and supply&ndash;demand factors behind the move &mdash; so the logic behind each "
         "price shift is transparent and auditable, not a black box.</div></div>",
         unsafe_allow_html=True)
     tcol[1].markdown(
@@ -1630,7 +1629,7 @@ def page_methodology():
 
     st.write("")
     st.info("Forecasts use selected factors based on data availability and do not account for unexpected "
-            "events, market disruptions or sentiment-driven shocks. Treat them as indicative, not guarantees.",
+            "events or market disruptions. Treat them as indicative, not guarantees.",
             icon=":material/info:")
     theme.footer()
 
