@@ -776,8 +776,9 @@ FORECAST_GROUP_ORDER = ["HRC", "HR Plate", "Rebar", "Structure"]
 
 # Roles that get the grouped forecasting UI (group selector at top + per-group location
 # dropdown in the old legend slot + in-chart legend + short year in the x-axis labels).
-# Case-insensitive. When adani_dev is promoted onto the live Adani role, add "adani" here.
-GROUPED_FORECASTING_ROLES = {"adani_dev"}
+# Case-insensitive. adani_dev was the staging role; the grouped layout is now promoted to the live
+# roles (Adani / Analyst / Admin). adani_dev kept only until those staging users are deleted.
+GROUPED_FORECASTING_ROLES = {"adani_dev", "adani", "analyst", "admin"}
 
 
 def _grouped_forecasting(role):
