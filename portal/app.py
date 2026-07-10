@@ -1558,27 +1558,40 @@ def page_methodology():
         unsafe_allow_html=True,
     )
 
-    theme.section_title("The forecasting pipeline", theme.icon("trending"))
-    steps = [
-        ("factory",  "Market data",        "Real-time trades, confirmed deals &amp; 15+ yrs of assessed prices."),
-        ("gauge",    "Signal engineering", "Cost, supply&ndash;demand, global &amp; macro factors."),
-        ("target",   "Machine learning",   "Multiple models predict each product."),
-        ("trending", "Ensemble",           "Models blended into the headline Ensemble (Weighted Mean)."),
-        ("calendar", "12-wk forecast",     "Forward price path with up / down / flat direction."),
-        ("notes",    "Accuracy tracking",  "Every forecast back-checked against realised spot."),
+    theme.section_title("From data to forecast", theme.icon("trending"))
+    # General Inputs -> Model -> Outputs infographic (replaces the old 6-step chain).
+    # Grounded in BigMint's published, deliberately high-level methodology — a defined,
+    # data-driven method over selected factors from available data, no over-claimed model
+    # names. Styled by .bm-engine* in theme.py; collapses to a single column on narrow screens.
+    engine_in = [
+        ("factory", "15+ yrs of BigMint-assessed prices"),
+        ("rupee",   "Cost, supply &amp; demand signals"),
+        ("home",    "Global &amp; macro factors"),
     ]
-    # One continuous left-to-right pipeline (6 steps, arrows between). Rendered as a
-    # CSS grid (card / arrow / card / …) so it never wraps into the awkward 3+3
-    # diagonal jump; it collapses to a single vertical column on narrow screens
-    # (see .bm-flow in theme.py).
-    flow = "<div class='bm-flow'>"
-    for j, (ic, title, desc) in enumerate(steps):
-        flow += (f"<div class='bm-flow-step'><div class='num'>{j + 1}</div>"
-                 f"<div class='ic'>{theme.icon(ic, 22)}</div><div class='bm-flow-t'>{title}</div><p>{desc}</p></div>")
-        if j < len(steps) - 1:
-            flow += "<div class='bm-flow-arrow'>&rarr;</div>"
-    flow += "</div>"
-    st.markdown(flow, unsafe_allow_html=True)
+    engine_out = [
+        ("calendar", "12-week forward price path"),
+        ("trending", "Up / down / flat direction"),
+        ("notes",    "Back-checked vs realised spot"),
+    ]
+    def _engine_chips(items):
+        return "".join(
+            f"<div class='bm-chip'><span class='ic'>{theme.icon(ic, 15)}</span>{label}</div>"
+            for ic, label in items
+        )
+    engine = (
+        "<div class='bm-engine'>"
+        f"<div class='bm-engine-col bm-engine-in'><div class='bm-engine-h'>Inputs</div>{_engine_chips(engine_in)}</div>"
+        "<div class='bm-engine-arrow'>&rarr;</div>"
+        "<div class='bm-engine-core'>"
+        f"<span class='ic'>{theme.icon('gauge', 26)}</span>"
+        "<h4>Forecasting model</h4>"
+        "<p>A defined, data-driven methodology fits historical price relationships across "
+        "selected factors from available data.</p></div>"
+        "<div class='bm-engine-arrow'>&rarr;</div>"
+        f"<div class='bm-engine-col bm-engine-out'><div class='bm-engine-h'>Outputs</div>{_engine_chips(engine_out)}</div>"
+        "</div>"
+    )
+    st.markdown(engine, unsafe_allow_html=True)
 
     st.write("")
     theme.section_title("Key factors the model weighs", theme.icon("gauge"))

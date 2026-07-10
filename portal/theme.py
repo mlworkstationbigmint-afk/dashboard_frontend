@@ -580,6 +580,20 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
 /* arrow pinned to the icon row (align-self:start + padding) so 1..6 share one flow line */
 .bm-flow-arrow {{ align-self:start; padding-top:30px; display:flex; align-items:flex-start;
     justify-content:center; color:var(--bm-accent); font-size:18px; font-weight:700; }}
+/* methodology engine infographic (Inputs -> Model -> Outputs); replaces the old numbered chain */
+.bm-engine {{ display:grid; grid-template-columns:1fr auto 1.15fr auto 1fr; align-items:stretch; gap:0 10px; margin:18px 0 14px; }}
+.bm-engine-col {{ background:#fff; border:1px solid #e8edf3; border-radius:14px; padding:16px 16px 14px; box-shadow:0 1px 2px rgba(16,24,40,.05); }}
+.bm-engine-in {{ border-top:3px solid var(--bm-primary); }}
+.bm-engine-out {{ border-top:3px solid var(--bm-accent); }}
+.bm-engine-h {{ font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:{NEUTRAL}; margin:0 0 10px; }}
+.bm-chip {{ display:flex; align-items:center; gap:9px; background:#f6f8fc; border:1px solid #e8edf3; border-radius:10px; padding:9px 11px; margin:0 0 8px; font-size:12.5px; color:var(--bm-primary-dark); font-weight:600; line-height:1.3; }}
+.bm-chip:last-child {{ margin-bottom:0; }}
+.bm-chip .ic {{ flex:0 0 24px; width:24px; height:24px; border-radius:7px; background:var(--bm-primary-soft); color:var(--bm-primary); display:flex; align-items:center; justify-content:center; }}
+.bm-engine-core {{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; background:linear-gradient(135deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%); color:#fff; border-radius:16px; padding:20px 18px; box-shadow:0 6px 22px rgba(2,76,161,.22); }}
+.bm-engine-core .ic {{ width:46px; height:46px; border-radius:12px; background:rgba(255,255,255,.16); display:flex; align-items:center; justify-content:center; margin:0 0 10px; }}
+.bm-engine-core h4 {{ margin:0 0 6px; font-size:16px; color:#fff; }}
+.bm-engine-core p {{ margin:0; font-size:12.5px; line-height:1.5; color:#dce8f8; }}
+.bm-engine-arrow {{ display:flex; align-items:center; justify-content:center; color:var(--bm-accent); font-size:20px; font-weight:700; }}
 /* factor grid */
 .bm-factor-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:6px 0; }}
 .bm-factor {{ display:flex; gap:12px; align-items:flex-start; background:#fff; border:1px solid #e8edf3;
@@ -603,6 +617,9 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
     .bm-flow {{ grid-template-columns:1fr; }}
     .bm-flow-step {{ margin:0 0 4px; }}
     .bm-flow-arrow {{ transform:rotate(90deg); margin:3px 0; padding-top:0; align-self:center; }}
+    /* engine: single column, arrows point downward */
+    .bm-engine {{ grid-template-columns:1fr; gap:8px 0; }}
+    .bm-engine-arrow {{ transform:rotate(90deg); margin:2px 0; }}
 }}
 @media (max-width:760px) {{
     .bm-stat-row, .bm-factor-grid, .bm-horizon-grid {{ grid-template-columns:1fr 1fr; }}

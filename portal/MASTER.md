@@ -127,7 +127,19 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
-### 2026-07-10 — Scenario Simulation: tabs renamed + reordered; Price Sensitivity Reset + Rs. contributions; Methodology sentiment removed + weekly-only horizon for adani_dev
+### 2026-07-10 — Scenario Simulation: tabs renamed + reordered; Price Sensitivity Reset + Rs. contributions; Methodology sentiment removed + weekly-only horizon for adani_dev + pipeline chain → engine infographic
+- **Methodology pipeline chain → "From data to forecast" engine infographic** (`app.py`
+  `page_methodology()` + `theme.py`). Replaced the old 6-step numbered `.bm-flow` chain (Market data →
+  Signal engineering → ML → Ensemble → 12-wk → Accuracy) with a general **Inputs → Model → Outputs**
+  infographic (`.bm-engine*`): left "Inputs" card (15+ yrs BigMint-assessed prices; cost/supply-demand;
+  global/macro), a gradient center "Forecasting model" node ("a defined, data-driven methodology fits
+  historical price relationships across selected factors from available data"), and a right "Outputs"
+  card (12-week path; up/down/flat; back-checked vs spot). Deliberately **general** — no over-claimed
+  model names — matching BigMint's own high-level published methodology (checked
+  bigmint.co/forecast/product/27 + /methodology; both keep it high-level, IOSCO-assured assessments).
+  New CSS `.bm-engine / .bm-engine-col / .bm-engine-in/out / .bm-engine-h / .bm-chip / .bm-engine-core /
+  .bm-engine-arrow` in `theme.py`, collapsing to one column under 1024px. Section title changed
+  "The forecasting pipeline" → **"From data to forecast"** (avoids duplicating the hero heading).
 - **Methodology "Forecast horizons" — weekly-only for `adani_dev`** (`app.py` `page_methodology()`).
   Gated on `_grouped_forecasting(user["role"])` (the existing `adani_dev` staging flag): that role now
   sees a **single prominent horizon card** ("Weekly — 12-week rolling forecast", stating monthly/
