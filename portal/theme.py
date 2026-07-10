@@ -441,7 +441,7 @@ button[data-variant="segmented_control"][aria-checked="true"] {{
 }}
 button[data-testid="stBaseButton-segmented_controlActive"] p,
 button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--bm-accent) !important; }}
-/* grouped-forecasting location dropdown (adani_dev) -> make it stand out: coloured border + tint */
+/* grouped-forecasting location dropdown -> make it stand out: coloured border + tint */
 /* RIGHT-aligned and pulled down onto the Graphical/Tabular slider row (negative margin eats
    the block gap + its own height) so switch (left) + dropdown (right) share one line; it stays
    usable in both views. z-index keeps it clickable above the tabs block that renders after it. */
@@ -499,7 +499,7 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
 .bm-vcards-sm .bm-desc {{ flex: 1 1 100%; }}
 .bm-vcards-sm .bm-rationale-body {{ font-size: 12px; line-height: 1.55; margin-top: 2px; }}
 
-/* grouped-forecasting Graphical/Tabular switch (adani_dev) -> sliding segmented PILL switch:
+/* grouped-forecasting Graphical/Tabular switch -> sliding segmented PILL switch:
    grey capsule track, a label-width WHITE PILL that glides behind the active option, orange
    active text (same look as the classic tab pill). Built on st.segmented_control (NOT st.tabs):
    its stButtonGroup / stBaseButton testids are Streamlit's own and stable across versions, unlike

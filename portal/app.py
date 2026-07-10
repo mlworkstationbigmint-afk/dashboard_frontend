@@ -463,7 +463,7 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
     divider and a faint shaded band marking the 12-week-ahead region.
     legend_inside places the legend inside the plot (white region); year_labels adds the
     short year to the x-axis date ticks; compact grows the plot + slims the top margin so the
-    zoom buttons sit just above the graph (all used by the grouped adani_dev layout)."""
+    zoom buttons sit just above the graph (all used by the grouped forecasting layout)."""
     hist = acc.dropna(subset=["Actual"]).copy()
     if hist.empty:
         st.info("No historical spot series available for this product.")
@@ -776,9 +776,8 @@ FORECAST_GROUP_ORDER = ["HRC", "HR Plate", "Rebar", "Structure"]
 
 # Roles that get the grouped forecasting UI (group selector at top + per-group location
 # dropdown in the old legend slot + in-chart legend + short year in the x-axis labels).
-# Case-insensitive. adani_dev was the staging role; the grouped layout is now promoted to the live
-# roles (Adani / Analyst / Admin). adani_dev kept only until those staging users are deleted.
-GROUPED_FORECASTING_ROLES = {"adani_dev", "adani", "analyst", "admin"}
+# Case-insensitive. The grouped layout is the standard for the live roles (Adani / Analyst / Admin).
+GROUPED_FORECASTING_ROLES = {"adani", "analyst", "admin"}
 
 
 def _grouped_forecasting(role):
@@ -1004,7 +1003,7 @@ def page_forecasting():
             for slot, (title, value, sub, ic) in zip(st.columns(len(cards)), cards):
                 slot.markdown(theme.kpi_card(title, value, sub, ic), unsafe_allow_html=True)
 
-    # Default layout: price cards above the tabs. Grouped (adani_dev): the graph goes on top
+    # Default layout: price cards above the tabs. Grouped layout: the graph goes on top
     # (right after the group tabs) with the cards stacked to its RIGHT (Graphical view);
     # the Tabular view keeps them below the table.
     if not grouped:
@@ -1654,7 +1653,7 @@ def page_methodology():
     st.write("")
     theme.section_title("Forecast horizons", theme.icon("clock"))
     if _grouped_forecasting(user["role"]):
-        # Adani (staging: adani_dev) runs the weekly model only — surface just that,
+        # Grouped roles run the weekly model only — surface just that,
         # prominently, instead of a lone card stranded in a 4-up grid.
         st.markdown(
             "<div class='bm-horizon' style='border-top-width:4px;padding:22px 26px;'>"
