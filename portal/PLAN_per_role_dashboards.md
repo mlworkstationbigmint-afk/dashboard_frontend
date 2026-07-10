@@ -134,3 +134,6 @@ surfaces follow the role. Acceptable for the current build.
   accuracy). All four performance charts share a **fixed left margin (`_PERF_ML=68`, autoexpand off) so
   they render at the same width**, a tighter y-label standoff (8→3), the line chart's **legend moved
   inside**, and the rounded-price footnote removed. Full detail in `handoff.md` changelog 2026-07-09.
+- **2026-07-10:** Scenario Simulation tabs renamed + reordered (`app.py` `page_calculators()`) to
+  **Price Sensitivity** (elasticity) → **Landed Cost** (import parity) → **Cost Head** (production
+  cost & margin). Labels/order only; calculator bodies unchanged. Full detail in `handoff.md` changelog.

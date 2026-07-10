@@ -51,9 +51,9 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 | `db.py` | Neon Postgres layer (SQLAlchemy): schema (`users`/`sessions`/`audit_log`/`role_commodities`) + queries + config resolution (`database_url` / `session_signing_key`) |
 | `seed_users.py` | One-time seeder: creates the first users with random temp passwords → git-ignored `.streamlit/seed_credentials.txt` (`--force` to reset) |
 | `data_loader.py` | Cached readers for forecast_forward + accuracy tables |
-| `calculators/calc_import_price.py` | Import vs Landed Cost (HRC) |
-| `calculators/calc_cost.py` | Production Cost & Margin |
-| `calculators/calc_elasticity.py` | Price Elasticity (HRC, Ridge model) |
+| `calculators/calc_import_price.py` | tab **"Landed Cost"** (import vs landed-cost parity, HRC) |
+| `calculators/calc_cost.py` | tab **"Cost Head"** (production cost & margin) |
+| `calculators/calc_elasticity.py` | tab **"Price Sensitivity"** (price elasticity, HRC, Ridge model) |
 | `calculators/HRC - Copy.csv` | Calculators' own dataset (last date 25-Jan-26) |
 | `assets/bigmint_logo.png` | Top-bar BigMint logo (wordmark fallback if absent) |
 | `assets/adani_logo.png` | Co-brand Adani logo, white chip in topbar (auto-trimmed from `_orig`, 1020×364; fallback chain: this → `adani_logo_orig.png` → gradient-text 'adani') |
@@ -120,6 +120,13 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-10 — Scenario Simulation: tabs renamed + reordered
+- **Scenario Simulation tabs renamed and reordered** (`app.py` `page_calculators()`, ~line 1525).
+  New order + labels: **1. "Price Sensitivity"** (`calc_elasticity`, was "Price Elasticity (HRC)"),
+  **2. "Landed Cost"** (`calc_import_price`, was "Import vs Landed Cost (HRC)"),
+  **3. "Cost Head"** (`calc_cost`, was "Production Cost & Margin"). Only the tab labels + order
+  changed; each calculator's own `render()` body is untouched.
+
 ### 2026-07-09 — Go-live polish: nav centring, Scenario Simulation rename, week-of-month date, logo de-boxed, prototype text removed, forecasting H2 removed, zoom buttons re-done as HTML (no jitter), forecasts rounded to Rs.50, sortable+paginated data tables
 - **Forecasts rounded to the nearest Rs.50** — new `app.py` `_round50(x)` (NaN/None pass through).
   Applied to every DISPLAYED forecast: the price cards (`_forecast_at`), the main chart's forecast

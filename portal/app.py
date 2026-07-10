@@ -1522,13 +1522,13 @@ def page_performance():
 # ---------------------------------------------------------------------------
 def page_calculators():
     st.markdown("## Scenario Simulation")
-    t1, t2, t3 = st.tabs(["Import vs Landed Cost (HRC)", "Production Cost & Margin", "Price Elasticity (HRC)"])
+    t1, t2, t3 = st.tabs(["Price Sensitivity", "Landed Cost", "Cost Head"])
     with t1:
-        calc_import_price.render()
-    with t2:
-        calc_cost.render()
-    with t3:
         calc_elasticity.render()
+    with t2:
+        calc_import_price.render()
+    with t3:
+        calc_cost.render()
     theme.footer()
 
 
