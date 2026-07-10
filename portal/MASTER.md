@@ -127,6 +127,34 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-10 (latest) — Analyst calls reformat: admin-set video link + full call date; button renames
+- **Analyst-call model gained `date` + `video`** (`data_loader.py` `SAMPLE_ANALYST_CALLS` — each entry
+  now carries `"date": "YYYY-MM-DD"` and `"video": ""`; `month` kept for back-compat/fallback).
+- **Card (`app.py` `_render_call_card`, shared by Analyst page + Admin preview):** header shows the
+  **full call date** (new `_call_date_label(call)` → `%d %B %Y` from `date`, else legacy `month`); the
+  **PPT button is relabelled "Download Analyst Call Pitchdeck"** (PDF button stays "Download Market
+  Summary Report"); the **"Watch video"** button is now **`st.link_button(url)` when `call["video"]` is
+  set** (opens the admin URL in a new tab) and falls back to the `_video_unavailable` modal when blank.
+  Button row `st.columns([2, 2, 1.2, 1])`; header split `[4, 2]`; top-right caption → "Report ·
+  Pitchdeck · Video".
+- **Admin call editor (`app.py` `page_admin`):** the "Month *" text box is replaced by a
+  **"Analyst call date *" `st.date_input`** (`format="DD/MM/YYYY"`, default via new `_call_date_value`
+  — parses `date`, else `month`, else today); added a **"Video link (URL)" text input**; deck uploaders
+  relabelled "Market Summary Report (PDF)" / "Analyst Call Pitchdeck (PPT)". Saved record now writes
+  `date` (ISO), `month` (derived `%B %Y`, back-compat) and `video`; `id` for new calls = the ISO date;
+  the old "Month is required" guard was dropped (date_input always returns a value). Selectbox labels
+  use `_call_date_label`. NB: `_slug()` is now unused (was only the month→id slug) — left in place.
+### 2026-07-10 (later) — Analyst calls: "Download PDF" → "Download Market Summary Report"; live "Watch video" → not-available modal
+- **Analyst-call card (`app.py` `_render_call_card`, shared by `page_analyst` + Admin preview).**
+  (a) The **"Download PDF"** button is relabelled **"Download Market Summary Report"** (still the same
+  `_deck_button` wired to `call["pdf"]` / `application/pdf`; disabled when no PDF is uploaded, as
+  before). (b) Added an always-live **"Watch video"** button (`:material/play_circle:`) that opens a
+  new **`@st.dialog("Video not available")`** modal (`_video_unavailable`) — the link stays enabled but
+  routes to a "not available" placeholder since no clips exist yet. Button row widened to
+  `st.columns([2.4, 1.1, 1.1, 2])` for the longer report label. NB: the small top-right card caption
+  still reads "PDF / PPT" (`app.py` ~1162) — left as-is (not requested); update to "Report / PPT /
+  Video" if desired.
+
 ### 2026-07-10 — Scenario Simulation: tabs renamed + reordered; Price Sensitivity Reset + Rs. contributions; Methodology sentiment removed + weekly-only horizon for adani_dev + pipeline chain → engine infographic
 - **Methodology pipeline chain → "From data to forecast" engine infographic** (`app.py`
   `page_methodology()` + `theme.py`). Replaced the old 6-step numbered `.bm-flow` chain (Market data →

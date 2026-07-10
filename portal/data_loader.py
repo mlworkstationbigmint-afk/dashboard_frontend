@@ -289,20 +289,20 @@ ANALYST_SECTIONS = ["Flats", "Longs", "Raw materials", "Imports & exports", "Out
 # => unassigned: admins only, no other role sees it (the app filters via _call_visible
 # in app.py; admins always see every call). Set the audience from the Admin call editor.
 SAMPLE_ANALYST_CALLS = [
-    {"id": "2026-06", "month": "June 2026", "title": "Market outlook call",
+    {"id": "2026-06", "date": "2026-06-15", "month": "June 2026", "title": "Market outlook call",
      "summary": "Flat-to-soft HRC into Q3; raw-material support easing as iron-ore and coking-coal cool.",
      "sections": {"Flats": "HRC / CR / plate — sample commentary.",
                   "Longs": "Rebar / wire rod / structurals — sample commentary.",
                   "Raw materials": "Iron ore, coking coal & scrap — sample commentary.",
                   "Imports & exports": "Trade flows and landed-cost parity — sample commentary.",
                   "Outlook": "Near-term price direction — sample commentary."},
-     "pdf": "", "ppt": "", "audiences": []},
-    {"id": "2026-05", "month": "May 2026", "title": "Market outlook call",
+     "pdf": "", "ppt": "", "video": "", "audiences": []},
+    {"id": "2026-05", "date": "2026-05-15", "month": "May 2026", "title": "Market outlook call",
      "summary": "Rebar firm on monsoon-led restocking; scrap stable.",
-     "sections": {s: "" for s in ANALYST_SECTIONS}, "pdf": "", "ppt": "", "audiences": []},
-    {"id": "2026-04", "month": "April 2026", "title": "Market outlook call",
+     "sections": {s: "" for s in ANALYST_SECTIONS}, "pdf": "", "ppt": "", "video": "", "audiences": []},
+    {"id": "2026-04", "date": "2026-04-15", "month": "April 2026", "title": "Market outlook call",
      "summary": "Q1 review and forward view across flats and longs.",
-     "sections": {s: "" for s in ANALYST_SECTIONS}, "pdf": "", "ppt": "", "audiences": []},
+     "sections": {s: "" for s in ANALYST_SECTIONS}, "pdf": "", "ppt": "", "video": "", "audiences": []},
 ]
 
 

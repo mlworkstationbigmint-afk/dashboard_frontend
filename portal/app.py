@@ -1153,14 +1153,48 @@ def _deck_button(col, label, path, sig, mime, icon, key):
                         mime=mime, key=key, icon=icon)
 
 
+@st.dialog("Video not available")
+def _video_unavailable():
+    st.write("The video for this analyst call isn't available yet. "
+             "Please check back later.")
+
+
+def _call_date_label(call) -> str:
+    """Full display date for a call — formatted 'date' (ISO) if set, else the legacy 'month' string."""
+    d = call.get("date")
+    if d:
+        try:
+            return dt.datetime.strptime(d, "%Y-%m-%d").strftime("%d %B %Y")
+        except (ValueError, TypeError):
+            return str(d)
+    return call.get("month", "")
+
+
+def _call_date_value(call):
+    """A datetime.date for the admin date picker — from 'date' (ISO), else parsed 'month', else today."""
+    d = (call or {}).get("date")
+    if d:
+        try:
+            return dt.datetime.strptime(d, "%Y-%m-%d").date()
+        except (ValueError, TypeError):
+            pass
+    m = (call or {}).get("month")
+    if m:
+        try:
+            return dt.datetime.strptime(m, "%B %Y").date()
+        except (ValueError, TypeError):
+            pass
+    return dt.date.today()
+
+
 def _render_call_card(call, sig):
     """Render one analyst-call card (shared by the Analyst page and the Admin preview)."""
     with st.container(border=True):
-        top = st.columns([5, 1])
-        top[0].markdown(f"**{html.escape(call.get('month', ''))} &mdash; "
+        top = st.columns([4, 2])
+        top[0].markdown(f"**{html.escape(_call_date_label(call))} &mdash; "
                         f"{html.escape(call.get('title', ''))}**", unsafe_allow_html=True)
-        top[1].markdown("<div style='text-align:right;color:#64748b;font-size:12px;'>PDF / PPT</div>",
-                        unsafe_allow_html=True)
+        top[1].markdown("<div style='text-align:right;color:#64748b;font-size:12px;'>Report &middot; "
+                        "Pitchdeck &middot; Video</div>", unsafe_allow_html=True)
         if call.get("summary"):
             st.markdown(f"<div class='bm-desc' style='font-size:13.5px;'>{html.escape(call['summary'])}</div>",
                         unsafe_allow_html=True)
@@ -1173,11 +1207,16 @@ def _render_call_card(call, sig):
         if rows:
             st.markdown(f"<div class='bm-call-secs'>{rows}</div>", unsafe_allow_html=True)
         cid = call.get("id", "x")
-        b1, b2, _ = st.columns([1, 1, 4])
-        _deck_button(b1, "Download PDF", call.get("pdf", ""), sig, "application/pdf",
+        b1, b2, b3, _ = st.columns([2, 2, 1.2, 1])
+        _deck_button(b1, "Download Market Summary Report", call.get("pdf", ""), sig, "application/pdf",
                      ":material/picture_as_pdf:", f"pdf_{cid}")
-        _deck_button(b2, "Download PPT", call.get("ppt", ""), sig, _PPT_MIME,
+        _deck_button(b2, "Download Analyst Call Pitchdeck", call.get("ppt", ""), sig, _PPT_MIME,
                      ":material/slideshow:", f"ppt_{cid}")
+        # Video link is always live: opens the admin-set URL (new tab), else a "not available" modal.
+        if call.get("video"):
+            b3.link_button("Watch video", call["video"], icon=":material/play_circle:")
+        elif b3.button("Watch video", key=f"vid_{cid}", icon=":material/play_circle:"):
+            _video_unavailable()
 
 
 def page_analyst():
@@ -1345,7 +1384,7 @@ def page_admin():
                    "`.streamlit/secrets.toml.example`.", icon=":material/warning:")
 
     calls = dl.load_analyst_calls()
-    labels = ["➕ New call"] + [f"{c.get('month', '?')} — {c.get('title', '')}" for c in calls]
+    labels = ["➕ New call"] + [f"{_call_date_label(c) or '?'} — {c.get('title', '')}" for c in calls]
     choice = st.selectbox("Edit an existing call, or create a new one", labels, key="admin_pick")
     editing = calls[labels.index(choice) - 1] if choice != labels[0] else None
     ekey = editing["id"] if editing else "new"   # keys change with selection so fields reset
@@ -1353,8 +1392,8 @@ def page_admin():
     esecs = (editing or {}).get("sections", {})
     with st.form(f"call_form_{ekey}"):
         c1, c2 = st.columns(2)
-        month = c1.text_input("Month *", value=(editing or {}).get("month", ""),
-                              placeholder="e.g. July 2026", key=f"month_{ekey}")
+        call_date = c1.date_input("Analyst call date *", value=_call_date_value(editing),
+                                  format="DD/MM/YYYY", key=f"date_{ekey}")
         title = c2.text_input("Title", value=(editing or {}).get("title", "Market outlook call"),
                               key=f"title_{ekey}")
         summary = st.text_area("Headline summary", value=(editing or {}).get("summary", ""),
@@ -1368,9 +1407,13 @@ def page_admin():
                                    default=aud_default, key=f"aud_{ekey}",
                                    help="Pick who sees this call. Leave empty = unassigned "
                                         "(admins only — no other role sees it). Admins always see all calls.")
+        video = st.text_input("Video link (URL)", value=(editing or {}).get("video", ""),
+                              placeholder="https://…  (leave blank if none)", key=f"video_{ekey}",
+                              help="Users get a live “Watch video” button linking here; "
+                                   "blank shows a “video not available” message.")
         u1, u2 = st.columns(2)
-        pdf_up = u1.file_uploader("PDF deck", type=["pdf"], key=f"pdf_up_{ekey}")
-        ppt_up = u2.file_uploader("PPT deck", type=["ppt", "pptx"], key=f"ppt_up_{ekey}")
+        pdf_up = u1.file_uploader("Market Summary Report (PDF)", type=["pdf"], key=f"pdf_up_{ekey}")
+        ppt_up = u2.file_uploader("Analyst Call Pitchdeck (PPT)", type=["ppt", "pptx"], key=f"ppt_up_{ekey}")
         if editing:
             for kind, p in (("PDF", editing.get("pdf")), ("PPT", editing.get("ppt"))):
                 if p:
@@ -1379,31 +1422,29 @@ def page_admin():
                                       disabled=not dl.can_admin_write())
 
     if saved:
-        if not month.strip():
-            st.error("Month is required.")
-        else:
-            cid = (editing or {}).get("id") or _slug(month)
-            record = {
-                "id": cid, "month": month.strip(), "title": title.strip(),
-                "summary": summary.strip(),
-                "sections": {lbl: secvals[lbl].strip() for lbl in dl.ANALYST_SECTIONS},
-                "pdf": (editing or {}).get("pdf", ""), "ppt": (editing or {}).get("ppt", ""),
-                "audiences": audiences,   # [] = visible to all
-            }
-            try:
-                if pdf_up is not None:
-                    record["pdf"] = dl.upload_call_file(cid, pdf_up.name, pdf_up.getvalue())
-                if ppt_up is not None:
-                    record["ppt"] = dl.upload_call_file(cid, ppt_up.name, ppt_up.getvalue())
-                if any(c.get("id") == cid for c in calls):
-                    new_calls = [record if c.get("id") == cid else c for c in calls]
-                else:
-                    new_calls = [record] + calls
-                dl.save_analyst_calls(new_calls)
-                st.success(f"Saved “{record['month']}”.")
-                st.rerun()
-            except Exception as e:
-                st.error(f"Save failed: {e}")
+        cid = (editing or {}).get("id") or call_date.strftime("%Y-%m-%d")
+        record = {
+            "id": cid, "date": call_date.strftime("%Y-%m-%d"),
+            "month": call_date.strftime("%B %Y"), "title": title.strip(),
+            "summary": summary.strip(),
+            "sections": {lbl: secvals[lbl].strip() for lbl in dl.ANALYST_SECTIONS},
+            "pdf": (editing or {}).get("pdf", ""), "ppt": (editing or {}).get("ppt", ""),
+            "video": video.strip(), "audiences": audiences,   # [] = visible to all
+        }
+        try:
+            if pdf_up is not None:
+                record["pdf"] = dl.upload_call_file(cid, pdf_up.name, pdf_up.getvalue())
+            if ppt_up is not None:
+                record["ppt"] = dl.upload_call_file(cid, ppt_up.name, ppt_up.getvalue())
+            if any(c.get("id") == cid for c in calls):
+                new_calls = [record if c.get("id") == cid else c for c in calls]
+            else:
+                new_calls = [record] + calls
+            dl.save_analyst_calls(new_calls)
+            st.success(f"Saved “{_call_date_label(record)}”.")
+            st.rerun()
+        except Exception as e:
+            st.error(f"Save failed: {e}")
 
     if editing and dl.can_admin_write():
         st.divider()
