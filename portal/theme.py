@@ -663,9 +663,11 @@ def icon(name: str, size: int = 18) -> str:
 
 def render_topbar(user: dict | None = None):
     """Brand bar for the logged-in user's role: BigMint logo · (co-brand chip) · title.
-    The co-brand chip + one pipe are omitted when the role's profile has no co-brand."""
+    The co-brand chip + one pipe are omitted when the role's profile has no co-brand, and
+    always on the login screen (no user) so it stays BigMint-only."""
     profile = profile_for(user.get("role") if user else None)
-    cobrand = _cobrand_logo_html(profile)
+    # Login screen (user is None) is BigMint-only — never show a client co-brand there.
+    cobrand = _cobrand_logo_html(profile) if user else ""
     parts = [f"<div class='bm-topbar-l'>{_logo_html()}"]
     if cobrand:
         parts.append("<span class='bm-cobrand-x'>|</span>"
