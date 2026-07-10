@@ -13,7 +13,7 @@ DATA SOURCE (public code, private data):
 
 Files (same layout in the private repo and the in-repo sample):
   accuracy_tables/forecast_forward.xlsx  - summary + 12-week forward path
-  accuracy_tables/Accuracy_Table_6.xlsx  - week-wise actual/forecast
+  accuracy_tables/Accuracy_Table_11.xlsx - week-wise actual/forecast
   calculators/HRC - Copy.csv             - calculators' dataset
 """
 import os
@@ -29,7 +29,7 @@ PORTAL_DIR = os.path.dirname(os.path.abspath(__file__))              # <repo>/po
 
 # Data files as relative paths (identical in the private repo and the in-repo sample).
 FF_NAME = "forecast_forward.xlsx"
-ACC_FILES = {"6-week": "Accuracy_Table_6.xlsx"}   # 16-week retired; app runs off Table_6
+ACC_FILES = {"11-week": "Accuracy_Table_11.xlsx"}   # 6/16-week retired; app runs off Table_11
 HEADLINE_SHEET = "Ensemble_WgtMean"               # headline forecast line shown to Adani
 
 
@@ -116,6 +116,11 @@ STEEL_PRODUCTS = {
     "Rebar IF Mumbai":       {"ff": "REBAR IF MUMBAI",     "acc": "REBAR IF MUMBAI"},
     "Rebar IF Raipur":       {"ff": "REBAR IF RAIPUR",     "acc": "REBAR IF RAIPUR"},
     "Structure (IF Raipur)": {"ff": "STRUCTURE IF RAIPUR", "acc": "STRUCTURE IF RAIPUR"},
+    "HRC Mundra":            {"ff": "HRC MUNDRA",          "acc": "HRC MUNDRA"},
+    "HR Plate Mundra":       {"ff": "HR PLATE MUNDRA",     "acc": "HR PLATE MUNDRA"},
+    "Rebar BF Mundra":       {"ff": "REBAR BF MUNDRA",     "acc": "REBAR BF MUNDRA"},
+    "Rebar IF Mundra":       {"ff": "REBAR IF MUNDRA",     "acc": "REBAR IF MUNDRA"},
+    "Structure Mundra":      {"ff": "STRUCTURE MUNDRA",    "acc": "STRUCTURE MUNDRA"},
 }
 
 
@@ -252,12 +257,12 @@ def accuracy_kpis(df: pd.DataFrame) -> dict:
 def last_actual_date():
     """The most recent date for which an ACTUAL spot price exists, across all products,
     read straight from the accuracy table (not the Summary sheet). This is the app's
-    'data as of' date. Because load_accuracy is mtime-keyed, editing Accuracy_Table_6.xlsx
+    'data as of' date. Because load_accuracy is mtime-keyed, editing Accuracy_Table_11.xlsx
     updates this automatically — no need to also touch the Summary sheet. Returns a
     pandas Timestamp, or None if no actuals are present."""
     latest = None
     for meta in STEEL_PRODUCTS.values():
-        av = load_accuracy("6-week", meta["acc"]).dropna(subset=["Actual"])
+        av = load_accuracy("11-week", meta["acc"]).dropna(subset=["Actual"])
         if not av.empty:
             d = av["Date"].max()
             if latest is None or d > latest:

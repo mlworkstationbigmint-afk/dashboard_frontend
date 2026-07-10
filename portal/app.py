@@ -706,7 +706,7 @@ def page_home():
     mapas = []
     n_weeks = 0
     for _, meta in products.items():
-        acc = dl.load_accuracy("6-week", meta["acc"]).dropna(subset=["Actual", "Forecast"])
+        acc = dl.load_accuracy("11-week", meta["acc"]).dropna(subset=["Actual", "Forecast"])
         n_weeks = max(n_weeks, len(acc))
         k = dl.accuracy_kpis(acc)
         if k["mapa"] is not None:
@@ -829,6 +829,11 @@ FORECAST_LOCATION_LABELS = {
     "Rebar IF Mumbai":       "Rebar, Exw-Mumbai, India, Fe 500, IS 1786,12-25mm, IF Route",
     "Rebar IF Raipur":       "Rebar, Exw-Raipur, India, Fe 500, IS 1786,12-25mm, IF Route",
     "Structure (IF Raipur)": "Structure-Angle, Exw-Raipur, India, IS 2062/2011 E-250 Gr A,150x150 Angle, IF Route",
+    "HRC Mundra":            "HRC Mundra - 2.5-8mm IS2062",
+    "HR Plate Mundra":       "HR Plate Mundra - 20-40mm E250 BR",
+    "Rebar BF Mundra":       "Rebar Mundra BF - 12-32mm Fe500D",
+    "Rebar IF Mundra":       "Rebar Mundra IF - 12-32mm Fe500",
+    "Structure Mundra":      "Structure Angle Mundra - 150x150 IF Route",
 }
 
 
@@ -959,7 +964,7 @@ def page_forecasting():
     summary = dl.load_summary()
     row = dl.summary_row(summary, meta["ff"])
     fwd = dl.load_forward(meta["ff"])
-    acc_hist = dl.load_accuracy("6-week", meta["acc"])   # Accuracy_Table_6 (Table_16 retired)
+    acc_hist = dl.load_accuracy("11-week", meta["acc"])   # Accuracy_Table_11 (6/16 retired)
 
     def _forecast_at(n):
         """(forecast value, direction-vs-last-actual) at forward week n (the 1/4/8/12 horizon
@@ -1509,7 +1514,7 @@ def page_performance():
         product = product if product in products else default
     meta = products[product]
 
-    df = dl.load_accuracy("6-week", meta["acc"])   # Accuracy_Table_6 only (window toggle removed)
+    df = dl.load_accuracy("11-week", meta["acc"])   # Accuracy_Table_11 only (window toggle removed)
     if df.empty:
         st.warning("No accuracy data found for this product.")
         theme.footer()

@@ -21,9 +21,9 @@ streamlit run portal/app.py
 
 ## Modules
 - **Home** - landing with module cards.
-- **Price forecasting** - Steel: spot vs 12-week Ensemble (Wgt-Mean) forecast + direction for the six products.
+- **Price forecasting** - Steel: spot vs 12-week Ensemble (Wgt-Mean) forecast + direction across the product catalog (11 products, grouped).
 - **Analyst calls** - placeholder repository (summaries + PPT/PDF), to be wired later.
-- **Performance dashboard** - week-wise Spot / Forecast / Delta / Direction + MAPA & directional-accuracy KPIs (6 or 16-week window).
+- **Performance dashboard** - week-wise Spot / Forecast / Delta / Direction + MAPA & directional-accuracy KPIs (full series).
 - **Scenario Simulation** - Import Price (HRC), Production Cost & Margin, Price Elasticity (HRC).
 
 ## Layout
