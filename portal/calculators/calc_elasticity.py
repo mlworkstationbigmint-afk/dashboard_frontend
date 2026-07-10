@@ -135,6 +135,11 @@ def render():
             st.session_state[c] = 0.0
     st.button("Reset", key="elas_reset", on_click=_reset_shocks)
 
+    # Rs. price impact of each driver's shock (current price x shock x elasticity),
+    # shown beside its slider and reused by the Driver Contribution table below.
+    contributions = shock_vector * elasticities
+    price_contributions = current_price * contributions
+
     num_cols = 5
     rows = [columns[i:i + num_cols] for i in range(0, len(columns), num_cols)]
     for row in rows:
@@ -144,10 +149,9 @@ def render():
                 with st.container(border=True):
                     name = col.split("_lag")[0][:50]
                     st.slider(name, -20.0, 20.0, step=0.5, key=col)
+                    st.caption(f"Price impact: Rs. {price_contributions[columns.index(col)]:+,.0f}")
 
     st.markdown("<h3 style='border-bottom:none;'>Driver Contribution</h3>", unsafe_allow_html=True)
-    contributions = shock_vector * elasticities
-    price_contributions = current_price * contributions
     contrib_df = pd.DataFrame({
         "Factor": [c.split("_lag")[0] for c in columns],
         "Price Change (Rs.)": np.round(price_contributions, 0),

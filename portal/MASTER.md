@@ -135,7 +135,10 @@ HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Stru
   **"Contribution (%)"** column was replaced with **"Price Change (Rs.)"** = `current_price *
   (shock × elasticity)` (linear per-driver rupee impact), rounded to whole Rs. and sorted by it. The
   **PDF report** breakdown was updated to match (header + `Rs. …` cell) so it doesn't KeyError on the
-  renamed column.
+  renamed column. (c) Each **Market Shocks slider now shows its Rs. price impact** below it via
+  `st.caption(f"Price impact: Rs. {…:+,.0f}")` — same `price_contributions` array (now computed once
+  above the slider loop and reused by the Driver Contribution table). Sliders stay in **%** (the
+  log/elasticity model needs % input); only the per-driver Rs. effect is surfaced alongside.
 - **Scenario Simulation tabs renamed and reordered** (`app.py` `page_calculators()`, ~line 1525).
   New order + labels: **1. "Price Sensitivity"** (`calc_elasticity`, was "Price Elasticity (HRC)"),
   **2. "Landed Cost"** (`calc_import_price`, was "Import vs Landed Cost (HRC)"),
