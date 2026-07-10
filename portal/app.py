@@ -1598,19 +1598,33 @@ def page_methodology():
 
     st.write("")
     theme.section_title("Forecast horizons", theme.icon("clock"))
-    horizons = [
-        ("Near term",   "Weekly",     "Next-week price moves, updated every week."),
-        ("Short term",  "Monthly",    "Near-term month-ahead outlook."),
-        ("Medium term", "Quarterly",  "Quarterly view, refreshed monthly."),
-        ("Long term",   "Annual",     "Annual view, refreshed quarterly."),
-    ]
-    hz = "<div class='bm-horizon-grid'>" + "".join(
-        f"<div class='bm-horizon'><span class='tag'>{tag}</span><h5>{title}</h5><p>{desc}</p></div>"
-        for tag, title, desc in horizons
-    ) + "</div>"
-    st.markdown(hz, unsafe_allow_html=True)
-    st.markdown("<div class='bm-footnote'>This Adani dashboard surfaces the <b>12-week</b> horizon on the "
-                "headline Ensemble (Weighted Mean) line.</div>", unsafe_allow_html=True)
+    if _grouped_forecasting(user["role"]):
+        # Adani (staging: adani_dev) runs the weekly model only — surface just that,
+        # prominently, instead of a lone card stranded in a 4-up grid.
+        st.markdown(
+            "<div class='bm-horizon' style='border-top-width:4px;padding:22px 26px;'>"
+            "<span class='tag'>Near term &middot; Weekly</span>"
+            "<h5 style='font-size:19px;margin:4px 0 8px;'>Weekly &mdash; 12-week rolling forecast</h5>"
+            "<p style='font-size:13.5px;max-width:820px;'>This dashboard runs on BigMint's <b>weekly</b> "
+            "model: next-week price moves refreshed every week, with the headline Ensemble (Weighted "
+            "Mean) projected <b>12 weeks</b> ahead. Monthly, quarterly and annual horizons are not "
+            "part of this build.</p></div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        horizons = [
+            ("Near term",   "Weekly",     "Next-week price moves, updated every week."),
+            ("Short term",  "Monthly",    "Near-term month-ahead outlook."),
+            ("Medium term", "Quarterly",  "Quarterly view, refreshed monthly."),
+            ("Long term",   "Annual",     "Annual view, refreshed quarterly."),
+        ]
+        hz = "<div class='bm-horizon-grid'>" + "".join(
+            f"<div class='bm-horizon'><span class='tag'>{tag}</span><h5>{title}</h5><p>{desc}</p></div>"
+            for tag, title, desc in horizons
+        ) + "</div>"
+        st.markdown(hz, unsafe_allow_html=True)
+        st.markdown("<div class='bm-footnote'>This Adani dashboard surfaces the <b>12-week</b> horizon on the "
+                    "headline Ensemble (Weighted Mean) line.</div>", unsafe_allow_html=True)
 
     st.write("")
     theme.section_title("Transparency &amp; governance", theme.icon("notes"))
