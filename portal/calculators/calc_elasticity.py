@@ -129,6 +129,12 @@ def render():
             sub3.metric("Absolute Change", f"Rs. {round(price_change, 0):,}")
 
     st.markdown("<h3 style='border-bottom:none;'>Market Shocks (%)</h3>", unsafe_allow_html=True)
+
+    def _reset_shocks():
+        for c in columns:
+            st.session_state[c] = 0.0
+    st.button("Reset", key="elas_reset", on_click=_reset_shocks)
+
     num_cols = 5
     rows = [columns[i:i + num_cols] for i in range(0, len(columns), num_cols)]
     for row in rows:
@@ -141,10 +147,11 @@ def render():
 
     st.markdown("<h3 style='border-bottom:none;'>Driver Contribution</h3>", unsafe_allow_html=True)
     contributions = shock_vector * elasticities
+    price_contributions = current_price * contributions
     contrib_df = pd.DataFrame({
         "Factor": [c.split("_lag")[0] for c in columns],
-        "Contribution (%)": contributions * 100,
-    }).sort_values(by="Contribution (%)", ascending=False)
+        "Price Change (Rs.)": np.round(price_contributions, 0),
+    }).sort_values(by="Price Change (Rs.)", ascending=False)
     st.dataframe(contrib_df, width="stretch")
 
     st.divider()
@@ -166,7 +173,7 @@ def render():
         pdf.ln(2)
         pdf.set_fill_color(230, 230, 230)
         pdf.set_font("Arial", "B", 9)
-        headers = ["Market Factor / Driver", "Contribution (%)"]
+        headers = ["Market Factor / Driver", "Price Change (Rs.)"]
         widths = [130, 60]
         for idx, h in enumerate(headers):
             pdf.cell(widths[idx], 10, h, 1, 0, "C", 1)
@@ -175,7 +182,7 @@ def render():
         for _, row in contrib_df.iterrows():
             clean_name = row["Factor"].encode("ascii", "ignore").decode("ascii")
             pdf.cell(widths[0], 10, clean_name, 1)
-            pdf.cell(widths[1], 10, f"{row['Contribution (%)']:.4f}%", 1, 0, "R")
+            pdf.cell(widths[1], 10, f"Rs. {row['Price Change (Rs.)']:,.0f}", 1, 0, "R")
             pdf.ln()
         unique_name = f"HRC_Elasticity_Analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         st.download_button("Download PDF Report", data=_pdf_bytes(pdf), file_name=unique_name, mime="application/pdf")
