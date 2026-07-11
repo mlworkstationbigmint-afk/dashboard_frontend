@@ -1411,7 +1411,7 @@ def page_admin():
         if _sk not in st.session_state:
             st.session_state[_sk] = esecs.get(_lbl, "")
 
-    # --- Pitch deck upload + Gemini auto-fill (outside the form so the button can act
+    # --- Pitch deck upload + AI auto-fill (outside the form so the button can act
     #     mid-edit; the same upload both attaches the deck on save and feeds the AI) ---
     st.markdown("**Analyst Call Pitchdeck (PPT)**")
     ppt_up = st.file_uploader("Pitchdeck — upload a .pptx to enable AI auto-fill (.ppt attaches only)",
@@ -1419,11 +1419,11 @@ def page_admin():
     _is_pptx = ppt_up is not None and ppt_up.name.lower().endswith(".pptx")
     ac1, ac2 = st.columns([1, 2], vertical_alignment="center")
     gen = ac1.button("✨ Auto-fill sections with AI", key=f"ai_gen_{ekey}",
-                     disabled=not (_is_pptx and ai_fill.gemini_ready()),
+                     disabled=not (_is_pptx and ai_fill.ai_ready()),
                      help="Reads the uploaded .pptx and drafts the headline summary + section "
-                          "one-liners with Gemini. Review and edit before saving.")
-    if not ai_fill.gemini_ready():
-        ac2.caption("⚠ Add a Gemini API key under `[gemini]` in secrets to enable AI auto-fill.")
+                          "one-liners with AI. Review and edit before saving.")
+    if not ai_fill.ai_ready():
+        ac2.caption("⚠ Add a Groq API key under `[groq]` in secrets to enable AI auto-fill.")
     elif ppt_up is not None and not _is_pptx:
         ac2.caption("AI auto-fill needs a **.pptx** file (legacy .ppt can only be attached).")
     if gen:

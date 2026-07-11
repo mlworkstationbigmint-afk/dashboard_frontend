@@ -1,32 +1,35 @@
-"""Gemini-backed auto-fill for analyst-call sections.
+"""Groq-backed auto-fill for analyst-call sections.
 
-Admin uploads a pitch deck (.pptx); we extract its text and ask Gemini to draft the
-headline summary (a short paragraph) plus a one-liner for each section. The API key
-lives in st.secrets['gemini']['api_key'] (git-ignored) — it is NEVER hardcoded here,
-because this is a public repo.
+Admin uploads a pitch deck (.pptx); we extract its text and ask an LLM (Groq's free,
+OpenAI-compatible API) to draft the headline summary (a short paragraph) plus a one-liner
+for each section. The API key lives in st.secrets['groq']['api_key'] (git-ignored) — it is
+NEVER hardcoded here, because this is a public repo.
 
-    [gemini]
-    api_key = "..."
-    # model = "gemini-2.0-flash"   # optional override
+    [groq]
+    api_key = "gsk_..."
+    # model = "llama-3.3-70b-versatile"   # optional override
+
+Get a free key at https://console.groq.com (Create API Key).
 """
 import io
 import json
 
 import streamlit as st
 
-_DEFAULT_MODEL = "gemini-2.0-flash"
+_DEFAULT_MODEL = "llama-3.3-70b-versatile"
+_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 _MAX_DECK_CHARS = 20000   # cap so a huge deck can't blow the request size
 
 
 def _cfg() -> dict:
     try:
-        return dict(st.secrets.get("gemini", {}) or {})
+        return dict(st.secrets.get("groq", {}) or {})
     except Exception:
         return {}
 
 
-def gemini_ready() -> bool:
-    """True when a Gemini API key is configured (enables the auto-fill button)."""
+def ai_ready() -> bool:
+    """True when a Groq API key is configured (enables the auto-fill button)."""
     return bool(_cfg().get("api_key"))
 
 
@@ -77,7 +80,7 @@ def extract_pptx_text(data: bytes, filename: str = "") -> str:
 
 
 def fill_analyst_sections(deck_text: str, sections: list) -> dict:
-    """Ask Gemini to draft {"summary": <paragraph>, <section>: <one-liner>, ...} as JSON.
+    """Ask the LLM to draft {"summary": <paragraph>, <section>: <one-liner>, ...} as JSON.
 
     `summary` is a short paragraph; every section value is a single concise sentence.
     Returns only the known keys (summary + the given sections), all stripped strings.
@@ -87,56 +90,48 @@ def fill_analyst_sections(deck_text: str, sections: list) -> dict:
     cfg = _cfg()
     api_key = cfg.get("api_key")
     if not api_key:
-        raise RuntimeError("No Gemini API key configured (st.secrets['gemini']['api_key']).")
+        raise RuntimeError("No Groq API key configured (st.secrets['groq']['api_key']).")
     model = cfg.get("model", _DEFAULT_MODEL)
 
     deck_text = (deck_text or "")[:_MAX_DECK_CHARS]
     section_lines = "\n".join(f'- "{s}": ONE concise sentence (<= 25 words).' for s in sections)
-    prompt = (
-        "You are a steel-market analyst assistant. Read the analyst-call pitch-deck text "
-        "below and produce a briefing for a dashboard card.\n\n"
-        "Return STRICT JSON only (no markdown fences, no commentary) with these keys:\n"
-        '- "summary": a short headline paragraph of 2-4 sentences capturing the overall '
-        "market view (prices, demand, direction).\n"
+    system = ("You are a steel-market analyst assistant. You read analyst-call pitch decks and "
+              "write concise briefings. You always reply with a single valid JSON object and nothing else.")
+    user = (
+        "Read the analyst-call pitch-deck text below and produce a briefing for a dashboard card.\n\n"
+        "Return a JSON object with these keys:\n"
+        '- "summary": a short headline paragraph of 2-4 sentences capturing the overall market '
+        "view (prices, demand, direction).\n"
         f"{section_lines}\n\n"
-        "Rules: base every line ONLY on the deck's content; do not invent numbers. If a "
-        "section has no relevant content in the deck, return an empty string for it. Keep "
-        "each section value to a single line of plain text (no bullet characters, no labels).\n\n"
+        "Rules: base every line ONLY on the deck's content; do not invent numbers. If a section "
+        "has no relevant content in the deck, return an empty string for it. Keep each section "
+        "value to a single line of plain text (no bullet characters, no labels).\n\n"
         "=== DECK TEXT ===\n" + deck_text
     )
 
-    schema = {
-        "type": "object",
-        "properties": {"summary": {"type": "string"},
-                       **{s: {"type": "string"} for s in sections}},
-        "required": ["summary"],
-    }
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
     body = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {
-            "temperature": 0.2,
-            "responseMimeType": "application/json",
-            "responseSchema": schema,
-        },
+        "model": model,
+        "messages": [{"role": "system", "content": system},
+                     {"role": "user", "content": user}],
+        "temperature": 0.2,
+        "response_format": {"type": "json_object"},
     }
-    # key in a header (not the URL query) so it never lands in request logs
-    resp = requests.post(url, headers={"Content-Type": "application/json",
-                                       "x-goog-api-key": api_key},
+    resp = requests.post(_ENDPOINT, headers={"Content-Type": "application/json",
+                                             "Authorization": f"Bearer {api_key}"},
                          json=body, timeout=60)
     if resp.status_code != 200:
-        raise RuntimeError(f"Gemini API error {resp.status_code}: {resp.text[:300]}")
+        raise RuntimeError(f"Groq API error {resp.status_code}: {resp.text[:300]}")
 
     data = resp.json()
     try:
-        text = data["candidates"][0]["content"]["parts"][0]["text"]
+        text = data["choices"][0]["message"]["content"]
     except (KeyError, IndexError) as e:
-        raise RuntimeError(f"Unexpected Gemini response: {json.dumps(data)[:300]}") from e
+        raise RuntimeError(f"Unexpected Groq response: {json.dumps(data)[:300]}") from e
 
     try:
         out = json.loads(text)
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"Gemini did not return valid JSON: {text[:300]}") from e
+        raise RuntimeError(f"Model did not return valid JSON: {text[:300]}") from e
 
     result = {"summary": str(out.get("summary", "")).strip()}
     for s in sections:
