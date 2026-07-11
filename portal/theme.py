@@ -349,12 +349,16 @@ div[class*="st-key-home_methodology"] button:hover em {{ filter:brightness(.97);
 .bm-card h4 {{ margin:2px 0 4px 0; color:var(--bm-primary-dark); font-size:16px; }}
 .bm-card .bm-desc {{ color:{NEUTRAL}; font-size:13px; }}
 
-/* analyst-call detailed summary: label + one-line section rows */
-.bm-call-title {{ font-size:16px; font-weight:700; color:var(--bm-primary-dark); line-height:1.35; }}
+/* analyst-call detailed summary: label + one-line section rows.
+   Body text (summary + section rows) is capped at 82% so it doesn't run edge-to-edge under the
+   Report/Pitchdeck/Video line — a consistent right gutter keeps the card modular. */
+.bm-call-date {{ color:{ACCENT}; font-size:11.5px; font-weight:700; letter-spacing:.06em;
+    text-transform:uppercase; margin-bottom:3px; }}
+.bm-call-title {{ font-size:18px; font-weight:700; color:var(--bm-primary-dark); line-height:1.3; }}
 .bm-call-kinds {{ text-align:right; color:#94a3b8; font-size:11px; font-weight:600; letter-spacing:.04em;
     text-transform:uppercase; padding-top:4px; }}
-.bm-call-summary {{ color:#334155; font-size:13.5px; line-height:1.6; margin:8px 0 2px; }}
-.bm-call-secs {{ margin:12px 0 2px 0; }}
+.bm-call-summary {{ color:#334155; font-size:13.5px; line-height:1.6; margin:10px 0 2px; max-width:82%; }}
+.bm-call-secs {{ margin:14px 0 2px 0; max-width:82%; }}
 .bm-call-sec {{ display:flex; gap:16px; padding:10px 2px; border-top:1px dashed #e6ebf2; font-size:13.5px; line-height:1.5; }}
 .bm-call-sec:first-child {{ border-top:none; }}
 .bm-call-sec-l {{ flex:0 0 150px; font-weight:700; color:var(--bm-primary-dark); }}

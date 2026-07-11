@@ -1198,8 +1198,11 @@ def _render_call_card(call, sig):
     # keyed container -> unique `st-key-callcard_*` class so button styling stays scoped to the card
     with st.container(border=True, key=f"callcard_{cid}"):
         top = st.columns([4, 2])
-        top[0].markdown(f"<div class='bm-call-title'>{html.escape(_call_date_label(call))} &mdash; "
-                        f"{html.escape(call.get('title', ''))}</div>", unsafe_allow_html=True)
+        top[0].markdown(
+            f"<div class='bm-call-head'>"
+            f"<div class='bm-call-date'>{html.escape(_call_date_label(call))}</div>"
+            f"<div class='bm-call-title'>{html.escape(call.get('title', ''))}</div>"
+            f"</div>", unsafe_allow_html=True)
         top[1].markdown("<div class='bm-call-kinds'>Report &middot; Pitchdeck &middot; Video</div>",
                         unsafe_allow_html=True)
         if call.get("summary"):
@@ -1221,8 +1224,8 @@ def _render_call_card(call, sig):
                      ":material/slideshow:", f"ppt_{cid}")
         # Video link is always live: opens the admin-set URL (new tab), else a "not available" modal.
         if call.get("video"):
-            b3.link_button("Watch video", call["video"], icon=":material/play_circle:")
-        elif b3.button("Watch video", key=f"vid_{cid}", icon=":material/play_circle:"):
+            b3.link_button("Video Podcast", call["video"], icon=":material/play_circle:")
+        elif b3.button("Video Podcast", key=f"vid_{cid}", icon=":material/play_circle:"):
             _video_unavailable()
 
 
@@ -1416,7 +1419,7 @@ def page_admin():
                                         "(admins only — no other role sees it). Admins always see all calls.")
         video = st.text_input("Video link (URL)", value=(editing or {}).get("video", ""),
                               placeholder="https://…  (leave blank if none)", key=f"video_{ekey}",
-                              help="Users get a live “Watch video” button linking here; "
+                              help="Users get a live “Video Podcast” button linking here; "
                                    "blank shows a “video not available” message.")
         u1, u2 = st.columns(2)
         pdf_up = u1.file_uploader("Market Summary Report (PDF)", type=["pdf"], key=f"pdf_up_{ekey}")
