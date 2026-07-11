@@ -189,8 +189,9 @@ def inject_css():
 [data-testid="stMarkdownContainer"] > h3 {{
     padding-top: 0.35rem !important; padding-bottom: 0.35rem !important;
 }}
-/* login / password-reset cards: keep a readable fixed width now the page is full-bleed */
-.st-key-login_card, .st-key-reset_card {{ max-width: 460px; margin: 0 auto; }}
+/* login / password-reset cards: readable fixed width now the page is full-bleed, plus a
+   responsive top gap so the card sits lower than the topbar (breathing room, not hugging it). */
+.st-key-login_card, .st-key-reset_card {{ max-width: 460px; margin: clamp(48px, 9vh, 120px) auto 0; }}
 /* kill the app header entirely (it painted its Share/toolbar icons over the top of the page
    even at height:0). display:none keeps stStatusWidget in the DOM, so the :has() loading
    overlay below still works. Selectors deliberately element-agnostic (header OR div). */
@@ -220,15 +221,16 @@ section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display
     transition: opacity .18s ease, visibility 0s .18s;
     animation: bm-spin .85s linear infinite;
 }}
-/* Only reveal the overlay once a rerun has lasted >.4s. Fast reruns (e.g. moving
+/* Only reveal the overlay once a rerun has lasted >.7s. Fast reruns (e.g. moving
    between the login username/password fields, each of which fires a quick rerun)
    finish before the delay elapses, so the overlay never flashes; genuinely slow
    reruns (page switches, chart loads) still show it. The delay lives on the :has
-   (visible) rule; the base rule above hides promptly (no show-delay). */
+   (visible) rule; the base rule above hides promptly (no show-delay). Bumped .4s -> .7s
+   because reruns landing just over the old threshold still flashed occasionally. */
 [data-testid="stApp"]:has([data-testid="stStatusWidget"])::before,
 [data-testid="stApp"]:has([data-testid="stStatusWidget"])::after {{
     opacity: 1; visibility: visible;
-    transition: opacity .18s ease .4s, visibility 0s .4s;
+    transition: opacity .18s ease .7s, visibility 0s .7s;
 }}
 @media (prefers-reduced-motion: reduce) {{
     [data-testid="stApp"]::after {{ animation-duration: 2s; }}
