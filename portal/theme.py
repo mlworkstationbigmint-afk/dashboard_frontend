@@ -581,7 +581,7 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
 .bm-meth-hero h3 {{ margin:0 0 6px; font-size:20px; color:#fff; }}
 .bm-meth-hero p {{ margin:0; font-size:14px; line-height:1.6; color:#dce8f8; max-width:860px; }}
 /* stat strip */
-.bm-stat-row {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:0 0 20px; }}
+.bm-stat-row {{ display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin:0 0 20px; }}
 .bm-stat {{ background:#fff; border:1px solid #e8edf3; border-radius:14px; padding:16px 18px; text-align:center;
     box-shadow:0 1px 2px rgba(16,24,40,.05); }}
 .bm-stat-v {{ font-size:24px; font-weight:800; color:var(--bm-primary-dark); line-height:1.1; }}
