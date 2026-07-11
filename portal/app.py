@@ -22,6 +22,7 @@ import theme
 import auth
 import db
 import data_loader as dl
+import ai_fill
 from calculators import calc_import_price, calc_cost, calc_elasticity
 
 st.set_page_config(
@@ -1400,16 +1401,53 @@ def page_admin():
     ekey = editing["id"] if editing else "new"   # keys change with selection so fields reset
 
     esecs = (editing or {}).get("sections", {})
+    # Seed the AI-fillable fields once per selection so the "Auto-fill with AI" button
+    # (below, outside the form) can write straight into their session_state keys without
+    # tripping Streamlit's "default value + Session State" warning (so no `value=` here).
+    if f"summary_{ekey}" not in st.session_state:
+        st.session_state[f"summary_{ekey}"] = (editing or {}).get("summary", "")
+    for _lbl in dl.ANALYST_SECTIONS:
+        _sk = f"sec_{ekey}_{_lbl}"
+        if _sk not in st.session_state:
+            st.session_state[_sk] = esecs.get(_lbl, "")
+
+    # --- Pitch deck upload + Gemini auto-fill (outside the form so the button can act
+    #     mid-edit; the same upload both attaches the deck on save and feeds the AI) ---
+    st.markdown("**Analyst Call Pitchdeck (PPT)**")
+    ppt_up = st.file_uploader("Pitchdeck — upload a .pptx to enable AI auto-fill (.ppt attaches only)",
+                              type=["ppt", "pptx"], key=f"ppt_up_{ekey}", label_visibility="collapsed")
+    _is_pptx = ppt_up is not None and ppt_up.name.lower().endswith(".pptx")
+    ac1, ac2 = st.columns([1, 2], vertical_alignment="center")
+    gen = ac1.button("✨ Auto-fill sections with AI", key=f"ai_gen_{ekey}",
+                     disabled=not (_is_pptx and ai_fill.gemini_ready()),
+                     help="Reads the uploaded .pptx and drafts the headline summary + section "
+                          "one-liners with Gemini. Review and edit before saving.")
+    if not ai_fill.gemini_ready():
+        ac2.caption("⚠ Add a Gemini API key under `[gemini]` in secrets to enable AI auto-fill.")
+    elif ppt_up is not None and not _is_pptx:
+        ac2.caption("AI auto-fill needs a **.pptx** file (legacy .ppt can only be attached).")
+    if gen:
+        try:
+            with st.spinner("Reading the deck and drafting sections…"):
+                deck_text = ai_fill.extract_pptx_text(ppt_up.getvalue(), ppt_up.name)
+                drafted = ai_fill.fill_analyst_sections(deck_text, dl.ANALYST_SECTIONS)
+            st.session_state[f"summary_{ekey}"] = drafted.get("summary", "")
+            for _lbl in dl.ANALYST_SECTIONS:
+                st.session_state[f"sec_{ekey}_{_lbl}"] = drafted.get(_lbl, "")
+            st.toast("Sections drafted — review and edit before saving.", icon="✨")
+            st.rerun()
+        except Exception as e:
+            st.error(f"AI auto-fill failed: {e}")
+
     with st.form(f"call_form_{ekey}"):
         c1, c2 = st.columns(2)
         call_date = c1.date_input("Analyst call date *", value=_call_date_value(editing),
                                   format="DD/MM/YYYY", key=f"date_{ekey}")
         title = c2.text_input("Title", value=(editing or {}).get("title", "Market outlook call"),
                               key=f"title_{ekey}")
-        summary = st.text_area("Headline summary", value=(editing or {}).get("summary", ""),
-                               height=80, key=f"summary_{ekey}")
+        summary = st.text_area("Headline summary", height=80, key=f"summary_{ekey}")
         st.markdown("**Sections** (leave blank to hide a row)")
-        secvals = {lbl: st.text_input(lbl, value=esecs.get(lbl, ""), key=f"sec_{ekey}_{lbl}")
+        secvals = {lbl: st.text_input(lbl, key=f"sec_{ekey}_{lbl}")
                    for lbl in dl.ANALYST_SECTIONS}
         aud_opts = [r for r in known_roles() if r != "Admin"]
         aud_default = [r for r in (editing or {}).get("audiences", []) if r in aud_opts]
@@ -1421,9 +1459,7 @@ def page_admin():
                               placeholder="https://…  (leave blank if none)", key=f"video_{ekey}",
                               help="Users get a live “Video Podcast” button linking here; "
                                    "blank shows a “video not available” message.")
-        u1, u2 = st.columns(2)
-        pdf_up = u1.file_uploader("Market Summary Report (PDF)", type=["pdf"], key=f"pdf_up_{ekey}")
-        ppt_up = u2.file_uploader("Analyst Call Pitchdeck (PPT)", type=["ppt", "pptx"], key=f"ppt_up_{ekey}")
+        pdf_up = st.file_uploader("Market Summary Report (PDF)", type=["pdf"], key=f"pdf_up_{ekey}")
         if editing:
             for kind, p in (("PDF", editing.get("pdf")), ("PPT", editing.get("ppt"))):
                 if p:
