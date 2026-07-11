@@ -240,17 +240,19 @@ def load_accuracy(window: str, acc_label: str) -> pd.DataFrame:
 
 
 def accuracy_kpis(df: pd.DataFrame) -> dict:
-    """Compute MAPA (absolute accuracy), directional accuracy and avg delta over a frame."""
+    """Compute MAPA (absolute accuracy), directional accuracy and the last-12-week hit rate."""
     if df.empty:
-        return {"mapa": None, "dir_acc": None, "avg_delta": None}
+        return {"mapa": None, "dir_acc": None, "hit_rate_12": None}
     valid = df.dropna(subset=["Actual", "Forecast"])
     mape = (valid["Delta"].abs() / valid["Actual"]).mean() * 100
     rows = valid.iloc[1:]   # first row has no previous reference
     dir_acc = rows["Hit"].mean() * 100 if len(rows) else None
+    last12 = rows.tail(12)   # last 12 weekly directional calls
+    hit_rate_12 = last12["Hit"].sum() / 12 * 100 if len(last12) else None
     return {
         "mapa": 100 - mape,
         "dir_acc": dir_acc,
-        "avg_delta": valid["DeltaPct"].mean(),
+        "hit_rate_12": hit_rate_12,
     }
 
 
