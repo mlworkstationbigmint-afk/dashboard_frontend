@@ -1527,7 +1527,7 @@ def page_performance():
                 f"{kpis['mapa']:.1f}%" if kpis['mapa'] is not None else "-", f"100 - mean abs % error · {len(view)} wk", theme.icon("target")), unsafe_allow_html=True)
     k2.markdown(theme.kpi_card("Directional accuracy",
                 f"{kpis['dir_acc']:.0f}%" if kpis['dir_acc'] is not None else "-", "correct up/down/flat calls", theme.icon("gauge")), unsafe_allow_html=True)
-    k3.markdown(theme.kpi_card("Directional hit rate (12 wk)",
+    k3.markdown(theme.kpi_card("Delta accuracy",
                 f"{kpis['hit_rate_12']:.0f}%" if kpis['hit_rate_12'] is not None else "-", "correct calls / last 12 weeks", theme.icon("trending")), unsafe_allow_html=True)
 
     st.write("")
