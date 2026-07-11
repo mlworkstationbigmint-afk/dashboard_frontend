@@ -1637,7 +1637,9 @@ def page_methodology():
 
     st.markdown(
         "<div class='bm-stat-row'>"
-        "<div class='bm-stat'><div class='bm-stat-v'>~98%</div><div class='bm-stat-l'>Price accuracy</div></div>"
+        "<div class='bm-stat'><div class='bm-stat-v'>~98%</div><div class='bm-stat-l'>Average absolute price accuracy</div></div>"
+        "<div class='bm-stat'><div class='bm-stat-v'>60%</div><div class='bm-stat-l'>Delta accuracy</div></div>"
+        "<div class='bm-stat'><div class='bm-stat-v'>70%</div><div class='bm-stat-l'>Directional accuracy</div></div>"
         "<div class='bm-stat'><div class='bm-stat-v'>15+ yrs</div><div class='bm-stat-l'>Historical data trained on</div></div>"
         "<div class='bm-stat'><div class='bm-stat-v'>1&ndash;2%</div><div class='bm-stat-l'>Typical delta (error band)</div></div>"
         "<div class='bm-stat'><div class='bm-stat-v'>IOSCO</div><div class='bm-stat-l'>Audited methodology</div></div>"
