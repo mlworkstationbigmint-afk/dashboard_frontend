@@ -500,17 +500,19 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
     font-size:12.5px !important; line-height:1.4 !important; white-space:normal !important;
 }}
 .st-key-fc_loc_box svg, .st-key-perf_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
-/* forecasting page: white fill (was the primary-soft tint + Streamlit's pale secondaryBackground on
-   the inner input) so the dropdown reads as a crisp, pickable control — the 1.6px blue border above
-   now pops against white. Whiten the baseweb select AND every inner div/input: the tinted element
-   varies by Streamlit/baseweb version, so blanket-cover them rather than guess the exact level. */
-.st-key-fc_loc_box div[data-baseweb="select"],
-.st-key-fc_loc_box div[data-baseweb="select"] > div,
-.st-key-fc_loc_box div[data-baseweb="select"] > div > div,
-.st-key-fc_loc_box div[data-baseweb="select"] [data-baseweb="input"],
-.st-key-fc_loc_box div[data-baseweb="select"] [data-baseweb="input"] > div,
-.st-key-fc_loc_box div[data-baseweb="select"] input {{
+/* forecasting page: WHITE fill. This build (Streamlit 1.59) does NOT expose data-baseweb="select" on
+   the selectbox, so every fc_loc_box baseweb rule above (border/tint/text) silently no-ops and the pale
+   Streamlit secondaryBackgroundColor (#F1F5FB) shows through. Target the stable `stSelectbox` testid
+   instead and whiten the closed control + every inner wrapper/input (the options popover renders in a
+   body portal, so it's untouched). Re-assert a blue border here too so it still reads as pickable. */
+.st-key-fc_loc_box [data-testid="stSelectbox"] div,
+.st-key-fc_loc_box [data-testid="stSelectbox"] input {{
     background:#fff !important; background-color:#fff !important;
+}}
+.st-key-fc_loc_box [data-testid="stSelectbox"] [role="combobox"],
+.st-key-fc_loc_box [data-testid="stSelectbox"] [data-baseweb="select"] > div:first-child {{
+    border:1.6px solid var(--bm-primary) !important; border-radius:9px !important;
+    box-shadow:0 1px 4px rgba(2,76,161,.12) !important;
 }}
 
 /* grouped-forecasting right-side price-card stack: ONE HTML flex column (emitted whole by

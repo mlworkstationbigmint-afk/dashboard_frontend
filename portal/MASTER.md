@@ -129,11 +129,13 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 
 ## Changelog
 ### 2026-07-13 (latest++++++++) — Forecasting: location dropdown white fill · horizon tab label · forecast card shows target date
-- **Location dropdown → white fill.** `theme.py` whitens the `.st-key-fc_loc_box` baseweb select **and every
-  inner div/input** (`background:#fff`). The first attempt only hit the outer `> div` (the border layer), but
-  the visible tint was Streamlit's pale `secondaryBackgroundColor` (#F1F5FB) on the **inner** input container,
-  so the blanket selector list is required. Overrides the shared primary-soft tint, which `.st-key-perf_loc_box`
-  keeps. The 1.6px blue border reads crisper against white. Forecasting page only; Performance page unchanged.
+- **Location dropdown → white fill.** ⚠ Key gotcha: on the deployed **Streamlit 1.59** build the selectbox
+  does **NOT** expose `data-baseweb="select"`, so *all* the `.st-key-fc_loc_box div[data-baseweb="select"]…`
+  rules (border, primary-soft tint, bold text) silently no-op — the box shows Streamlit's default pale
+  `secondaryBackgroundColor` (#F1F5FB). Fix targets the stable **`[data-testid="stSelectbox"]`** testid instead:
+  whitens every inner `div`/`input` (`background:#fff`) and re-asserts the 1.6px blue border via `[role="combobox"]`.
+  The options popover renders in a body portal, so it's unaffected. Forecasting page only (`.st-key-fc_loc_box`);
+  Performance page (`.st-key-perf_loc_box`) still uses the old baseweb rules / primary-soft tint.
 - **Horizon tab now has a visible label.** The grouped-graphical **1W/4W/8W/12W** `st.segmented_control`
   (`key="fc_horizon"`) switched `label_visibility` `collapsed → visible` and the label text is now
   **"Forecast horizon (weeks ahead)"** so users see what the pills do. (`app.py`, right rail.)
