@@ -505,16 +505,17 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
    Streamlit secondaryBackgroundColor (#F1F5FB) shows through — target the stable `stSelectbox` testid
    instead. Whiten the closed control + every inner wrapper/input (the options popover renders in a body
    portal, so it's untouched). For the border: rather than guess which wrapper holds value + arrow, just
-   RECOLOUR whatever element already carries the control's default border to accent + 1.5px — only the
-   full control box has a visible border, so exactly that one element goes orange, wrapping value AND
-   arrow with its existing curved corner. Divs with border-style:none render nothing from width/colour. */
+   RECOLOUR (colour only — NOT width) whatever element already carries the control's default border. The
+   real control box has a rounded ~1px border, so it goes orange keeping its curve, wrapping value AND
+   arrow. ⚠ Do NOT force border-width here: Streamlit's reset puts `border:0 solid` on EVERY div, so a
+   forced width makes a square-cornered outer container's zero-width border suddenly show as a rectangle
+   around the rounded one. Colour-only leaves those reset borders at width 0 (invisible). */
 [data-testid="stSelectbox"] div,
 [data-testid="stSelectbox"] input {{
     background:#fff !important; background-color:#fff !important;
 }}
 [data-testid="stSelectbox"] div {{
-    border-color:var(--bm-accent) !important; border-width:1.5px !important;
-    box-shadow:none !important;
+    border-color:var(--bm-accent) !important; box-shadow:none !important;
 }}
 [data-testid="stSelectbox"] svg {{ fill:var(--bm-accent) !important; color:var(--bm-accent) !important; }}
 

@@ -134,13 +134,14 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
   rules (border, primary-soft tint, bold text) silently no-op — boxes show Streamlit's default pale
   `secondaryBackgroundColor` (#F1F5FB). Fix targets the stable **`[data-testid="stSelectbox"]`** testid,
   **un-scoped so it hits every selectbox in the app** (location pickers, Sort by, Admin, etc.): whitens every
-  inner `div`/`input` (`background:#fff`), **recolours the control's existing border to `--bm-accent` (orange)
-  + 1.5px** and colours the arrow `svg` accent too. Recolouring beats adding a border: only the full control
-  box has a visible border, so exactly that one element goes orange — wrapping value AND arrow, existing
-  curved corner preserved. (Adding a border to `[role="combobox"]` only wrapped the value, leaving the arrow
-  outside; a separate border there also caused a box-in-box vs the default wrapper border.) Divs with
-  `border-style:none` render nothing from width/colour, so no stray lines. The options popover renders in a
-  body portal, so it's unaffected. Was briefly blue + forecasting-only before this generalisation.
+  inner `div`/`input` (`background:#fff`), **recolours the control's existing border to `--bm-accent` (orange),
+  colour only**, and colours the arrow `svg` accent too. Recolouring beats adding a border: only the full
+  control box has a visible (rounded ~1px) border, so exactly that one element goes orange — wrapping value
+  AND arrow, curved corner preserved. (Adding a border to `[role="combobox"]` only wrapped the value, leaving
+  the arrow outside.) ⚠ **Do NOT force `border-width`:** Streamlit's reset puts `border:0 solid` on *every*
+  div, so a forced width makes a square-cornered outer container's zero-width border suddenly show as a
+  **rectangle around the rounded one**; colour-only leaves those at width 0 (invisible). The options popover
+  renders in a body portal, so it's unaffected. Was briefly blue + forecasting-only before this generalisation.
 - **Horizon tab now has a visible label.** The grouped-graphical **1W/4W/8W/12W** `st.segmented_control`
   (`key="fc_horizon"`) switched `label_visibility` `collapsed → visible` and the label text is now
   **"Forecast horizon (weeks ahead)"** so users see what the pills do. (`app.py`, right rail.)
