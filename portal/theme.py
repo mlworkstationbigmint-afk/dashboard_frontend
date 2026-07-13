@@ -77,7 +77,7 @@ ALL_PAGES = ["Home", "Price Forecasting", "Analyst Calls",
 DEFAULT_PROFILE = {
     "cobrand_logo": "adani_logo.png",   # white chip logo in the topbar (None => no chip)
     "cobrand_label": "adani",           # gradient-text fallback if the image is missing
-    "title": "STEEL GCP - AI LABS : Steel Prices Forecasting Model",
+    "title": "AI LABS : Steel Prices Forecasting Model",
     "primary": PRIMARY,
     "primary_dark": PRIMARY_DARK,
     "primary_soft": PRIMARY_SOFT,

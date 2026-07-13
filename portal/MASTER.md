@@ -41,7 +41,7 @@ Users live in the **Neon `users` table**, not in code. Passwords are **argon2id*
 ## Locked decisions
 - Streamlit UI-only prototype; **per-user login backed by Neon Postgres (argon2id + JWT cookie sessions)**; **12-week** horizon.
 - Headline forecast line = **Ensemble (Weighted Mean)**.
-- Title: plain-text "Price Forecasting: Steel" (browser tab / login caption / Home H2). The **topbar heading** is now **per-role** (see the 2026-07-07 changelog): the **Adani/default** profile reads "BIGMINT `|` ADANI `|` STEEL GCP - AI LABS : Steel Prices Forecasting Model" (BigMint logo · pipe · Adani chip · pipe · title — separators are pipes, not `×`); internal **Analyst/Admin** profiles drop the Adani chip (BigMint-only). Brand name is **BigMint** (never "Bigmint").
+- Title: plain-text "Price Forecasting: Steel" (browser tab / login caption / Home H2). The **topbar heading** is now **per-role** (see the 2026-07-07 changelog): the **login/default** profile reads "BIGMINT `|` AI LABS : Steel Prices Forecasting Model" (no "STEEL GCP -" prefix as of 2026-07-13); the logged-in **Adani** profile reads "BIGMINT `|` ADANI `|` STEEL GCP - AI LABS : Steel Prices Forecasting Model" (BigMint logo · pipe · Adani chip · pipe · title — separators are pipes, not `×`); internal **Analyst/Admin** profiles drop the Adani chip (BigMint-only). Brand name is **BigMint** (never "Bigmint").
 - **Per-role white-label dashboards (2026-07-07):** one deployment; each `auth.ROLES` value gets its own static branding (`theme.ROLE_PROFILES`) + admin-controlled commodity access (`db.role_commodities`) + analyst-call audience. See **Appendix A** below.
 - Static snapshot data (no live connection).
 
