@@ -509,10 +509,14 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
 .st-key-fc_loc_box [data-testid="stSelectbox"] input {{
     background:#fff !important; background-color:#fff !important;
 }}
-.st-key-fc_loc_box [data-testid="stSelectbox"] [role="combobox"],
-.st-key-fc_loc_box [data-testid="stSelectbox"] [data-baseweb="select"] > div:first-child {{
-    border:1.6px solid var(--bm-primary) !important; border-radius:9px !important;
-    box-shadow:0 1px 4px rgba(2,76,161,.12) !important;
+/* Kill every inner border/shadow FIRST (Streamlit's default wrapper border sat under our blue one,
+   with a slightly different radius -> box-in-box "weird" look), then draw ONE flat blue border on the
+   combobox control. border-color:transparent (not width:0) keeps the box the same height. */
+.st-key-fc_loc_box [data-testid="stSelectbox"] div {{
+    border-color:transparent !important; box-shadow:none !important;
+}}
+.st-key-fc_loc_box [data-testid="stSelectbox"] [role="combobox"] {{
+    border:1.5px solid var(--bm-primary) !important; border-radius:8px !important;
 }}
 
 /* grouped-forecasting right-side price-card stack: ONE HTML flex column (emitted whole by

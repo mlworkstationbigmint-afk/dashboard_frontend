@@ -133,9 +133,10 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
   does **NOT** expose `data-baseweb="select"`, so *all* the `.st-key-fc_loc_box div[data-baseweb="select"]…`
   rules (border, primary-soft tint, bold text) silently no-op — the box shows Streamlit's default pale
   `secondaryBackgroundColor` (#F1F5FB). Fix targets the stable **`[data-testid="stSelectbox"]`** testid instead:
-  whitens every inner `div`/`input` (`background:#fff`) and re-asserts the 1.6px blue border via `[role="combobox"]`.
-  The options popover renders in a body portal, so it's unaffected. Forecasting page only (`.st-key-fc_loc_box`);
-  Performance page (`.st-key-perf_loc_box`) still uses the old baseweb rules / primary-soft tint.
+  whitens every inner `div`/`input` (`background:#fff`), **zeroes every inner border/shadow** (Streamlit's
+  default wrapper border sat under our blue one with a mismatched radius → box-in-box look), then draws ONE
+  flat 1.5px blue border on `[role="combobox"]`. The options popover renders in a body portal, so it's
+  unaffected. Forecasting page only (`.st-key-fc_loc_box`); Performance (`.st-key-perf_loc_box`) unchanged.
 - **Horizon tab now has a visible label.** The grouped-graphical **1W/4W/8W/12W** `st.segmented_control`
   (`key="fc_horizon"`) switched `label_visibility` `collapsed → visible` and the label text is now
   **"Forecast horizon (weeks ahead)"** so users see what the pills do. (`app.py`, right rail.)
