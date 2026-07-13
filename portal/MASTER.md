@@ -128,19 +128,19 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
-### 2026-07-13 (latest++++++++) — Forecasting: location dropdown white fill · horizon tab label · forecast card shows target date
-- **Location dropdown → white fill.** ⚠ Key gotcha: on the deployed **Streamlit 1.59** build the selectbox
-  does **NOT** expose `data-baseweb="select"`, so *all* the `.st-key-fc_loc_box div[data-baseweb="select"]…`
-  rules (border, primary-soft tint, bold text) silently no-op — the box shows Streamlit's default pale
-  `secondaryBackgroundColor` (#F1F5FB). Fix targets the stable **`[data-testid="stSelectbox"]`** testid instead:
-  whitens every inner `div`/`input` (`background:#fff`) and **recolours the control's existing border to
-  blue + 1.5px** (`border-color`/`border-width` on all inner divs). Recolouring beats adding a border: only
-  the full control box has a visible border, so exactly that one element goes blue — wrapping value AND the
-  arrow, existing curved corner preserved. (Adding a border to `[role="combobox"]` instead only wrapped the
-  value, leaving the arrow outside; a separate blue border there also caused a box-in-box vs the default
-  wrapper border.) Divs with `border-style:none` render nothing from width/colour, so no stray lines. The
-  options popover renders in a body portal, so it's unaffected. Forecasting page only (`.st-key-fc_loc_box`);
-  Performance (`.st-key-perf_loc_box`) unchanged.
+### 2026-07-13 (latest++++++++) — All dropdowns white + orange border · horizon tab label · forecast card shows target date
+- **ALL dropdowns → white fill + orange border (app-wide).** ⚠ Key gotcha: on the deployed **Streamlit 1.59**
+  build the selectbox does **NOT** expose `data-baseweb="select"`, so *all* the `div[data-baseweb="select"]…`
+  rules (border, primary-soft tint, bold text) silently no-op — boxes show Streamlit's default pale
+  `secondaryBackgroundColor` (#F1F5FB). Fix targets the stable **`[data-testid="stSelectbox"]`** testid,
+  **un-scoped so it hits every selectbox in the app** (location pickers, Sort by, Admin, etc.): whitens every
+  inner `div`/`input` (`background:#fff`), **recolours the control's existing border to `--bm-accent` (orange)
+  + 1.5px** and colours the arrow `svg` accent too. Recolouring beats adding a border: only the full control
+  box has a visible border, so exactly that one element goes orange — wrapping value AND arrow, existing
+  curved corner preserved. (Adding a border to `[role="combobox"]` only wrapped the value, leaving the arrow
+  outside; a separate border there also caused a box-in-box vs the default wrapper border.) Divs with
+  `border-style:none` render nothing from width/colour, so no stray lines. The options popover renders in a
+  body portal, so it's unaffected. Was briefly blue + forecasting-only before this generalisation.
 - **Horizon tab now has a visible label.** The grouped-graphical **1W/4W/8W/12W** `st.segmented_control`
   (`key="fc_horizon"`) switched `label_visibility` `collapsed → visible` and the label text is now
   **"Forecast horizon (weeks ahead)"** so users see what the pills do. (`app.py`, right rail.)

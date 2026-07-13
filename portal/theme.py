@@ -500,25 +500,23 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
     font-size:12.5px !important; line-height:1.4 !important; white-space:normal !important;
 }}
 .st-key-fc_loc_box svg, .st-key-perf_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
-/* forecasting page: WHITE fill. This build (Streamlit 1.59) does NOT expose data-baseweb="select" on
-   the selectbox, so every fc_loc_box baseweb rule above (border/tint/text) silently no-ops and the pale
-   Streamlit secondaryBackgroundColor (#F1F5FB) shows through. Target the stable `stSelectbox` testid
-   instead and whiten the closed control + every inner wrapper/input (the options popover renders in a
-   body portal, so it's untouched). Re-assert a blue border here too so it still reads as pickable. */
-.st-key-fc_loc_box [data-testid="stSelectbox"] div,
-.st-key-fc_loc_box [data-testid="stSelectbox"] input {{
+/* ALL dropdowns (selectboxes) app-wide: WHITE fill + a single curved ORANGE border. Streamlit 1.59 does
+   NOT expose data-baseweb="select", so the fc/perf baseweb rules above silently no-op and the pale
+   Streamlit secondaryBackgroundColor (#F1F5FB) shows through — target the stable `stSelectbox` testid
+   instead. Whiten the closed control + every inner wrapper/input (the options popover renders in a body
+   portal, so it's untouched). For the border: rather than guess which wrapper holds value + arrow, just
+   RECOLOUR whatever element already carries the control's default border to accent + 1.5px — only the
+   full control box has a visible border, so exactly that one element goes orange, wrapping value AND
+   arrow with its existing curved corner. Divs with border-style:none render nothing from width/colour. */
+[data-testid="stSelectbox"] div,
+[data-testid="stSelectbox"] input {{
     background:#fff !important; background-color:#fff !important;
 }}
-/* Border the WHOLE control (value + arrow) with a curved corner. Rather than guess which wrapper holds
-   both, just RECOLOR whatever element already carries the control's default border: only the full
-   control box has a visible border, so this recolours exactly that one element blue + thickens it to
-   1.5px -> a single curved border around value AND arrow (its existing radius is preserved). Divs with
-   no border (border-style:none) render nothing from width/colour, so no extra lines appear. Kill the
-   default focus shadow too. */
-.st-key-fc_loc_box [data-testid="stSelectbox"] div {{
-    border-color:var(--bm-primary) !important; border-width:1.5px !important;
+[data-testid="stSelectbox"] div {{
+    border-color:var(--bm-accent) !important; border-width:1.5px !important;
     box-shadow:none !important;
 }}
+[data-testid="stSelectbox"] svg {{ fill:var(--bm-accent) !important; color:var(--bm-accent) !important; }}
 
 /* grouped-forecasting right-side price-card stack: ONE HTML flex column (emitted whole by
    app.py price_cards(vertical=True)). Our own markup, so no dependence on how Streamlit
