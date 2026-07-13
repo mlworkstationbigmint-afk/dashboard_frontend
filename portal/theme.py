@@ -509,14 +509,15 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
 .st-key-fc_loc_box [data-testid="stSelectbox"] input {{
     background:#fff !important; background-color:#fff !important;
 }}
-/* Kill every inner border/shadow FIRST (Streamlit's default wrapper border sat under our blue one,
-   with a slightly different radius -> box-in-box "weird" look), then draw ONE flat blue border on the
-   combobox control. border-color:transparent (not width:0) keeps the box the same height. */
+/* Border the WHOLE control (value + arrow) with a curved corner. Rather than guess which wrapper holds
+   both, just RECOLOR whatever element already carries the control's default border: only the full
+   control box has a visible border, so this recolours exactly that one element blue + thickens it to
+   1.5px -> a single curved border around value AND arrow (its existing radius is preserved). Divs with
+   no border (border-style:none) render nothing from width/colour, so no extra lines appear. Kill the
+   default focus shadow too. */
 .st-key-fc_loc_box [data-testid="stSelectbox"] div {{
-    border-color:transparent !important; box-shadow:none !important;
-}}
-.st-key-fc_loc_box [data-testid="stSelectbox"] [role="combobox"] {{
-    border:1.5px solid var(--bm-primary) !important; border-radius:8px !important;
+    border-color:var(--bm-primary) !important; border-width:1.5px !important;
+    box-shadow:none !important;
 }}
 
 /* grouped-forecasting right-side price-card stack: ONE HTML flex column (emitted whole by
