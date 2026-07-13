@@ -994,9 +994,18 @@ def page_forecasting():
         last_date = pd.to_datetime(row.get("Last actual date"), errors="coerce")
         fc, fc_dir = _forecast_at(horizon)
         fc_val = f"Rs.{fc:,.0f}" if pd.notna(fc) else "—"
+        # Card title = the exact calendar date this {horizon}-week forecast is FOR, long format
+        # (e.g. "Forecast — 19 July, 2026"), driven by the 1W/4W/8W/12W tab. The 12-week path is
+        # week-ordered (row 0 = week 1), so the date sits at positional index horizon-1.
+        fc_title = f"{horizon}-week forecast"
+        if fwd is not None and len(fwd):
+            _fc_date = pd.to_datetime(
+                fwd.iloc[min(max(int(horizon), 1), len(fwd)) - 1].get("Date"), errors="coerce")
+            if pd.notna(_fc_date):
+                fc_title = f"Forecast — {_fc_date.day} {_fc_date.strftime('%B, %Y')}"
         cards = [
             ("Last actual spot", f"Rs.{last_actual:,.0f}", _week_of_month_label(last_date), theme.icon("rupee")),
-            (f"{horizon}-week forecast", fc_val, theme.direction_chip(fc_dir), theme.icon("trending")),
+            (fc_title, fc_val, theme.direction_chip(fc_dir), theme.icon("trending")),
         ]
         if vertical:
             # One self-contained HTML flex column (.bm-vcards / .bm-vcards-sm, theme.py), immune to
@@ -1116,9 +1125,9 @@ def page_forecasting():
             with chart_col:
                 render_graph_view(horizon)
             with cards_col:
-                st.segmented_control("Forecast horizon", [1, 4, 8, 12],
+                st.segmented_control("Forecast horizon (weeks ahead)", [1, 4, 8, 12],
                                      format_func=lambda n: f"{n}W", default=1,
-                                     key="fc_horizon", label_visibility="collapsed")
+                                     key="fc_horizon", label_visibility="visible")
                 price_cards(vertical=True, horizon=horizon, extra_card=_rationale_card_html())
             rationale_shown = True
         else:

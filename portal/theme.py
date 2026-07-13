@@ -500,6 +500,9 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
     font-size:12.5px !important; line-height:1.4 !important; white-space:normal !important;
 }}
 .st-key-fc_loc_box svg, .st-key-perf_loc_box svg {{ fill:var(--bm-primary) !important; color:var(--bm-primary) !important; }}
+/* forecasting page: white fill (was the primary-soft tint) so the dropdown reads as a crisp,
+   pickable control — the 1.6px blue border above now stands out against white for extra pop. */
+.st-key-fc_loc_box div[data-baseweb="select"] > div {{ background:#fff !important; }}
 
 /* grouped-forecasting right-side price-card stack: ONE HTML flex column (emitted whole by
    app.py price_cards(vertical=True)). Our own markup, so no dependence on how Streamlit
