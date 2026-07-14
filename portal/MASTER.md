@@ -128,6 +128,26 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-14 (latest+++++++++) — Landed Cost: full UI/UX rebuild (engine untouched), theme-aligned
+- **`calculators/calc_import_price.py` `render()` rewritten end-to-end; calculation engine (`compute_landed`,
+  `fetch_fob_prices`, feed loader, PDF) unchanged.** New top-to-bottom layout:
+  1. Management verdict box + blue **Lowest cost source** banner (banner recoloured flat-green → theme-blue gradient).
+  2. **Graph on top** (landed-cost diverging bar vs domestic line) with the **global variables** as a small editable
+     `st.data_editor` table **to its side** (`st.columns([2.5, 1])`). The 8 globals (Domestic, FX, Threshold CIF,
+     Port & misc, BCD %, Cess on BCD %, Safeguard %, Cess on safeguard %) now live in that one table — the old
+     "Global assumptions" number_inputs **and** the "Duty rates" expander are gone.
+  3. **Customisable per-location table** (`st.data_editor`): Location · FTA? checkbox · FOB $/t · Freight $/t ·
+     Landed Rs./t (read-only). Replaces the per-region **cards** (`render_card`/`render_group` deleted).
+  4. Exchange-rate sensitivity table. 5. PDF snapshot button (kept). 6. **Methodology & Logic** rebuilt as a
+     modular, equation-heavy infographic (`bm-meth-hero` + `bm-engine` Inputs→engine→Outputs + a 6-step `bm-flow`
+     equation pipeline using new `.bm-eq` chip). 7. **Glossary** as a `bm-factor-grid`.
+- **Removed:** per-region cards, the "FOB price sources & disclosure" expander, the old `st.expander` methodology,
+  and dead `breakdown_table()`. Calc module now `import theme` and reuses `theme.section_title/icon/colours`.
+- Placeholders (`st.empty()`) hold the top verdict/banner/chart so they render above but compute after the
+  location table. **Known minor quirk:** the editor's own read-only *Landed Rs./t* cell lags one rerun after an
+  edit (graph/verdict update immediately); Streamlit's edit-triggered rerun corrects it.
+- Files: `calculators/calc_import_price.py` (CSS trimmed: kept `.kpi-banner`/`.mgmt-*`, added `.bm-eq`).
+
 ### 2026-07-13 (latest++++++++) — All dropdowns white + orange border · horizon tab label · forecast card shows target date
 - **ALL dropdowns → white fill + orange border (app-wide).** ⚠ Key gotcha: on the deployed **Streamlit 1.59**
   build the selectbox does **NOT** expose `data-baseweb="select"`, so *all* the `div[data-baseweb="select"]…`

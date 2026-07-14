@@ -9,6 +9,8 @@ import pandas as pd
 from fpdf import FPDF
 from datetime import datetime
 
+import theme   # shared brand palette + infographic CSS/helpers (same as the rest of the portal)
+
 HRC_FULL_NAME = "HRC, Exy-Mumbai, India, 2.5-8mm / CTL, IS2062, Gr E250 Br."
 
 DEFAULT_BCD_PCT = 7.5
@@ -30,21 +32,20 @@ CSV_FOB_COLS = {
 
 CALC_CSS = """
 <style>
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    border: 1px solid #e6e9ef; border-radius: 10px;
-    background-color: #ffffff; padding: 16px; margin-bottom: 10px;
-}
-div[data-testid="stContainer"] { border: none !important; background: transparent !important; padding: 0px !important; }
-h2, h3, h4 { color: #073A7D; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-label, .stMarkdown p { word-break: normal; overflow-wrap: anywhere; }
-.kpi-banner { border-radius: 10px; padding: 14px 18px; margin: 4px 0 2px 0;
-    font-size: 18px; font-weight: 700; color: #0b3d2e;
-    background: #e8f7ee; border: 1px solid #b7e4c7; }
-.mgmt-box { border-radius: 10px; padding: 14px 18px; margin-bottom: 6px; font-size: 16px; font-weight: 600; }
+/* Lowest-cost banner -> theme-blue gradient (was flat green) so it reads as the page headline. */
+.kpi-banner { border-radius: 12px; padding: 13px 18px; margin: 2px 0 4px; font-size: 16px; font-weight: 700;
+    color: #fff; background: linear-gradient(120deg, var(--bm-primary), var(--bm-primary-dark));
+    box-shadow: 0 4px 16px rgba(2,76,161,.18); }
+/* Management-view verdict box: semantic green (viable) / red (not viable). */
+.mgmt-box { border-radius: 12px; padding: 14px 18px; margin-bottom: 4px; font-size: 15px; font-weight: 600; }
 .mgmt-good { background: #e8f7ee; border: 1px solid #b7e4c7; color: #0b3d2e; }
 .mgmt-bad  { background: #fdecea; border: 1px solid #f5b7b1; color: #7b241c; }
-.group-head { font-size: 18px; font-weight: 800; margin: 6px 0 2px 0; color: #073A7D; }
-.group-sub  { color: #64748b; font-size: 13px; margin-bottom: 8px; }
+/* equation chip inside the methodology pipeline (reuses theme .bm-flow*). */
+.bm-eq { margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px; font-weight: 600; color: var(--bm-primary-dark);
+    background: var(--bm-primary-soft); border: 1px solid #dbe7f7; border-radius: 8px;
+    padding: 7px 9px; line-height: 1.45; width: 100%; box-sizing: border-box; }
+.bm-eq b { color: var(--bm-accent); }
 </style>
 """
 
@@ -143,24 +144,6 @@ def compute_landed(fob, freight, is_fta, g):
     }
 
 
-def breakdown_table(res, g):
-    sg_label = "applied" if res["sg_applied"] else "not applied"
-    return (
-        "| Step | Value |\n|:--|--:|\n"
-        f"| FOB | ${res['fob']:,.2f} |\n"
-        f"| + Freight | ${res['freight']:,.2f} |\n"
-        f"| **= CFR** | **${res['cfr']:,.2f}** |\n"
-        f"| + BCD ({res['bcd_pct']:.1f}%) | ${res['bcd_amt']:,.2f} |\n"
-        f"| + Cess on BCD ({res['cess_pct']:.1f}%) | ${res['cess_amt']:,.2f} |\n"
-        f"| **= TVD** | **${res['tvd']:,.2f}** |\n"
-        f"| + Safeguard ({sg_label}) | ${res['addl_usd']:,.2f} |\n"
-        f"| **= Cost (USD/t)** | **${res['cost_usd']:,.2f}** |\n"
-        f"| x FX (Rs.{g['fx']:.1f}) | Rs.{res['cost_inr']:,.0f} |\n"
-        f"| + Port & misc | Rs.{g['port_inr']:,.0f} |\n"
-        f"| **= Landed cost** | **Rs.{res['landed']:,.0f}** |\n"
-    )
-
-
 class HRC_Snapshot_PDF(FPDF):
     def header(self):
         self.set_font("Arial", "B", 14)
@@ -212,50 +195,171 @@ def build_pdf(pdf_rows, g, summary_line, best_line):
     return pdf
 
 
-def render_card(region, res, g, fob_meta):
-    with st.container(border=True):
-        badge = "FTA - BCD waived" if res["is_fta"] else "Non-FTA - standard duty"
-        st.markdown(f"#### {region}")
-        st.caption(badge)
-
-        if res["diff"] < 0:
-            st.success(f"**IMPORT VIABLE**  \nSave Rs.{abs(int(res['diff'])):,}/t vs domestic")
-        else:
-            st.error(f"**NOT VIABLE**  \nSave Rs.{int(res['diff']):,}/t (Domestic cheaper)")
-
-        st.metric("Landed cost at port", f"Rs.{int(res['landed']):,}")
-
-        if res["sg_applied"]:
-            st.warning(
-                f"Safeguard: **APPLIED**  \n"
-                f"Impact: +Rs.{int(res['addl_inr']):,}/t  \n"
-                f"Reason: TVD ${res['tvd']:,.0f} < Threshold ${g['threshold_cif']:,.0f}"
-            )
-        else:
-            st.caption(f"Safeguard: NOT APPLIED (TVD ${res['tvd']:,.0f} >= Threshold ${g['threshold_cif']:,.0f})")
-
-        c1, c2 = st.columns(2)
-        c1.number_input("FOB $/t", key=f"fob_{region}", step=5.0)
-        c2.number_input("Freight $/t", key=f"freight_{region}", step=1.0)
-        st.toggle("FTA origin", key=f"fta_{region}", help="Waives BCD + cess for this origin and moves it to the FTA group.")
-
-        with st.expander("View breakdown  (FOB -> Duty -> FX -> Final)"):
-            st.markdown(breakdown_table(res, g))
-            st.caption(f"FOB source: {fob_meta['source']} (as of {fob_meta['source_date']})")
+# -----------------------------------------------------------------------------
+# Global-variable side table  (small editable Value column beside the graph)
+# -----------------------------------------------------------------------------
+# Labels are the dict keys AND what the user sees; order is preserved (py3.7+).
+GVAR_ORDER = [
+    "Domestic benchmark (Rs./t)",
+    "FX (USD→INR)",
+    "Threshold CIF ($/t)",
+    "Port handling & misc (Rs./t)",
+    "BCD %",
+    "Cess on BCD %",
+    "Safeguard duty %",
+    "Cess on safeguard %",
+]
 
 
-def render_group(title, subtitle, regions_sorted, results, g, fob_data, max_per_row=3):
-    st.markdown(f"<div class='group-head'>{title}</div>", unsafe_allow_html=True)
-    st.markdown(f"<div class='group-sub'>{subtitle}</div>", unsafe_allow_html=True)
-    if not regions_sorted:
-        st.caption("No regions in this group.")
-        return
-    for start in range(0, len(regions_sorted), max_per_row):
-        chunk = regions_sorted[start:start + max_per_row]
-        cols = st.columns(max_per_row)
-        for col, region in zip(cols, chunk):
-            with col:
-                render_card(region, results[region], g, fob_data[region])
+def _read_globals(domestic_default):
+    """Render the editable global-variables table and return the `g` dict the
+    engine expects. Streamlit persists the edits under the widget key, so the
+    seeded defaults only apply on first load."""
+    seed = {
+        "Domestic benchmark (Rs./t)": float(domestic_default),
+        "FX (USD→INR)":               93.0,
+        "Threshold CIF ($/t)":        675.0,
+        "Port handling & misc (Rs./t)": 2000.0,
+        "BCD %":                      DEFAULT_BCD_PCT,
+        "Cess on BCD %":              DEFAULT_CESS_PCT,
+        "Safeguard duty %":           DEFAULT_SG_PCT,
+        "Cess on safeguard %":        DEFAULT_SG_CESS_PCT,
+    }
+    df = pd.DataFrame({"Value": [seed[k] for k in GVAR_ORDER]}, index=GVAR_ORDER)
+    df.index.name = "Variable"
+    edited = st.data_editor(
+        df, key="imp_gvars", width="stretch", hide_index=False,
+        column_config={"Value": st.column_config.NumberColumn("Value", format="%.2f", step=0.5)},
+    )
+    v = {k: float(edited.loc[k, "Value"]) for k in GVAR_ORDER}
+    return {
+        "domestic": v["Domestic benchmark (Rs./t)"], "fx": v["FX (USD→INR)"],
+        "threshold_cif": v["Threshold CIF ($/t)"], "port_inr": v["Port handling & misc (Rs./t)"],
+        "bcd_pct": v["BCD %"], "cess_pct": v["Cess on BCD %"],
+        "sg_pct": v["Safeguard duty %"], "sg_cess_pct": v["Cess on safeguard %"],
+    }
+
+
+def _landed_figure(regions, results, domestic):
+    """Diverging landed-cost bar chart vs the domestic benchmark line."""
+    import plotly.graph_objects as go
+    ordered = sorted(regions, key=lambda r: results[r]["landed"])
+    landed_vals = [results[r]["landed"] for r in ordered]
+    diffs = [results[r]["diff"] for r in ordered]     # landed - domestic (cheap < 0 < pricey)
+    fig = go.Figure(go.Bar(
+        x=ordered, y=landed_vals,
+        marker=dict(
+            color=diffs, cmid=0,                       # diverging: green (cheap) -> amber -> red (pricey)
+            colorscale=[[0.0, theme.SUCCESS], [0.5, "#FBBF24"], [1.0, theme.DANGER]],
+            line=dict(color="white", width=1.5), cornerradius=9,
+        ),
+        text=[f"Rs.{int(v):,}" for v in landed_vals], textposition="outside",
+        textfont=dict(size=12, color="#0f172a"),
+        cliponaxis=False, hovertemplate="<b>%{x}</b><br>Landed: Rs.%{y:,.0f}/t<extra></extra>",
+    ))
+    fig.add_hline(
+        y=domestic, line=dict(color=theme.PRIMARY, width=2, dash="dash"),
+        annotation_text=f"  Domestic Rs.{int(domestic):,}/t  ", annotation_position="top left",
+        annotation_font=dict(color="white", size=12),
+        annotation_bgcolor=theme.PRIMARY, annotation_bordercolor=theme.PRIMARY, annotation_borderpad=4,
+    )
+    fig.update_layout(height=400, margin=dict(l=10, r=10, t=34, b=10),
+                      plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
+                      font=dict(family="sans-serif", size=12, color="#334155"),
+                      bargap=0.45, showlegend=False)
+    fig.update_yaxes(title_text="Landed cost (Rs./t)", tickprefix="Rs.", tickformat=",.0f",
+                     gridcolor="#f1f5f9", zeroline=False,
+                     range=[0, max(max(landed_vals), domestic) * 1.13])
+    fig.update_xaxes(title_text="", tickfont=dict(size=12.5, color="#0f172a"))
+    return fig
+
+
+def _methodology_infographic():
+    """Modular, equation-heavy methodology block built from theme infographic CSS."""
+    st.markdown(
+        "<div class='bm-meth-hero'>"
+        "<h3>How landed cost is built</h3>"
+        "<p>Every origin is walked through the <b>same customs pipeline</b> &mdash; from the quoted "
+        "FOB price to the final rupee cost at an Indian port &mdash; then measured against the "
+        "domestic benchmark. Change any global variable or per-location input and the whole chain "
+        "re-solves live.</p></div>",
+        unsafe_allow_html=True,
+    )
+
+    # Inputs -> engine -> outputs
+    def _chips(items):
+        return "".join(
+            f"<div class='bm-chip'><span class='ic'>{theme.icon(ic, 15)}</span>{label}</div>"
+            for ic, label in items
+        )
+    engine = (
+        "<div class='bm-engine'>"
+        "<div class='bm-engine-col bm-engine-in'><div class='bm-engine-h'>Inputs</div>"
+        + _chips([("factory", "FOB &amp; freight per origin"),
+                  ("rupee",   "Duties: BCD, cess, safeguard"),
+                  ("gauge",   "FX &amp; port handling")]) +
+        "</div>"
+        "<div class='bm-engine-arrow'>&rarr;</div>"
+        "<div class='bm-engine-core'>"
+        f"<span class='ic'>{theme.icon('calculator', 26)}</span>"
+        "<h4>Landed-cost engine</h4>"
+        "<p>CFR &rarr; duty &rarr; safeguard &rarr; FX &rarr; port, applied identically to every source.</p></div>"
+        "<div class='bm-engine-arrow'>&rarr;</div>"
+        "<div class='bm-engine-col bm-engine-out'><div class='bm-engine-h'>Outputs</div>"
+        + _chips([("rupee",    "Landed Rs./t per origin"),
+                  ("target",   "Viable vs domestic?"),
+                  ("trending", "Cheapest source")]) +
+        "</div></div>"
+    )
+    st.markdown(engine, unsafe_allow_html=True)
+
+    st.write("")
+    theme.section_title("The equation pipeline", theme.icon("notes"))
+    steps = [
+        ("factory",   "Cost &amp; Freight", "Origin quote plus ocean freight.",
+         "CFR = FOB + Freight"),
+        ("calculator", "Duty",            "Basic customs duty and its cess. FTA origins waive both.",
+         "TVD = CFR + <b>BCD</b> + Cess"),
+        ("target",    "Safeguard",        "Extra duty only when TVD sits below the threshold CIF.",
+         "if TVD &lt; Thr &rarr; +<b>SG</b> + Cess"),
+        ("gauge",     "USD cost",         "Total customs value plus any safeguard.",
+         "Cost$ = TVD + SG"),
+        ("rupee",     "Rupee landed",     "Convert at FX and add port handling &amp; misc.",
+         "Landed = Cost$&times;<b>FX</b> + Port"),
+        ("trending",  "Verdict",          "Beat the domestic benchmark to be import-viable.",
+         "Landed &lt; <b>Domestic</b> &rArr; VIABLE"),
+    ]
+    cells = []
+    for i, (ic, title, desc, eq) in enumerate(steps, 1):
+        cells.append(
+            "<div class='bm-flow-step'>"
+            f"<div class='num'>{i}</div>"
+            f"<div class='ic'>{theme.icon(ic, 20)}</div>"
+            f"<div class='bm-flow-t'>{title}</div>"
+            f"<p>{desc}</p>"
+            f"<div class='bm-eq'>{eq}</div></div>"
+        )
+        if i < len(steps):
+            cells.append("<div class='bm-flow-arrow'>&rarr;</div>")
+    st.markdown("<div class='bm-flow'>" + "".join(cells) + "</div>", unsafe_allow_html=True)
+
+
+def _glossary():
+    theme.section_title("Glossary of terms", theme.icon("notes"))
+    terms = [
+        ("FOB", "Free On Board", "Price of goods loaded at the origin port, before freight."),
+        ("CFR", "Cost &amp; Freight", "FOB plus ocean freight to the destination port."),
+        ("BCD", "Basic Customs Duty", "Standard import duty levied on the CFR value."),
+        ("TVD", "Total Value for Duty", "CFR plus BCD and its cess &mdash; the customs base."),
+        ("CIF", "Cost, Insurance &amp; Freight", "Reference value the safeguard threshold is set against."),
+        ("FTA", "Free Trade Agreement", "Origin agreement that waives BCD and its cess."),
+    ]
+    grid = "<div class='bm-factor-grid'>" + "".join(
+        f"<div class='bm-factor'><div class='ic' style='font-weight:800;font-size:12px;'>{abbr}</div>"
+        f"<div><h5>{full}</h5><p>{desc}</p></div></div>"
+        for abbr, full, desc in terms
+    ) + "</div>"
+    st.markdown(grid, unsafe_allow_html=True)
 
 
 def render():
@@ -268,37 +372,50 @@ def render():
         st.session_state.setdefault(f"freight_{r}", fob_data[r]["freight"])
         st.session_state.setdefault(f"fta_{r}", fob_data[r]["fta_default"])
 
-    st.subheader("India: Import Price Scenario Simulation - Hot-Rolled Coil")
+    theme.section_title("India · Import Price Scenario Simulation — Hot-Rolled Coil",
+                        theme.icon("calculator"))
+    feed_note = (f"Live feed · HRC - Copy.csv · latest assessment {feed_as_of}"
+                 if feed_ok else "Feed HRC - Copy.csv not found · manual fallback values in use")
+    st.caption(f"{HRC_FULL_NAME}  ·  {feed_note}")
 
-    summary_ph = st.container()
-    banner_ph = st.container()
-    st.divider()
+    # --- top: management verdict + lowest-cost banner (filled after compute) ---
+    mgmt_ph = st.empty()
+    banner_ph = st.empty()
 
-    st.markdown("##### Global assumptions")
-    gc1, gc2, gc3, gc4 = st.columns(4)
-    with gc1:
-        domestic = st.number_input("Domestic benchmark (Rs./t)", value=int(domestic_default), step=50)
-        st.caption(HRC_FULL_NAME)
-    with gc2:
-        fx = st.number_input("FX  (USD -> INR)", value=93.0, step=0.5)
-    with gc3:
-        threshold_cif = st.number_input("Threshold CIF ($/t)", value=675, step=5)
-    with gc4:
-        port_inr = st.number_input("Port handling & misc (Rs./t)", value=2000, step=100)
+    # --- graph on top, global variables as a small table to its side ---
+    col_chart, col_vars = st.columns([2.5, 1])
+    chart_ph = col_chart.empty()
+    with col_vars:
+        theme.section_title("Global variables", theme.icon("gauge"))
+        g = _read_globals(domestic_default)
+    domestic = g["domestic"]
 
-    with st.expander("Duty rates (common defaults)"):
-        dc1, dc2, dc3, dc4 = st.columns(4)
-        bcd_pct = dc1.number_input("BCD %", value=DEFAULT_BCD_PCT, step=0.5)
-        cess_pct = dc2.number_input("Cess on BCD %", value=DEFAULT_CESS_PCT, step=0.5)
-        sg_pct = dc3.number_input("Safeguard duty %", value=DEFAULT_SG_PCT, step=0.5)
-        sg_cess_pct = dc4.number_input("Cess on safeguard %", value=DEFAULT_SG_CESS_PCT, step=0.5)
-        st.caption("FTA origins automatically waive BCD + its cess. Safeguard applies whenever TVD < threshold.")
+    # --- customisable per-location table (drives everything above) ---
+    theme.section_title("Scenario inputs by location", theme.icon("factory"))
+    loc_df = pd.DataFrame({
+        "FTA": [bool(st.session_state[f"fta_{r}"]) for r in regions],
+        "FOB $/t": [float(st.session_state[f"fob_{r}"]) for r in regions],
+        "Freight $/t": [float(st.session_state[f"freight_{r}"]) for r in regions],
+        "Landed Rs./t": [compute_landed(st.session_state[f"fob_{r}"], st.session_state[f"freight_{r}"],
+                                        st.session_state[f"fta_{r}"], g)["landed"] for r in regions],
+    }, index=regions)
+    loc_df.index.name = "Location"
+    loc_edit = st.data_editor(
+        loc_df, key="imp_locs", width="stretch", hide_index=False,
+        column_config={
+            "FTA": st.column_config.CheckboxColumn("FTA?", help="Waives BCD + its cess for this origin."),
+            "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0),
+            "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
+            "Landed Rs./t": st.column_config.NumberColumn("Landed Rs./t", format="Rs.%.0f", disabled=True),
+        },
+    )
+    for r in regions:
+        st.session_state[f"fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
+        st.session_state[f"freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
+        st.session_state[f"fta_{r}"] = bool(loc_edit.loc[r, "FTA"])
+    st.caption("Edit FOB, freight or FTA — the graph, verdict and sensitivity above recompute live.")
 
-    g = {
-        "domestic": domestic, "fx": fx, "threshold_cif": threshold_cif, "port_inr": port_inr,
-        "bcd_pct": bcd_pct, "cess_pct": cess_pct, "sg_pct": sg_pct, "sg_cess_pct": sg_cess_pct,
-    }
-
+    # --- compute with the committed inputs ---
     results = {
         r: compute_landed(st.session_state[f"fob_{r}"], st.session_state[f"freight_{r}"], st.session_state[f"fta_{r}"], g)
         for r in regions
@@ -307,97 +424,48 @@ def render():
     cl = results[cheapest]["landed"]
     viable = [r for r in regions if results[r]["diff"] < 0]
 
-    with summary_ph:
-        if viable:
-            best_v = min(viable, key=lambda r: results[r]["landed"])
-            msg = (f"{len(viable)} of {len(regions)} sources viable. "
-                   f"Cheapest viable: {best_v} at Rs.{int(results[best_v]['landed']):,}/t "
-                   f"(save Rs.{int(domestic - results[best_v]['landed']):,}/t vs domestic Rs.{int(domestic):,}).")
-            css = "mgmt-good"
-        else:
-            msg = (f"Imports not viable. Domestic Rs.{int(domestic):,}/t beats the cheapest import "
-                   f"({cheapest} Rs.{int(cl):,}/t) by Rs.{int(cl - domestic):,}/t.")
-            css = "mgmt-bad"
-        st.markdown(f"<div class='mgmt-box {css}'>Management view: {msg}</div>", unsafe_allow_html=True)
+    # --- backfill the top placeholders + the chart ---
+    if viable:
+        best_v = min(viable, key=lambda r: results[r]["landed"])
+        msg = (f"{len(viable)} of {len(regions)} sources viable. "
+               f"Cheapest viable: {best_v} at Rs.{int(results[best_v]['landed']):,}/t "
+               f"(save Rs.{int(domestic - results[best_v]['landed']):,}/t vs domestic Rs.{int(domestic):,}).")
+        css = "mgmt-good"
+    else:
+        msg = (f"Imports not viable. Domestic Rs.{int(domestic):,}/t beats the cheapest import "
+               f"({cheapest} Rs.{int(cl):,}/t) by Rs.{int(cl - domestic):,}/t.")
+        css = "mgmt-bad"
+    mgmt_ph.markdown(f"<div class='mgmt-box {css}'>Management view: {msg}</div>", unsafe_allow_html=True)
+    banner_ph.markdown(
+        f"<div class='kpi-banner'>Lowest cost source: {cheapest} — Rs.{int(cl):,}/t"
+        f"{'  (FTA)' if results[cheapest]['is_fta'] else ''}</div>",
+        unsafe_allow_html=True,
+    )
 
-    with banner_ph:
-        st.markdown(
-            f"<div class='kpi-banner'>Lowest cost source: {cheapest} - Rs.{int(cl):,}/t"
-            f"{'  (FTA)' if results[cheapest]['is_fta'] else ''}</div>",
-            unsafe_allow_html=True,
-        )
+    with chart_ph.container():
+        theme.section_title("Landed cost by country vs domestic benchmark", theme.icon("trending"))
+        try:
+            st.plotly_chart(_landed_figure(regions, results, domestic),
+                            width="stretch", config={"displayModeBar": False})
+        except Exception:
+            st.bar_chart(pd.DataFrame({"Landed Rs./t": {r: results[r]["landed"] for r in regions}}))
+        st.caption("Sorted cheapest → priciest. Colour shows distance from domestic parity "
+                   "(green = cheaper, amber ≈ parity, red = pricier). Dashed line = domestic benchmark.")
 
-    st.markdown("##### Landed cost by country vs domestic benchmark")
-    try:
-        import plotly.graph_objects as go
-        ordered_chart = sorted(regions, key=lambda r: results[r]["landed"])
-        landed_vals = [results[r]["landed"] for r in ordered_chart]
-        diffs = [results[r]["diff"] for r in ordered_chart]   # landed - domestic (cheap < 0 < pricey)
-        fig = go.Figure(go.Bar(
-            x=ordered_chart, y=landed_vals,
-            marker=dict(
-                color=diffs, cmid=0,                          # diverging: green (cheap) -> amber -> red (pricey)
-                colorscale=[[0.0, "#15A34A"], [0.5, "#FBBF24"], [1.0, "#E11D48"]],
-                line=dict(color="white", width=1.5), cornerradius=9,
-            ),
-            text=[f"Rs.{int(v):,}" for v in landed_vals], textposition="outside",
-            textfont=dict(size=12, color="#0f172a"),
-            cliponaxis=False, hovertemplate="<b>%{x}</b><br>Landed: Rs.%{y:,.0f}/t<extra></extra>",
-        ))
-        fig.add_hline(
-            y=domestic, line=dict(color="#024CA1", width=2, dash="dash"),
-            annotation_text=f"  Domestic Rs.{int(domestic):,}/t  ", annotation_position="top left",
-            annotation_font=dict(color="white", size=12),
-            annotation_bgcolor="#024CA1", annotation_bordercolor="#024CA1", annotation_borderpad=4,
-        )
-        fig.update_layout(height=400, margin=dict(l=10, r=10, t=34, b=10),
-                          plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
-                          font=dict(family="sans-serif", size=12, color="#334155"),
-                          bargap=0.45, showlegend=False)
-        fig.update_yaxes(title_text="Landed cost (Rs./t)", tickprefix="Rs.", tickformat=",.0f",
-                         gridcolor="#f1f5f9", zeroline=False,
-                         range=[0, max(max(landed_vals), domestic) * 1.13])
-        fig.update_xaxes(title_text="", tickfont=dict(size=12.5, color="#0f172a"))
-        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
-    except Exception:
-        st.bar_chart(pd.DataFrame({"Landed Rs./t": {r: results[r]["landed"] for r in regions}}))
-    st.caption("Sorted cheapest → priciest. Colour shows distance from domestic parity "
-               "(green = cheaper, amber ≈ parity, red = pricier). Dashed line = domestic benchmark.")
-
-    st.markdown("##### Exchange-rate sensitivity (landed Rs./t)")
+    # --- exchange-rate sensitivity ---
+    theme.section_title("Exchange-rate sensitivity (landed Rs./t)", theme.icon("rupee"))
     fx_rows = []
     for r in regions:
-        row = {"Region": r}
+        row = {"Location": r}
         for fxs in [91.0, 93.0, 95.0]:
             res_fx = compute_landed(st.session_state[f"fob_{r}"], st.session_state[f"freight_{r}"],
                                     st.session_state[f"fta_{r}"], {**g, "fx": fxs})
             row[f"FX {fxs:.0f}"] = f"Rs.{int(res_fx['landed']):,}"
         fx_rows.append(row)
-    st.dataframe(pd.DataFrame(fx_rows).set_index("Region"), width="stretch")
+    st.dataframe(pd.DataFrame(fx_rows).set_index("Location"), width="stretch")
     st.caption(f"Domestic benchmark for reference: Rs.{int(domestic):,}/t.")
 
-    with st.expander("FOB price sources & disclosure"):
-        if feed_ok:
-            st.success(f"Live feed: 'HRC - Copy.csv' loaded - latest assessment dated {feed_as_of}.")
-        else:
-            st.warning("Feed 'HRC - Copy.csv' not found - showing manual fallback values.")
-        src_df = pd.DataFrame([
-            {"Region": r, "FOB $/t": st.session_state[f"fob_{r}"], "Freight $/t": st.session_state[f"freight_{r}"],
-             "Source": fob_data[r]["source"], "As of": fob_data[r]["source_date"]}
-            for r in regions
-        ]).set_index("Region")
-        st.dataframe(src_df, width="stretch")
-
-    st.divider()
-
-    fta_regions = sorted([r for r in regions if st.session_state[f"fta_{r}"]], key=lambda r: results[r]["landed"])
-    non_fta_regions = sorted([r for r in regions if not st.session_state[f"fta_{r}"]], key=lambda r: results[r]["landed"])
-
-    render_group("FTA countries", "BCD waived - sorted cheapest to priciest", fta_regions, results, g, fob_data)
-    st.markdown("&nbsp;", unsafe_allow_html=True)
-    render_group("Non-FTA countries", "Standard duties - sorted cheapest to priciest", non_fta_regions, results, g, fob_data)
-
-    st.divider()
+    # --- PDF snapshot ---
     ordered = sorted(regions, key=lambda r: results[r]["landed"])
     pdf_data = [{
         "Region": r,
@@ -409,7 +477,6 @@ def render():
         "Decision": "IMPORT VIABLE" if results[r]["diff"] < 0 else "NOT VIABLE",
         "Viable": results[r]["diff"] < 0,
     } for r in ordered]
-
     if viable:
         bv = min(viable, key=lambda r: results[r]["landed"])
         summary_line = (f"Summary: {len(viable)} of {len(regions)} sources viable. "
@@ -418,33 +485,13 @@ def render():
         summary_line = (f"Summary: Imports not viable. Domestic Rs.{int(domestic):,}/t beats cheapest import "
                         f"({cheapest} Rs.{int(cl):,}/t) by Rs.{int(cl - domestic):,}/t.")
     best_line = f"Lowest cost source: {cheapest} at Rs.{int(cl):,}/t. Feed as of {feed_as_of if feed_as_of else 'n/a'}."
-
     if st.button("Generate PDF Report", key="imp_pdf"):
         pdf = build_pdf(pdf_data, g, summary_line, best_line)
         unique_name = f"HRC_Snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         st.download_button("Download PDF Report", data=_pdf_bytes(pdf), file_name=unique_name, mime="application/pdf")
 
+    # --- methodology (modular, equation-heavy) + glossary ---
     st.divider()
-    with st.container(border=True):
-        st.subheader("Glossary of Terms")
-        g_col1, g_col2 = st.columns(2)
-        with g_col1:
-            st.write("**FOB:** Free On Board")
-            st.write("**CFR:** Cost and Freight")
-            st.write("**BCD:** Basic Custom Duty")
-        with g_col2:
-            st.write("**TVD:** Total Value for Duty")
-            st.write("**CIF:** Cost, Insurance, and Freight")
-            st.write("**FTA:** Free Trade Agreement")
-
-    with st.expander("Methodology & Logic"):
-        st.markdown(
-            "**Objective** - Determine the landed cost of HRC imports into India per origin and "
-            "compare each against the domestic benchmark to flag viability and the cheapest source.\n\n"
-            "**Data feed** - China/Russia/EU FOB and the domestic Exy-Mumbai benchmark are read from the "
-            "latest row of 'HRC - Copy.csv'. FX and Threshold CIF are user inputs. Middle East and Custom "
-            "origins are entered manually.\n\n"
-            "**CFR** = FOB + Freight. **TVD** = CFR + BCD + Cess (FTA waives BCD + cess). "
-            "Safeguard duty + its cess apply when TVD < Threshold. "
-            "**Landed** = (TVD + Safeguard) x FX + Port & misc. Landed < Domestic => IMPORT VIABLE."
-        )
+    _methodology_infographic()
+    st.write("")
+    _glossary()
