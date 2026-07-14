@@ -12,7 +12,7 @@ import streamlit as st
 import theme
 
 try:
-    from st_aggrid import AgGrid, GridOptionsBuilder, JsCode
+    from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, JsCode
     HAS_AGGRID = True
 except Exception:                       # package missing or incompatible with this Streamlit build
     HAS_AGGRID = False
@@ -55,13 +55,18 @@ def bm_grid(df, key, configure=None, height=560, page_size=52, fit=True):
     gob = GridOptionsBuilder.from_dataframe(df)
     gob.configure_default_column(sortable=True, resizable=True, filter=True,
                                  suppressMovable=True, minWidth=90)
+    # These tables are display-only, so keep sort/filter fully client-side: no data round-trip,
+    # no Streamlit rerun on every click (that was re-mounting the grid = slow + janky animation).
+    gob.configure_grid_options(animateRows=False, suppressColumnMoveAnimation=True,
+                               suppressPropertyNamesCheck=True)
     if page_size:
         gob.configure_pagination(paginationAutoPageSize=False, paginationPageSize=page_size)
     if configure:
         configure(gob, JsCode)
     return AgGrid(df, gridOptions=gob.build(), key=key, height=height, theme="alpine",
                   custom_css=_GRID_CSS, allow_unsafe_jscode=True,
-                  fit_columns_on_grid_load=fit, enable_enterprise_modules=False)
+                  fit_columns_on_grid_load=fit, enable_enterprise_modules=False,
+                  update_mode=GridUpdateMode.NO_UPDATE)
 
 
 # --- shared JS formatters (only built when AgGrid is available; None otherwise) ---
