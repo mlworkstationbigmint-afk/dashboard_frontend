@@ -364,7 +364,7 @@ def _methodology_infographic():
         "<div class='bm-engine-arrow'>&rarr;</div>"
         "<div class='bm-engine-core'>"
         f"<span class='ic'>{theme.icon('calculator', 26)}</span>"
-        "<h4>Landed-cost engine</h4>"
+        "<div style='margin:0 0 6px;font-size:16px;font-weight:700;color:#fff;'>Landed-Cost Engine</div>"
         "<p>CFR &rarr; duty &rarr; safeguard &rarr; FX &rarr; port, applied identically to every source.</p></div>"
         "<div class='bm-engine-arrow'>&rarr;</div>"
         "<div class='bm-engine-col bm-engine-out'><div class='bm-engine-h'>Outputs</div>"
@@ -383,7 +383,7 @@ def _methodology_infographic():
         ("calculator", "Duty",            "Duty + cess (FTA waives).",
          "TVD = CFR + <b>BCD</b> + Cess"),
         ("target",    "Safeguard",        "Only if TVD &lt; threshold.",
-         "SG = (SG + Cess) if TVD &lt; Thr else 0"),
+         "(SG + Cess) if TVD &lt; Thr else 0"),
         ("gauge",     "USD cost",         "TVD + any safeguard.",
          "Cost$ = TVD + <b>SG</b>"),
         ("rupee",     "Rupee landed",     "Convert at FX, add port.",
@@ -487,17 +487,30 @@ def render():
 
     # --- customisable per-location table; edits stay pending until Calculate ---
     _sec("Scenario inputs by location", theme.icon("factory"))
+    ekey = f"imp_locs_{st.session_state.get('imp_locs_ver', 0)}"
+    # data_editor stores in-progress edits under its key ({"edited_rows": {row_i: {col: val}}}), and
+    # updates that BEFORE the edit-triggered rerun — so we can read the FOB the user just typed here
+    # and derive Spot from it live (not just after Calculate).
+    _buf = st.session_state.get(ekey)
+    _edited = _buf.get("edited_rows", {}) if isinstance(_buf, dict) else {}
+
+    def _live_fob(i, r):
+        e = _edited.get(i) or _edited.get(str(i)) or {}
+        try:
+            return float(e.get("FOB $/t", st.session_state[f"fob_{r}"]))
+        except (TypeError, ValueError):
+            return float(st.session_state[f"fob_{r}"])
+
     loc_df = pd.DataFrame({
-        # Spot is derived: FOB ($/t) x FX -> Rs./t (read-only). Uses committed FOB, so it refreshes
-        # on Calculate. FOB is the editable reference (seeded from the feed).
-        "Spot Rs./t": [float(st.session_state[f"fob_{r}"]) * g["fx"] for r in regions],
+        # Spot Rs./t = (user-typed FOB) x FX, read-only. Tracks the FOB cell live; default until edited.
+        "Spot Rs./t": [_live_fob(i, r) * g["fx"] for i, r in enumerate(regions)],
         "FTA": [bool(st.session_state[f"fta_{r}"]) for r in regions],
         "FOB $/t": [float(st.session_state[f"fob_{r}"]) for r in regions],
         "Freight $/t": [float(st.session_state[f"freight_{r}"]) for r in regions],
     }, index=regions)
     loc_df.index.name = "Location"
     loc_edit = st.data_editor(
-        loc_df, key=f"imp_locs_{st.session_state.get('imp_locs_ver', 0)}", width="stretch", hide_index=False,
+        loc_df, key=ekey, width="stretch", hide_index=False,
         column_config={
             "Spot Rs./t": st.column_config.NumberColumn("Spot Rs./t", format="Rs.%.0f", disabled=True,
                         help="Derived: FOB × FX (read-only). Refreshes on Calculate."),
