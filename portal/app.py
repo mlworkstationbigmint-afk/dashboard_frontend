@@ -986,7 +986,7 @@ def page_forecasting():
             gob.configure_column("_fwd", hide=True)
             gob.configure_grid_options(getRowStyle=grid.js_row_bg("_fwd", "rgba(238,78,36,0.06)"))
 
-        grid.bm_grid(tdf, key="fc_tbl", configure=_fc_grid, page_size=52)
+        grid.bm_grid(tdf, key="fc_tbl", configure=_fc_grid, page_size=50)
         st.markdown("<div class='bm-footnote'>Shaded rows = 12-week-ahead forecast (no actuals yet). "
                     "Forecasts rounded to Rs.50; &Delta; = actual &minus; forecast. "
                     "Headline line = Ensemble (Weighted Mean).</div>", unsafe_allow_html=True)
@@ -1510,7 +1510,7 @@ def page_performance():
         gob.configure_column("Delta", headerName="Delta", type=["numericColumn"], valueFormatter=grid.JS_DELTA_PCT)
         gob.configure_column("DeltaPct", hide=True)
 
-    grid.bm_grid(pdf, key="perf_tbl", configure=_perf_grid, page_size=52)
+    grid.bm_grid(pdf, key="perf_tbl", configure=_perf_grid, page_size=50)
     st.markdown("<div class='bm-footnote'>Delta = Forecast &minus; Spot (forecast rounded to Rs.50).</div>",
                 unsafe_allow_html=True)
     theme.footer()

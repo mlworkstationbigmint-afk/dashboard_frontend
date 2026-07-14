@@ -27,22 +27,29 @@ _GRID_CSS = {
     ".ag-header-cell": {"color": "#ffffff !important"},
     ".ag-header-cell-text": {"color": "#ffffff !important", "font-weight": "800 !important",
                              "letter-spacing": ".2px"},
-    ".ag-header-icon, .ag-icon, .ag-header-cell-menu-button": {"color": "#ffffff !important"},
+    # White icons ONLY in the header (sort/filter/menu). Do NOT whiten .ag-icon globally — that made
+    # the pagination arrows white-on-white (invisible). Paging icons keep the theme's dark colour.
+    ".ag-header .ag-icon, .ag-header-cell-menu-button .ag-icon": {"color": "#ffffff !important"},
     ".ag-row": {"font-size": "13.5px", "color": "#334155", "border-color": "#eef2f7 !important"},
     ".ag-row-odd": {"background-color": "#fbfcfe !important"},
     ".ag-row-hover": {"background-color": "#f2f7ff !important"},
     ".ag-paging-panel": {"color": theme.NEUTRAL, "border-top": "1px solid #eef2f7 !important",
                          "font-size": "12.5px"},
+    # pagination nav buttons: accent them so they read as clickable, dim when disabled.
+    ".ag-paging-button": {"cursor": "pointer"},
+    ".ag-paging-button .ag-icon": {"color": f"{theme.PRIMARY} !important"},
+    ".ag-paging-button.ag-disabled .ag-icon": {"color": "#c2ccd9 !important"},
 }
 
 
-def bm_grid(df, key, configure=None, height=560, page_size=52, fit=True):
+def bm_grid(df, key, configure=None, height=560, page_size=50, fit=True):
     """Render `df` as a BigMint-skinned AgGrid.
 
     configure: optional callback(gob, Js) to set column headers / valueFormatters / row styles,
                where `gob` is a GridOptionsBuilder and `Js` is st_aggrid.JsCode. Called only when
                AgGrid is available.
-    page_size: rows per page (falsy → no pagination).
+    page_size: rows per page (falsy → no pagination). Default 50; the page-size dropdown offers
+               10/25/50/100.
     """
     if df is None or len(df) == 0:
         st.info("No rows to display.")
@@ -61,6 +68,8 @@ def bm_grid(df, key, configure=None, height=560, page_size=52, fit=True):
                                suppressPropertyNamesCheck=True)
     if page_size:
         gob.configure_pagination(paginationAutoPageSize=False, paginationPageSize=page_size)
+        # page-size dropdown options (default selection = page_size, which must be in the list)
+        gob.configure_grid_options(paginationPageSizeSelector=[10, 25, 50, 100])
     if configure:
         configure(gob, JsCode)
     return AgGrid(df, gridOptions=gob.build(), key=key, height=height, theme="alpine",
