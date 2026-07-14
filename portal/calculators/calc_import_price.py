@@ -33,6 +33,12 @@ CSV_FOB_COLS = {
 
 CALC_CSS = """
 <style>
+/* Element breathing room: the global theme squeezes the block gap to 0.65rem, which reads as very
+   compact on this dense page. Loosen the gap between stacked elements (injected after theme.py, so
+   it wins). Scoped to the Calculators page since this CSS is only emitted while that page renders. */
+[data-testid="stVerticalBlock"] { gap: 0.9rem !important; }
+/* Column pairs (graph|globals, calculate row) get a touch more horizontal air too. */
+[data-testid="stHorizontalBlock"] { gap: 1.1rem !important; }
 /* Lowest-cost banner -> theme-blue gradient (was flat green) so it reads as the page headline. */
 .kpi-banner { border-radius: 12px; padding: 13px 18px; margin: 2px 0 4px; font-size: 16px; font-weight: 700;
     color: #fff; background: linear-gradient(120deg, var(--bm-primary), var(--bm-primary-dark));
@@ -214,11 +220,6 @@ def _sec(text, icon=""):
     """Prominent section heading (bigger than theme.section_title; accent left bar)."""
     ic = f"{icon} " if icon else ""
     st.markdown(f"<div class='bm-sec'>{ic}{text}</div>", unsafe_allow_html=True)
-
-
-def _space(px=20):
-    """Vertical breathing room between sections."""
-    st.markdown(f"<div style='height:{px}px'></div>", unsafe_allow_html=True)
 
 
 def _results_table(regions, results, domestic):
@@ -447,7 +448,6 @@ def render():
     # --- top: management verdict + lowest-cost banner (filled after compute) ---
     mgmt_ph = st.empty()
     banner_ph = st.empty()
-    _space(24)
 
     # --- graph on top (with a Graphical/Tabular switch), global variables to its side ---
     col_chart, col_vars = st.columns([2.5, 1], gap="large")
@@ -462,11 +462,9 @@ def render():
         g = _read_globals(domestic_default)
     domestic = g["domestic"]
     view = view or VIEW_OPTS[0]                    # deselection falls back to the graph
-    _space(10)
 
     # --- customisable per-location table; edits stay pending until Calculate ---
     st.divider()
-    _space(6)
     _sec("Scenario inputs by location", theme.icon("factory"))
     # Spot = the price fetched from the CSV feed for that origin; blank for origins not in the file.
     def _spot(r):
@@ -546,9 +544,7 @@ def render():
             st.caption(f"Sorted cheapest → priciest vs domestic benchmark Rs.{int(domestic):,}/t.")
 
     # --- exchange-rate sensitivity ---
-    _space(10)
     st.divider()
-    _space(6)
     _sec("Exchange-rate sensitivity (landed Rs./t)", theme.icon("rupee"))
     fx_rows = []
     for r in regions:
@@ -567,7 +563,6 @@ def render():
 
     grid.bm_grid(pd.DataFrame(fx_rows), key="imp_fx", configure=_fx_cfg, page_size=0, height=320)
     st.caption(f"Domestic benchmark for reference: Rs.{int(domestic):,}/t.")
-    _space(22)
 
     # --- PDF snapshot ---
     ordered = sorted(regions, key=lambda r: results[r]["landed"])
@@ -595,9 +590,7 @@ def render():
         st.download_button("Download PDF Report", data=_pdf_bytes(pdf), file_name=unique_name, mime="application/pdf")
 
     # --- methodology (modular, equation-heavy) + glossary ---
-    _space(10)
     st.divider()
-    _space(6)
     _methodology_infographic()
-    _space(26)
+    st.write("")
     _glossary()
