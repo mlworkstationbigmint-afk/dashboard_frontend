@@ -427,9 +427,23 @@ def render():
     fob_data, domestic_default, feed_as_of, feed_ok = fetch_fob_prices()
     regions = list(fob_data.keys())
     for r in regions:
+        st.session_state.setdefault(f"spot_{r}", fob_data[r]["fob"])   # fetched spot (now editable)
         st.session_state.setdefault(f"fob_{r}", fob_data[r]["fob"])
         st.session_state.setdefault(f"freight_{r}", fob_data[r]["freight"])
         st.session_state.setdefault(f"fta_{r}", fob_data[r]["fta_default"])
+
+    # Reset callbacks run BEFORE widgets re-instantiate (on_click), so they can safely pop the
+    # editor-state keys — that's what actually clears the in-cell edits back to the fetched values.
+    def _reset_locs():
+        for r in regions:
+            st.session_state[f"spot_{r}"] = fob_data[r]["fob"]
+            st.session_state[f"fob_{r}"] = fob_data[r]["fob"]
+            st.session_state[f"freight_{r}"] = fob_data[r]["freight"]
+            st.session_state[f"fta_{r}"] = fob_data[r]["fta_default"]
+        st.session_state.pop("imp_locs", None)
+
+    def _reset_gvars():
+        st.session_state.pop("imp_gvars", None)
 
     st.markdown(
         "<div class='bm-calc-head'>"
@@ -458,16 +472,19 @@ def render():
     with col_vars:
         theme.section_title("Global variables", theme.icon("gauge"))
         g = _read_globals(domestic_default)
+        gv_dirty = (g["domestic"] != float(domestic_default) or g["fx"] != 93.0
+                    or g["threshold_cif"] != 675.0 or g["port_inr"] != 2000.0
+                    or g["bcd_pct"] != DEFAULT_BCD_PCT or g["cess_pct"] != DEFAULT_CESS_PCT
+                    or g["sg_pct"] != DEFAULT_SG_PCT or g["sg_cess_pct"] != DEFAULT_SG_CESS_PCT)
+        st.button("↺ Reset variables", key="imp_gv_reset", on_click=_reset_gvars,
+                  disabled=not gv_dirty, help="Reset all global variables to their defaults.")
     domestic = g["domestic"]
     view = view or VIEW_OPTS[0]                    # deselection falls back to the graph
 
     # --- customisable per-location table; edits stay pending until Calculate ---
     _sec("Scenario inputs by location", theme.icon("factory"))
-    # Spot = the price fetched from the CSV feed for that origin; blank for origins not in the file.
-    def _spot(r):
-        return float(fob_data[r]["fob"]) if not str(fob_data[r]["source"]).lower().startswith("manual") else None
     loc_df = pd.DataFrame({
-        "Spot $/t": [_spot(r) for r in regions],
+        "Spot $/t": [float(st.session_state[f"spot_{r}"]) for r in regions],
         "FTA": [bool(st.session_state[f"fta_{r}"]) for r in regions],
         "FOB $/t": [float(st.session_state[f"fob_{r}"]) for r in regions],
         "Freight $/t": [float(st.session_state[f"freight_{r}"]) for r in regions],
@@ -476,8 +493,8 @@ def render():
     loc_edit = st.data_editor(
         loc_df, key="imp_locs", width="stretch", hide_index=False,
         column_config={
-            "Spot $/t": st.column_config.NumberColumn("Spot $/t", format="$%.0f", disabled=True,
-                        help="Origin price fetched from the CSV feed (read-only; blank if not in the file)."),
+            "Spot $/t": st.column_config.NumberColumn("Spot $/t", format="$%.0f", step=5.0,
+                        help="Origin spot price — pre-filled from the CSV feed; editable."),
             "FTA": st.column_config.CheckboxColumn("FTA?", help="Waives BCD + its cess for this origin."),
             "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0),
             "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
@@ -485,17 +502,29 @@ def render():
     )
     # pending = the editor buffer differs from the applied (committed) values -> lights Calculate
     pending = any(
-        float(loc_edit.loc[r, "FOB $/t"]) != float(st.session_state[f"fob_{r}"])
+        float(loc_edit.loc[r, "Spot $/t"]) != float(st.session_state[f"spot_{r}"])
+        or float(loc_edit.loc[r, "FOB $/t"]) != float(st.session_state[f"fob_{r}"])
         or float(loc_edit.loc[r, "Freight $/t"]) != float(st.session_state[f"freight_{r}"])
         or bool(loc_edit.loc[r, "FTA"]) != bool(st.session_state[f"fta_{r}"])
         for r in regions
     )
-    bcol1, bcol2 = st.columns([1, 4])
+    # reset enabled whenever anything (buffer or committed) differs from the fetched defaults
+    dirty = pending or any(
+        float(st.session_state[f"spot_{r}"]) != float(fob_data[r]["fob"])
+        or float(st.session_state[f"fob_{r}"]) != float(fob_data[r]["fob"])
+        or float(st.session_state[f"freight_{r}"]) != float(fob_data[r]["freight"])
+        or bool(st.session_state[f"fta_{r}"]) != bool(fob_data[r]["fta_default"])
+        for r in regions
+    )
+    bcol1, bcol2, bcol3 = st.columns([1, 1, 5])
     calc = bcol1.button("Calculate", key="imp_calc", type="primary", disabled=not pending)
-    bcol2.caption("Edit FOB, freight or FTA, then press **Calculate** to apply. "
-                  "Spot is the feed reference (read-only).")
+    bcol2.button("↺ Reset", key="imp_reset", on_click=_reset_locs, disabled=not dirty,
+                 help="Reset Spot / FOB / Freight / FTA back to the fetched values.")
+    bcol3.caption("Edit Spot, FOB, freight or FTA, then press **Calculate** to apply. "
+                  "Spot is pre-filled from the feed; **Reset** restores the fetched values.")
     if calc:                                       # commit the buffer -> everything recomputes below
         for r in regions:
+            st.session_state[f"spot_{r}"] = float(loc_edit.loc[r, "Spot $/t"])
             st.session_state[f"fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
             st.session_state[f"freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
             st.session_state[f"fta_{r}"] = bool(loc_edit.loc[r, "FTA"])
