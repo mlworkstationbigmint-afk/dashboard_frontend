@@ -128,6 +128,26 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-14 (latest++++++++++) — Landed Cost: heading + Calculate gate + Spot column + graph/table switch
+- **Prominent page heading:** new `.bm-calc-head`/`.bm-calc-title` (30px bold, icon) + subtitle, replacing the
+  small `theme.section_title`. Added local `.bm-sec` prominent section headings (19px, accent left bar) + `_sec()`
+  helper; used for all major sections (graph, scenario inputs, sensitivity, methodology, pipeline, glossary).
+- **"How landed cost is built"** pulled OUT of the `bm-meth-hero` card into its own `_sec` heading (card now holds
+  just the description paragraph).
+- **Calculate button + edit gating:** table edits are now **pending** (buffered in the `imp_locs` editor state) and
+  no longer auto-applied. A primary **Calculate** button sits below the table, **disabled until the buffer differs**
+  from the committed `fob_/freight_/fta_` session_state; clicking commits the buffer and everything recomputes.
+  Globals table stays live (immediate).
+- **Table columns:** removed read-only *Landed Rs./t*; added read-only **Spot $/t** = the price **fetched from the
+  CSV feed** for that origin (`fob_data[r]["fob"]` when its `source` is a feed column, i.e. not `Manual*`; **blank**
+  for origins not in the file — Middle East / Custom). Columns now Location · Spot $/t · FTA? · FOB $/t · Freight $/t.
+- **Graphical/Tabular switch** above the chart — `st.segmented_control` inside a `st.container(key="fc_view_box")`
+  so it reuses theme.py's sliding-pill CSS (widget key `imp_view`). Tabular view = `_results_table()` (Location,
+  FTA, CFR, TVD, Safeguard, Landed, vs Domestic, Decision; cheapest first).
+- **Spacing:** `gap="large"` on the graph/globals row + `st.divider()` between major sections for prominence.
+- File: `calculators/calc_import_price.py` only (+ this changelog). ⚠ *Assumption to confirm:* "spot price" = the
+  feed's latest FOB assessment per origin (read-only reference). Flag if a different spot was meant.
+
 ### 2026-07-14 (latest+++++++++) — Landed Cost: full UI/UX rebuild (engine untouched), theme-aligned
 - **`calculators/calc_import_price.py` `render()` rewritten end-to-end; calculation engine (`compute_landed`,
   `fetch_fob_prices`, feed loader, PDF) unchanged.** New top-to-bottom layout:

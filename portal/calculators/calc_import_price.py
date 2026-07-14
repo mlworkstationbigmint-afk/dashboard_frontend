@@ -46,6 +46,17 @@ CALC_CSS = """
     background: var(--bm-primary-soft); border: 1px solid #dbe7f7; border-radius: 8px;
     padding: 7px 9px; line-height: 1.45; width: 100%; box-sizing: border-box; }
 .bm-eq b { color: var(--bm-accent); }
+/* prominent page heading (bigger + more visible than the shared .bm-h). */
+.bm-calc-head { margin: 4px 0 14px; padding: 0 0 13px; border-bottom: 2px solid var(--bm-primary-soft); }
+.bm-calc-title { display: flex; align-items: center; gap: 13px; font-size: 30px; font-weight: 800;
+    color: var(--bm-primary-dark); line-height: 1.15; letter-spacing: .2px; }
+.bm-calc-title svg { color: var(--bm-primary); flex: 0 0 auto; }
+.bm-calc-sub { margin: 7px 0 0 1px; color: #64748b; font-size: 14px; font-weight: 500; }
+/* prominent section heading (bigger than .bm-h, accent left bar) — used across this calculator. */
+.bm-sec { display: flex; align-items: center; gap: 10px; font-size: 19px; font-weight: 700;
+    color: var(--bm-primary-dark); margin: 8px 0 12px; padding-left: 12px;
+    border-left: 4px solid var(--bm-accent); }
+.bm-sec svg { color: var(--bm-primary); flex: 0 0 auto; }
 </style>
 """
 
@@ -195,6 +206,31 @@ def build_pdf(pdf_rows, g, summary_line, best_line):
     return pdf
 
 
+VIEW_OPTS = ["Graphical view", "Tabular view"]
+
+
+def _sec(text, icon=""):
+    """Prominent section heading (bigger than theme.section_title; accent left bar)."""
+    ic = f"{icon} " if icon else ""
+    st.markdown(f"<div class='bm-sec'>{ic}{text}</div>", unsafe_allow_html=True)
+
+
+def _results_table(regions, results, domestic):
+    """Tabular twin of the landed-cost chart (cheapest first)."""
+    ordered = sorted(regions, key=lambda r: results[r]["landed"])
+    rows = [{
+        "Location": r,
+        "FTA": "Yes" if results[r]["is_fta"] else "No",
+        "CFR $/t": f"${results[r]['cfr']:,.0f}",
+        "TVD $/t": f"${results[r]['tvd']:,.0f}",
+        "Safeguard": "Applied" if results[r]["sg_applied"] else "—",
+        "Landed Rs./t": f"Rs.{int(results[r]['landed']):,}",
+        "vs Domestic": f"{'-' if results[r]['diff'] < 0 else '+'}Rs.{abs(int(results[r]['diff'])):,}",
+        "Decision": "IMPORT VIABLE" if results[r]["diff"] < 0 else "NOT VIABLE",
+    } for r in ordered]
+    st.dataframe(pd.DataFrame(rows).set_index("Location"), width="stretch")
+
+
 # -----------------------------------------------------------------------------
 # Global-variable side table  (small editable Value column beside the graph)
 # -----------------------------------------------------------------------------
@@ -276,13 +312,13 @@ def _landed_figure(regions, results, domestic):
 
 def _methodology_infographic():
     """Modular, equation-heavy methodology block built from theme infographic CSS."""
+    _sec("How landed cost is built", theme.icon("notes"))
     st.markdown(
         "<div class='bm-meth-hero'>"
-        "<h3>How landed cost is built</h3>"
         "<p>Every origin is walked through the <b>same customs pipeline</b> &mdash; from the quoted "
         "FOB price to the final rupee cost at an Indian port &mdash; then measured against the "
-        "domestic benchmark. Change any global variable or per-location input and the whole chain "
-        "re-solves live.</p></div>",
+        "domestic benchmark. Change any global variable or per-location input, press "
+        "<b>Calculate</b>, and the whole chain re-solves.</p></div>",
         unsafe_allow_html=True,
     )
 
@@ -314,7 +350,7 @@ def _methodology_infographic():
     st.markdown(engine, unsafe_allow_html=True)
 
     st.write("")
-    theme.section_title("The equation pipeline", theme.icon("notes"))
+    _sec("The equation pipeline", theme.icon("notes"))
     steps = [
         ("factory",   "Cost &amp; Freight", "Origin quote plus ocean freight.",
          "CFR = FOB + Freight"),
@@ -345,7 +381,7 @@ def _methodology_infographic():
 
 
 def _glossary():
-    theme.section_title("Glossary of terms", theme.icon("notes"))
+    _sec("Glossary of terms", theme.icon("notes"))
     terms = [
         ("FOB", "Free On Board", "Price of goods loaded at the origin port, before freight."),
         ("CFR", "Cost &amp; Freight", "FOB plus ocean freight to the destination port."),
@@ -372,8 +408,13 @@ def render():
         st.session_state.setdefault(f"freight_{r}", fob_data[r]["freight"])
         st.session_state.setdefault(f"fta_{r}", fob_data[r]["fta_default"])
 
-    theme.section_title("India · Import Price Scenario Simulation — Hot-Rolled Coil",
-                        theme.icon("calculator"))
+    st.markdown(
+        "<div class='bm-calc-head'>"
+        f"<div class='bm-calc-title'>{theme.icon('calculator', 30)} Import Price Scenario Simulation</div>"
+        "<div class='bm-calc-sub'>Hot-Rolled Coil &middot; landed-cost parity vs the domestic benchmark</div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
     feed_note = (f"Live feed · HRC - Copy.csv · latest assessment {feed_as_of}"
                  if feed_ok else "Feed HRC - Copy.csv not found · manual fallback values in use")
     st.caption(f"{HRC_FULL_NAME}  ·  {feed_note}")
@@ -381,39 +422,61 @@ def render():
     # --- top: management verdict + lowest-cost banner (filled after compute) ---
     mgmt_ph = st.empty()
     banner_ph = st.empty()
+    st.write("")
 
-    # --- graph on top, global variables as a small table to its side ---
-    col_chart, col_vars = st.columns([2.5, 1])
-    chart_ph = col_chart.empty()
+    # --- graph on top (with a Graphical/Tabular switch), global variables to its side ---
+    col_chart, col_vars = st.columns([2.5, 1], gap="large")
+    with col_chart:
+        _sec("Landed cost by country vs domestic benchmark", theme.icon("trending"))
+        with st.container(key="fc_view_box"):     # reuses theme.py's sliding-pill switch CSS
+            view = st.segmented_control("View", VIEW_OPTS, default=VIEW_OPTS[0],
+                                        key="imp_view", label_visibility="collapsed")
+        chart_ph = st.empty()
     with col_vars:
         theme.section_title("Global variables", theme.icon("gauge"))
         g = _read_globals(domestic_default)
     domestic = g["domestic"]
+    view = view or VIEW_OPTS[0]                    # deselection falls back to the graph
 
-    # --- customisable per-location table (drives everything above) ---
-    theme.section_title("Scenario inputs by location", theme.icon("factory"))
+    # --- customisable per-location table; edits stay pending until Calculate ---
+    st.divider()
+    _sec("Scenario inputs by location", theme.icon("factory"))
+    # Spot = the price fetched from the CSV feed for that origin; blank for origins not in the file.
+    def _spot(r):
+        return float(fob_data[r]["fob"]) if not str(fob_data[r]["source"]).lower().startswith("manual") else None
     loc_df = pd.DataFrame({
+        "Spot $/t": [_spot(r) for r in regions],
         "FTA": [bool(st.session_state[f"fta_{r}"]) for r in regions],
         "FOB $/t": [float(st.session_state[f"fob_{r}"]) for r in regions],
         "Freight $/t": [float(st.session_state[f"freight_{r}"]) for r in regions],
-        "Landed Rs./t": [compute_landed(st.session_state[f"fob_{r}"], st.session_state[f"freight_{r}"],
-                                        st.session_state[f"fta_{r}"], g)["landed"] for r in regions],
     }, index=regions)
     loc_df.index.name = "Location"
     loc_edit = st.data_editor(
         loc_df, key="imp_locs", width="stretch", hide_index=False,
         column_config={
+            "Spot $/t": st.column_config.NumberColumn("Spot $/t", format="$%.0f", disabled=True,
+                        help="Origin price fetched from the CSV feed (read-only; blank if not in the file)."),
             "FTA": st.column_config.CheckboxColumn("FTA?", help="Waives BCD + its cess for this origin."),
             "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0),
             "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
-            "Landed Rs./t": st.column_config.NumberColumn("Landed Rs./t", format="Rs.%.0f", disabled=True),
         },
     )
-    for r in regions:
-        st.session_state[f"fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
-        st.session_state[f"freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
-        st.session_state[f"fta_{r}"] = bool(loc_edit.loc[r, "FTA"])
-    st.caption("Edit FOB, freight or FTA — the graph, verdict and sensitivity above recompute live.")
+    # pending = the editor buffer differs from the applied (committed) values -> lights Calculate
+    pending = any(
+        float(loc_edit.loc[r, "FOB $/t"]) != float(st.session_state[f"fob_{r}"])
+        or float(loc_edit.loc[r, "Freight $/t"]) != float(st.session_state[f"freight_{r}"])
+        or bool(loc_edit.loc[r, "FTA"]) != bool(st.session_state[f"fta_{r}"])
+        for r in regions
+    )
+    bcol1, bcol2 = st.columns([1, 4])
+    calc = bcol1.button("Calculate", key="imp_calc", type="primary", disabled=not pending)
+    bcol2.caption("Edit FOB, freight or FTA, then press **Calculate** to apply. "
+                  "Spot is the feed reference (read-only).")
+    if calc:                                       # commit the buffer -> everything recomputes below
+        for r in regions:
+            st.session_state[f"fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
+            st.session_state[f"freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
+            st.session_state[f"fta_{r}"] = bool(loc_edit.loc[r, "FTA"])
 
     # --- compute with the committed inputs ---
     results = {
@@ -443,17 +506,21 @@ def render():
     )
 
     with chart_ph.container():
-        theme.section_title("Landed cost by country vs domestic benchmark", theme.icon("trending"))
-        try:
-            st.plotly_chart(_landed_figure(regions, results, domestic),
-                            width="stretch", config={"displayModeBar": False})
-        except Exception:
-            st.bar_chart(pd.DataFrame({"Landed Rs./t": {r: results[r]["landed"] for r in regions}}))
-        st.caption("Sorted cheapest → priciest. Colour shows distance from domestic parity "
-                   "(green = cheaper, amber ≈ parity, red = pricier). Dashed line = domestic benchmark.")
+        if view == VIEW_OPTS[0]:                   # Graphical
+            try:
+                st.plotly_chart(_landed_figure(regions, results, domestic),
+                                width="stretch", config={"displayModeBar": False})
+            except Exception:
+                st.bar_chart(pd.DataFrame({"Landed Rs./t": {r: results[r]["landed"] for r in regions}}))
+            st.caption("Sorted cheapest → priciest. Colour shows distance from domestic parity "
+                       "(green = cheaper, amber ≈ parity, red = pricier). Dashed line = domestic benchmark.")
+        else:                                      # Tabular
+            _results_table(regions, results, domestic)
+            st.caption(f"Sorted cheapest → priciest vs domestic benchmark Rs.{int(domestic):,}/t.")
 
     # --- exchange-rate sensitivity ---
-    theme.section_title("Exchange-rate sensitivity (landed Rs./t)", theme.icon("rupee"))
+    st.divider()
+    _sec("Exchange-rate sensitivity (landed Rs./t)", theme.icon("rupee"))
     fx_rows = []
     for r in regions:
         row = {"Location": r}
