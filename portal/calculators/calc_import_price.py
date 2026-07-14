@@ -427,8 +427,7 @@ def render():
     fob_data, domestic_default, feed_as_of, feed_ok = fetch_fob_prices()
     regions = list(fob_data.keys())
     for r in regions:
-        st.session_state.setdefault(f"spot_{r}", fob_data[r]["fob"])   # fetched spot (now editable)
-        st.session_state.setdefault(f"fob_{r}", fob_data[r]["fob"])
+        st.session_state.setdefault(f"fob_{r}", fob_data[r]["fob"])   # editable reference (seeded from feed)
         st.session_state.setdefault(f"freight_{r}", fob_data[r]["freight"])
         st.session_state.setdefault(f"fta_{r}", fob_data[r]["fta_default"])
 
@@ -436,7 +435,6 @@ def render():
     # editor-state keys — that's what actually clears the in-cell edits back to the fetched values.
     def _reset_locs():
         for r in regions:
-            st.session_state[f"spot_{r}"] = fob_data[r]["fob"]
             st.session_state[f"fob_{r}"] = fob_data[r]["fob"]
             st.session_state[f"freight_{r}"] = fob_data[r]["freight"]
             st.session_state[f"fta_{r}"] = fob_data[r]["fta_default"]
@@ -484,7 +482,9 @@ def render():
     # --- customisable per-location table; edits stay pending until Calculate ---
     _sec("Scenario inputs by location", theme.icon("factory"))
     loc_df = pd.DataFrame({
-        "Spot $/t": [float(st.session_state[f"spot_{r}"]) for r in regions],
+        # Spot is derived: FOB ($/t) x FX -> Rs./t (read-only). Uses committed FOB, so it refreshes
+        # on Calculate. FOB is the editable reference (seeded from the feed).
+        "Spot Rs./t": [float(st.session_state[f"fob_{r}"]) * g["fx"] for r in regions],
         "FTA": [bool(st.session_state[f"fta_{r}"]) for r in regions],
         "FOB $/t": [float(st.session_state[f"fob_{r}"]) for r in regions],
         "Freight $/t": [float(st.session_state[f"freight_{r}"]) for r in regions],
@@ -493,25 +493,25 @@ def render():
     loc_edit = st.data_editor(
         loc_df, key="imp_locs", width="stretch", hide_index=False,
         column_config={
-            "Spot $/t": st.column_config.NumberColumn("Spot $/t", format="$%.0f", step=5.0,
-                        help="Origin spot price — pre-filled from the CSV feed; editable."),
+            "Spot Rs./t": st.column_config.NumberColumn("Spot Rs./t", format="Rs.%.0f", disabled=True,
+                        help="Derived: FOB × FX (read-only). Refreshes on Calculate."),
             "FTA": st.column_config.CheckboxColumn("FTA?", help="Waives BCD + its cess for this origin."),
-            "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0),
+            "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0,
+                        help="Origin reference price — pre-filled from the CSV feed; editable."),
             "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
         },
     )
     # pending = the editor buffer differs from the applied (committed) values -> lights Calculate
+    # (Spot is derived/read-only, so it isn't part of the diff.)
     pending = any(
-        float(loc_edit.loc[r, "Spot $/t"]) != float(st.session_state[f"spot_{r}"])
-        or float(loc_edit.loc[r, "FOB $/t"]) != float(st.session_state[f"fob_{r}"])
+        float(loc_edit.loc[r, "FOB $/t"]) != float(st.session_state[f"fob_{r}"])
         or float(loc_edit.loc[r, "Freight $/t"]) != float(st.session_state[f"freight_{r}"])
         or bool(loc_edit.loc[r, "FTA"]) != bool(st.session_state[f"fta_{r}"])
         for r in regions
     )
     # reset enabled whenever anything (buffer or committed) differs from the fetched defaults
     dirty = pending or any(
-        float(st.session_state[f"spot_{r}"]) != float(fob_data[r]["fob"])
-        or float(st.session_state[f"fob_{r}"]) != float(fob_data[r]["fob"])
+        float(st.session_state[f"fob_{r}"]) != float(fob_data[r]["fob"])
         or float(st.session_state[f"freight_{r}"]) != float(fob_data[r]["freight"])
         or bool(st.session_state[f"fta_{r}"]) != bool(fob_data[r]["fta_default"])
         for r in regions
@@ -519,12 +519,11 @@ def render():
     bcol1, bcol2, bcol3 = st.columns([1, 1, 5])
     calc = bcol1.button("Calculate", key="imp_calc", type="primary", disabled=not pending)
     bcol2.button("↺ Reset", key="imp_reset", on_click=_reset_locs, disabled=not dirty,
-                 help="Reset Spot / FOB / Freight / FTA back to the fetched values.")
-    bcol3.caption("Edit Spot, FOB, freight or FTA, then press **Calculate** to apply. "
-                  "Spot is pre-filled from the feed; **Reset** restores the fetched values.")
+                 help="Reset FOB / Freight / FTA back to the fetched values.")
+    bcol3.caption("Edit FOB, freight or FTA, then press **Calculate** to apply. "
+                  "Spot Rs./t = FOB × FX (read-only); **Reset** restores the fetched values.")
     if calc:                                       # commit the buffer -> everything recomputes below
         for r in regions:
-            st.session_state[f"spot_{r}"] = float(loc_edit.loc[r, "Spot $/t"])
             st.session_state[f"fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
             st.session_state[f"freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
             st.session_state[f"fta_{r}"] = bool(loc_edit.loc[r, "FTA"])
