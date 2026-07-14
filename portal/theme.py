@@ -393,8 +393,8 @@ div[class*="st-key-callcard"] .stDownloadButton button:disabled {{ opacity:.5; }
 /* ---------- tables ---------- */
 .bm-table {{ width:100%; border-collapse:collapse; font-size:13.5px; background:#fff;
     border:1px solid #e8edf3; border-radius:12px; overflow:hidden; }}
-.bm-table thead th {{ background:var(--bm-primary-soft); color:var(--bm-primary-dark); font-weight:600;
-    padding:10px 12px; text-align:left; }}
+.bm-table thead th {{ background:var(--bm-primary); color:#fff; font-weight:800;
+    padding:11px 12px; text-align:left; letter-spacing:.2px; }}
 .bm-table tbody td {{ padding:9px 12px; border-top:1px solid #eef2f7; color:#334155; }}
 .bm-table tbody tr:hover {{ background:#f7faff; }}
 /* forecast (future) rows in the continuous forecasting table -> faint orange band (matches chart) */
@@ -676,7 +676,28 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
 .bm-link-btn a:hover {{ filter:brightness(.95); }}
 .bm-footnote {{ color:{NEUTRAL}; font-size:12px; margin-top:8px; }}
 /* sortable/paginated table meta line ("Rows 1-52 of 90 · Page 1/2") */
-.bm-tbl-meta {{ color:{NEUTRAL}; font-size:12.5px; text-align:center; }}
+.bm-tbl-meta {{ color:{NEUTRAL}; font-size:13px; font-weight:600; text-align:center; }}
+/* table pager Prev/Next buttons (render_sortable_table) -> pill, white->orange on hover, muted when
+   disabled. Keyed on the widget-key class (…_prev / …_next) Streamlit stamps on the button wrapper. */
+div[class*="st-key-"][class*="_prev"] button,
+div[class*="st-key-"][class*="_next"] button {{
+    border-radius:999px !important; font-weight:700 !important; border:1px solid var(--bm-primary) !important;
+    color:var(--bm-primary) !important; background:#fff !important;
+    box-shadow:0 1px 3px rgba(2,76,161,.12) !important; transition:all .15s ease !important;
+}}
+div[class*="st-key-"][class*="_prev"] button:hover:not(:disabled),
+div[class*="st-key-"][class*="_next"] button:hover:not(:disabled) {{
+    background:var(--bm-accent) !important; border-color:var(--bm-accent) !important; color:#fff !important;
+    box-shadow:0 4px 12px rgba(238,78,36,.25) !important; transform:translateY(-1px);
+}}
+div[class*="st-key-"][class*="_prev"] button:hover:not(:disabled) [data-testid="stIconMaterial"],
+div[class*="st-key-"][class*="_next"] button:hover:not(:disabled) [data-testid="stIconMaterial"],
+div[class*="st-key-"][class*="_prev"] button:hover:not(:disabled) p,
+div[class*="st-key-"][class*="_next"] button:hover:not(:disabled) p {{ color:#fff !important; }}
+div[class*="st-key-"][class*="_prev"] button:disabled,
+div[class*="st-key-"][class*="_next"] button:disabled {{
+    border-color:#e2e8f0 !important; color:#b6c0cf !important; box-shadow:none !important; opacity:1 !important;
+}}
 .bm-footer {{ margin-top:26px; padding-top:14px; border-top:1px solid #e2e8f0; color:{NEUTRAL};
     font-size:12px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }}
 .bm-footer a {{ color:var(--bm-primary); text-decoration:none; }}

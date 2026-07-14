@@ -845,83 +845,55 @@ def _loc_label(group, name):
 
 def render_sortable_table(df, columns, key, rows_per_page=52, row_class=None,
                           table_class="bm-table", footnote=""):
-    """Render a DataFrame as a styled HTML table with **whole-dataset** column sorting + pagination.
+    """Render a DataFrame as a styled HTML table (blue header) with Prev/Next pagination.
 
     columns: list of dicts, each: {
-        "field":    df column name,
-        "label":    header text,
-        "align":    "l" | "r" | "c"  (default "l"),
-        "fmt":      callable(value, row_series) -> cell HTML,
-        "sortable": bool (default True; non-sortable cols aren't offered in the sort picker),
-        "sort_by":  optional df column to sort on instead of `field`,
+        "field": df column name, "label": header text,
+        "align": "l" | "r" | "c" (default "l"), "fmt": callable(value, row_series) -> cell HTML,
     }
+    (Legacy "sortable"/"sort_by" keys are accepted and ignored — sorting UI was removed.)
     key: unique prefix for widgets/session_state.
     row_class: optional callable(row_series) -> str applied to the <tr>.
 
-    Sorting is applied to the ENTIRE frame first, THEN the current page is sliced — so descending
-    really does surface the last rows on page 1. Each page holds `rows_per_page` rows (52 = 1 year).
+    Rows render in the DataFrame's given order; each page holds `rows_per_page` rows (52 = 1 year).
     """
     if df is None or len(df) == 0:
         st.info("No rows to display.")
         return
 
-    sortable = [c for c in columns if c.get("sortable", True)]
-    labels = [c["label"] for c in sortable]
-    desc_key, page_key, sig_key = f"{key}_desc", f"{key}_page", f"{key}_sig"
-    st.session_state.setdefault(desc_key, False)
+    page_key = f"{key}_page"
     st.session_state.setdefault(page_key, 0)
-
-    # ---- controls: sort-by | flip | meta | prev | next ----
-    c1, c2, c3, c4, c5 = st.columns([2.4, 0.7, 3, 1.3, 1.3], vertical_alignment="center")
-    with c1:
-        sort_label = st.selectbox("Sort by", labels, key=f"{key}_sortcol", label_visibility="collapsed")
-    with c2:
-        if st.button(":material/swap_vert:", key=f"{key}_flip",
-                     help="Flip ascending / descending", width="stretch"):
-            st.session_state[desc_key] = not st.session_state[desc_key]
-    desc = st.session_state[desc_key]
-
-    # a change of sort column OR direction jumps back to page 1 (so a flip shows the new first rows)
-    if st.session_state.get(sig_key) != (sort_label, desc):
-        st.session_state[sig_key] = (sort_label, desc)
-        st.session_state[page_key] = 0
 
     total = len(df)
     n_pages = max(1, (total + rows_per_page - 1) // rows_per_page)
     # Clamp any stale page (e.g. after the row count shrank) BEFORE rendering, and persist it.
     # Prev/Next mutate the page via on_click CALLBACKS, which run at the start of the next rerun —
     # before this code — so `cur` is already up to date and the disabled states + the sliced page
-    # always agree with the buttons in the SAME render (fixes: Prev active on page 1 / Next active on
-    # the last page, and clicks that appeared to do nothing).
+    # always agree with the buttons in the SAME render.
     cur = min(max(int(st.session_state.get(page_key, 0)), 0), n_pages - 1)
     st.session_state[page_key] = cur
 
     def _bump(delta, npages=n_pages):
         st.session_state[page_key] = min(max(st.session_state.get(page_key, 0) + delta, 0), npages - 1)
 
-    with c4:
+    # ---- pager: Prev · meta · Next ----
+    p1, p2, p3 = st.columns([1.3, 4, 1.3], vertical_alignment="center")
+    with p1:
         st.button(":material/chevron_left: Prev", key=f"{key}_prev", disabled=cur <= 0,
                   width="stretch", on_click=_bump, args=(-1,))
-    with c5:
+    with p3:
         st.button("Next :material/chevron_right:", key=f"{key}_next", disabled=cur >= n_pages - 1,
                   width="stretch", on_click=_bump, args=(1,))
-    page = cur
-    with c3:
-        lo, hi = page * rows_per_page + 1, min((page + 1) * rows_per_page, total)
+    with p2:
+        lo, hi = cur * rows_per_page + 1, min((cur + 1) * rows_per_page, total)
         st.markdown(f"<div class='bm-tbl-meta'>Rows <b>{lo}&ndash;{hi}</b> of {total} "
-                    f"&middot; Page {page + 1}/{n_pages}</div>", unsafe_allow_html=True)
+                    f"&middot; Page {cur + 1}/{n_pages}</div>", unsafe_allow_html=True)
 
-    # ---- sort the WHOLE frame, then slice the page ----
-    sel = next((c for c in sortable if c["label"] == sort_label), sortable[0])
-    df_sorted = df.sort_values(by=sel.get("sort_by", sel["field"]), ascending=not desc,
-                               kind="stable", na_position="last")
-    page_df = df_sorted.iloc[page * rows_per_page:(page + 1) * rows_per_page]
+    page_df = df.iloc[cur * rows_per_page:(cur + 1) * rows_per_page]
 
     # ---- build HTML ----
     acls = {"l": "", "r": "bm-r", "c": "bm-c"}
-    arrow = " &#9660;" if desc else " &#9650;"           # ▼ / ▲ on the active column
-    thead = "".join(f"<th class='{acls.get(c.get('align', 'l'), '')}'>{c['label']}"
-                    f"{arrow if c is sel else ''}</th>" for c in columns)
+    thead = "".join(f"<th class='{acls.get(c.get('align', 'l'), '')}'>{c['label']}</th>" for c in columns)
     body = ""
     for _, r in page_df.iterrows():
         rc = f" class='{row_class(r)}'" if row_class else ""
@@ -1082,8 +1054,8 @@ def page_forecasting():
             row_class=lambda r: "bm-fc-row" if r.get("_fwd") else "",
             table_class="bm-table bm-table-lg",
             footnote=("Shaded rows = 12-week-ahead forecast (no actuals yet). Forecasts rounded to "
-                      "Rs.50; &Delta; = actual &minus; forecast. Sort any column; the sort applies to the "
-                      "whole dataset before paging (52 rows/page). Headline line = Ensemble (Weighted Mean)."))
+                      "Rs.50; &Delta; = actual &minus; forecast. 52 rows/page. "
+                      "Headline line = Ensemble (Weighted Mean)."))
 
     def render_rationale():
         # Full-width Forecast-rationale section (non-grouped + grouped Tabular views).
@@ -1608,8 +1580,7 @@ def page_performance():
          if pd.notna(v) else ""},
     ]
     render_sortable_table(pdf, columns, key="perf_tbl", rows_per_page=52,
-                          footnote="Delta = Forecast &minus; Spot (forecast rounded to Rs.50). "
-                                   "Sort applies to the whole dataset before paging (52 rows/page).")
+                          footnote="Delta = Forecast &minus; Spot (forecast rounded to Rs.50). 52 rows/page.")
     theme.footer()
 
 

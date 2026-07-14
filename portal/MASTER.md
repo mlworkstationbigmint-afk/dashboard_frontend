@@ -128,6 +128,22 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-14 (latest+++++++++++) — Tables: blue header, no sort UI, nicer pager (forecasting + performance)
+- **`render_sortable_table` (app.py) simplified — affects BOTH the forecasting *Actual vs forecast* table and the
+  performance *Week-wise detail* table.** Removed the **"Sort by" dropdown** + the **↕ flip button** (and all the
+  `_sortcol`/`_flip`/`_desc`/`_sig` state + whole-frame sort + active-column ▲/▼ arrows). Rows now render in the
+  DataFrame's given order (both frames are already chronological, so the default view is unchanged). Legacy
+  `sortable`/`sort_by` column-dict keys are accepted-and-ignored, so callers didn't change.
+- **Pager relaid out** to `Prev · meta · Next` (`[1.3, 4, 1.3]`), meta centred.
+- **`theme.py`:** `.bm-table thead th` now **blue-filled (`--bm-primary`) with white text, font-weight 800** (was
+  pale `--bm-primary-soft` + dark text @600) — applies to every `.bm-table` (incl. `.bm-table-lg`). Added
+  **Prev/Next pager button** styling (pill, blue outline → orange fill on hover, muted when disabled), keyed on the
+  `st-key-…_prev` / `…_next` wrapper classes. Bumped `.bm-tbl-meta` to 13px/600.
+- Footnotes on both tables updated (dropped the "sort any column…" wording).
+- ⚠ *Scope note:* native `st.dataframe` grids (Landed Cost tabular/sensitivity, the data_editors) can't take the
+  blue header via CSS — only the custom `.bm-table` component was restyled. Say if those should be converted too.
+- Files: `app.py`, `theme.py` (+ changelog).
+
 ### 2026-07-14 (latest++++++++++) — Landed Cost: heading + Calculate gate + Spot column + graph/table switch
 - **Prominent page heading:** new `.bm-calc-head`/`.bm-calc-title` (30px bold, icon) + subtitle, replacing the
   small `theme.section_title`. Added local `.bm-sec` prominent section headings (19px, accent left bar) + `_sec()`
