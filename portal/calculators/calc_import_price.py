@@ -10,6 +10,7 @@ from fpdf import FPDF
 from datetime import datetime
 
 import theme   # shared brand palette + infographic CSS/helpers (same as the rest of the portal)
+import grid    # BigMint-themed AgGrid (blue header, sort/filter); falls back to st.dataframe
 
 HRC_FULL_NAME = "HRC, Exy-Mumbai, India, 2.5-8mm / CTL, IS2062, Gr E250 Br."
 
@@ -216,19 +217,37 @@ def _sec(text, icon=""):
 
 
 def _results_table(regions, results, domestic):
-    """Tabular twin of the landed-cost chart (cheapest first)."""
+    """Tabular twin of the landed-cost chart (cheapest first) — themed AgGrid."""
     ordered = sorted(regions, key=lambda r: results[r]["landed"])
-    rows = [{
+    df = pd.DataFrame([{
         "Location": r,
         "FTA": "Yes" if results[r]["is_fta"] else "No",
-        "CFR $/t": f"${results[r]['cfr']:,.0f}",
-        "TVD $/t": f"${results[r]['tvd']:,.0f}",
+        "CFR": results[r]["cfr"],
+        "TVD": results[r]["tvd"],
         "Safeguard": "Applied" if results[r]["sg_applied"] else "—",
-        "Landed Rs./t": f"Rs.{int(results[r]['landed']):,}",
-        "vs Domestic": f"{'-' if results[r]['diff'] < 0 else '+'}Rs.{abs(int(results[r]['diff'])):,}",
+        "Landed": results[r]["landed"],
+        "vsDomestic": results[r]["diff"],
         "Decision": "IMPORT VIABLE" if results[r]["diff"] < 0 else "NOT VIABLE",
-    } for r in ordered]
-    st.dataframe(pd.DataFrame(rows).set_index("Location"), width="stretch")
+    } for r in ordered])
+
+    def _cfg(gob, Js):
+        usd = Js("function(p){return (p.value==null||isNaN(p.value))?''"
+                 ":'$'+Math.round(p.value).toLocaleString('en-US');}")
+        vsd = Js("function(p){if(p.value==null||isNaN(p.value))return '';var v=Math.round(p.value);"
+                 "return (v<0?'-':'+')+'Rs.'+Math.abs(v).toLocaleString('en-IN');}")
+        dec = Js("function(p){var v=(p.value||'').toString();"
+                 "return {color:v.indexOf('NOT')>=0?'#D8382B':'#1F9D55','font-weight':'700'};}")
+        gob.configure_column("Location", width=130)
+        gob.configure_column("FTA", width=80)
+        gob.configure_column("CFR", headerName="CFR $/t", type=["numericColumn"], valueFormatter=usd)
+        gob.configure_column("TVD", headerName="TVD $/t", type=["numericColumn"], valueFormatter=usd)
+        gob.configure_column("Safeguard", width=110)
+        gob.configure_column("Landed", headerName="Landed Rs./t", type=["numericColumn"], valueFormatter=grid.JS_MONEY)
+        gob.configure_column("vsDomestic", headerName="vs Domestic", type=["numericColumn"], valueFormatter=vsd)
+        gob.configure_column("Decision", cellStyle=dec, width=150)
+        gob.configure_grid_options(domLayout="autoHeight")
+
+    grid.bm_grid(df, key="imp_results", configure=_cfg, page_size=0, height=320)
 
 
 # -----------------------------------------------------------------------------
@@ -527,9 +546,16 @@ def render():
         for fxs in [91.0, 93.0, 95.0]:
             res_fx = compute_landed(st.session_state[f"fob_{r}"], st.session_state[f"freight_{r}"],
                                     st.session_state[f"fta_{r}"], {**g, "fx": fxs})
-            row[f"FX {fxs:.0f}"] = f"Rs.{int(res_fx['landed']):,}"
+            row[f"FX {fxs:.0f}"] = res_fx["landed"]
         fx_rows.append(row)
-    st.dataframe(pd.DataFrame(fx_rows).set_index("Location"), width="stretch")
+
+    def _fx_cfg(gob, Js):
+        gob.configure_column("Location", width=130)
+        for fxs in (91, 93, 95):
+            gob.configure_column(f"FX {fxs}", type=["numericColumn"], valueFormatter=grid.JS_MONEY)
+        gob.configure_grid_options(domLayout="autoHeight")
+
+    grid.bm_grid(pd.DataFrame(fx_rows), key="imp_fx", configure=_fx_cfg, page_size=0, height=320)
     st.caption(f"Domestic benchmark for reference: Rs.{int(domestic):,}/t.")
 
     # --- PDF snapshot ---

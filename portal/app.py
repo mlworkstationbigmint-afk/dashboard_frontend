@@ -19,6 +19,7 @@ import extra_streamlit_components as stx
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import theme
+import grid
 import auth
 import db
 import data_loader as dl
@@ -843,69 +844,6 @@ def _loc_label(group, name):
     return FORECAST_LOCATION_LABELS.get(name, _location_label(group, name))
 
 
-def render_sortable_table(df, columns, key, rows_per_page=52, row_class=None,
-                          table_class="bm-table", footnote=""):
-    """Render a DataFrame as a styled HTML table (blue header) with Prev/Next pagination.
-
-    columns: list of dicts, each: {
-        "field": df column name, "label": header text,
-        "align": "l" | "r" | "c" (default "l"), "fmt": callable(value, row_series) -> cell HTML,
-    }
-    (Legacy "sortable"/"sort_by" keys are accepted and ignored — sorting UI was removed.)
-    key: unique prefix for widgets/session_state.
-    row_class: optional callable(row_series) -> str applied to the <tr>.
-
-    Rows render in the DataFrame's given order; each page holds `rows_per_page` rows (52 = 1 year).
-    """
-    if df is None or len(df) == 0:
-        st.info("No rows to display.")
-        return
-
-    page_key = f"{key}_page"
-    st.session_state.setdefault(page_key, 0)
-
-    total = len(df)
-    n_pages = max(1, (total + rows_per_page - 1) // rows_per_page)
-    # Clamp any stale page (e.g. after the row count shrank) BEFORE rendering, and persist it.
-    # Prev/Next mutate the page via on_click CALLBACKS, which run at the start of the next rerun —
-    # before this code — so `cur` is already up to date and the disabled states + the sliced page
-    # always agree with the buttons in the SAME render.
-    cur = min(max(int(st.session_state.get(page_key, 0)), 0), n_pages - 1)
-    st.session_state[page_key] = cur
-
-    def _bump(delta, npages=n_pages):
-        st.session_state[page_key] = min(max(st.session_state.get(page_key, 0) + delta, 0), npages - 1)
-
-    # ---- pager: Prev · meta · Next ----
-    p1, p2, p3 = st.columns([1.3, 4, 1.3], vertical_alignment="center")
-    with p1:
-        st.button(":material/chevron_left: Prev", key=f"{key}_prev", disabled=cur <= 0,
-                  width="stretch", on_click=_bump, args=(-1,))
-    with p3:
-        st.button("Next :material/chevron_right:", key=f"{key}_next", disabled=cur >= n_pages - 1,
-                  width="stretch", on_click=_bump, args=(1,))
-    with p2:
-        lo, hi = cur * rows_per_page + 1, min((cur + 1) * rows_per_page, total)
-        st.markdown(f"<div class='bm-tbl-meta'>Rows <b>{lo}&ndash;{hi}</b> of {total} "
-                    f"&middot; Page {cur + 1}/{n_pages}</div>", unsafe_allow_html=True)
-
-    page_df = df.iloc[cur * rows_per_page:(cur + 1) * rows_per_page]
-
-    # ---- build HTML ----
-    acls = {"l": "", "r": "bm-r", "c": "bm-c"}
-    thead = "".join(f"<th class='{acls.get(c.get('align', 'l'), '')}'>{c['label']}</th>" for c in columns)
-    body = ""
-    for _, r in page_df.iterrows():
-        rc = f" class='{row_class(r)}'" if row_class else ""
-        tds = "".join(f"<td class='{acls.get(c.get('align', 'l'), '')}'>"
-                      f"{c['fmt'](r.get(c['field']), r)}</td>" for c in columns)
-        body += f"<tr{rc}>{tds}</tr>"
-    st.markdown(f"<table class='{table_class}'><thead><tr>{thead}</tr></thead>"
-                f"<tbody>{body}</tbody></table>", unsafe_allow_html=True)
-    if footnote:
-        st.markdown(f"<div class='bm-footnote'>{footnote}</div>", unsafe_allow_html=True)
-
-
 def page_forecasting():
     products = allowed_products(user["role"])
     if not products:
@@ -1034,28 +972,24 @@ def page_forecasting():
                          "Delta": float("nan"), "Direction": r.Direction, "_fwd": True})
         tdf = pd.DataFrame(rows)
 
-        def _money(v, _r):
-            return f"Rs.{v:,.0f}" if pd.notna(v) else ""
+        def _fc_grid(gob, Js):
+            gob.configure_column("Date", headerName="Date", valueFormatter=grid.JS_DATE,
+                                 filter="agDateColumnFilter", width=130)
+            gob.configure_column("Actual", headerName="Actual (Rs./t)", type=["numericColumn"],
+                                 valueFormatter=grid.JS_MONEY)
+            gob.configure_column("Forecast", headerName="Forecast (Rs./t)", type=["numericColumn"],
+                                 valueFormatter=grid.JS_MONEY)
+            gob.configure_column("Delta", headerName="Δ (Actual − Forecast)", type=["numericColumn"],
+                                 valueFormatter=grid.JS_DELTA)
+            gob.configure_column("Direction", headerName="Direction", valueFormatter=grid.JS_DIR_FMT,
+                                 cellStyle=grid.JS_DIR_STYLE, filter=False, width=120)
+            gob.configure_column("_fwd", hide=True)
+            gob.configure_grid_options(getRowStyle=grid.js_row_bg("_fwd", "rgba(238,78,36,0.06)"))
 
-        def _delta(v, _r):
-            return f"{'+' if v >= 0 else ''}{v:,.0f}" if pd.notna(v) else ""
-
-        columns = [
-            {"field": "Date", "label": "Date",
-             "fmt": lambda v, _r: f"{pd.Timestamp(v):%d %b %Y}"},
-            {"field": "Actual", "label": "Actual (Rs./t)", "align": "r", "fmt": _money},
-            {"field": "Forecast", "label": "Forecast (Rs./t)", "align": "r", "fmt": _money},
-            {"field": "Delta", "label": "Δ (Actual − Forecast)", "align": "r", "fmt": _delta},
-            {"field": "Direction", "label": "Direction", "align": "c", "sortable": False,
-             "fmt": lambda v, _r: theme.direction_chip(v) if v else ""},
-        ]
-        render_sortable_table(
-            tdf, columns, key="fc_tbl", rows_per_page=52,
-            row_class=lambda r: "bm-fc-row" if r.get("_fwd") else "",
-            table_class="bm-table bm-table-lg",
-            footnote=("Shaded rows = 12-week-ahead forecast (no actuals yet). Forecasts rounded to "
-                      "Rs.50; &Delta; = actual &minus; forecast. 52 rows/page. "
-                      "Headline line = Ensemble (Weighted Mean)."))
+        grid.bm_grid(tdf, key="fc_tbl", configure=_fc_grid, page_size=52)
+        st.markdown("<div class='bm-footnote'>Shaded rows = 12-week-ahead forecast (no actuals yet). "
+                    "Forecasts rounded to Rs.50; &Delta; = actual &minus; forecast. "
+                    "Headline line = Ensemble (Weighted Mean).</div>", unsafe_allow_html=True)
 
     def render_rationale():
         # Full-width Forecast-rationale section (non-grouped + grouped Tabular views).
@@ -1568,19 +1502,17 @@ def page_performance():
     pdf["Delta"] = pdf["Forecast"] - pdf["Actual"]
     pdf["DeltaPct"] = pdf["Delta"] / pdf["Actual"] * 100
 
-    def _money(v, _r):
-        return f"Rs.{v:,.0f}" if pd.notna(v) else ""
+    def _perf_grid(gob, Js):
+        gob.configure_column("Date", headerName="Date", valueFormatter=grid.JS_DATE,
+                             filter="agDateColumnFilter", width=130)
+        gob.configure_column("Actual", headerName="Spot", type=["numericColumn"], valueFormatter=grid.JS_MONEY)
+        gob.configure_column("Forecast", headerName="Forecast", type=["numericColumn"], valueFormatter=grid.JS_MONEY)
+        gob.configure_column("Delta", headerName="Delta", type=["numericColumn"], valueFormatter=grid.JS_DELTA_PCT)
+        gob.configure_column("DeltaPct", hide=True)
 
-    columns = [
-        {"field": "Date", "label": "Date", "fmt": lambda v, _r: f"{pd.Timestamp(v):%d %b %Y}"},
-        {"field": "Actual", "label": "Spot", "align": "r", "fmt": _money},
-        {"field": "Forecast", "label": "Forecast", "align": "r", "fmt": _money},
-        {"field": "Delta", "label": "Delta", "align": "r",
-         "fmt": lambda v, r: (f"{'+' if v >= 0 else ''}{v:,.0f} ({r.get('DeltaPct'):+.1f}%)")
-         if pd.notna(v) else ""},
-    ]
-    render_sortable_table(pdf, columns, key="perf_tbl", rows_per_page=52,
-                          footnote="Delta = Forecast &minus; Spot (forecast rounded to Rs.50). 52 rows/page.")
+    grid.bm_grid(pdf, key="perf_tbl", configure=_perf_grid, page_size=52)
+    st.markdown("<div class='bm-footnote'>Delta = Forecast &minus; Spot (forecast rounded to Rs.50).</div>",
+                unsafe_allow_html=True)
     theme.footer()
 
 

@@ -13,6 +13,7 @@ fpdf2>=2.7
 scikit-learn>=1.3
 requests>=2.28   # pull private data files from the GitHub Contents API (data_loader._fetch_private_data_dir)
 python-pptx>=0.6.21   # extract deck text for the Admin analyst-call AI auto-fill (portal/ai_fill.py, Gemini)
+streamlit-aggrid>=1.0.5   # themed, sortable/filterable grid for the forecasting + performance tables (portal/grid.py); app falls back to st.dataframe if absent
 
 # --- Auth: self-managed user store in Neon Postgres (portal/db.py, portal/auth.py) ---
 argon2-cffi>=23.1                    # argon2id password hashing

@@ -55,6 +55,7 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 |------|--------------|
 | `app.py` | Entry: page config, auth gate, top nav, 5 pages, chart helpers |
 | `theme.py` | Brand palette, CSS (themeable via `--bm-*` vars), icons, topbar, KPI/card/table helpers; **per-role branding** (`ROLE_PROFILES`/`profile_for`/`apply_role_theme`) |
+| `grid.py` | **BigMint-themed AgGrid** (`bm_grid` + shared `JS_*` formatters): blue header/white bold, sort/filter/resize/pagination; used by forecasting + performance tables. Falls back to `st.dataframe` if `streamlit-aggrid` is absent |
 | `auth.py` | Auth core (UI-agnostic, no users in-file): argon2id verify + lockout, JWT cookie sessions (`create_session`/`resolve_session`/`logout`), user CRUD helpers |
 | `db.py` | Neon Postgres layer (SQLAlchemy): schema (`users`/`sessions`/`audit_log`/`role_commodities`) + queries + config resolution (`database_url` / `session_signing_key`) |
 | `seed_users.py` | One-time seeder: creates the first users with random temp passwords → git-ignored `.streamlit/seed_credentials.txt` (`--force` to reset) |
@@ -128,6 +129,40 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-14 (latest+++++++++++++) — Landed Cost read-only tables → AgGrid too
+- **`calculators/calc_import_price.py` now `import grid`.** The **Tabular view** (`_results_table`) and the
+  **Exchange-rate sensitivity** table converted from `st.dataframe` to `grid.bm_grid` (blue header, sortable),
+  matching forecasting/performance. Both are small so they use `page_size=0` + `domLayout="autoHeight"` (no pager,
+  no empty space). Values pass raw; `$` formatter + `vs Domestic` signed-Rs formatter built inline via the `Js`
+  callback arg, Landed uses `grid.JS_MONEY`; Decision cell coloured green/red.
+- **Kept as `st.data_editor`:** the Global-variables + per-location **input** tables (editing + Calculate gating
+  depend on the editor). Only the two read-only display tables moved to AgGrid.
+- Same `streamlit-aggrid` dependency/fallback as the prior entry — nothing new to install.
+
+### 2026-07-14 (latest++++++++++++) — Forecasting + performance tables → AgGrid (custom design + native features)
+- **New `portal/grid.py` with `bm_grid()` — a BigMint-skinned AgGrid.** Replaces the HTML `.bm-table` +
+  `render_sortable_table` for the forecasting *Actual vs forecast* and performance *Week-wise detail* tables.
+  Gives what `st.dataframe` can't theme AND `.bm-table` can't do interactively: **blue header (white, bold) +
+  click-to-sort + per-column filter + column resize + pagination (52/pg)**. `st.dataframe` renders on a
+  `<canvas>`, so it can't take the blue header — that's why we moved to AgGrid.
+- **`render_sortable_table` DELETED** (both callers now use `grid.bm_grid`). The Prev/Next pager + its theme.py
+  button CSS + the sort dropdown/flip are all gone (superseded by AgGrid's built-in sort/pagination).
+- **Cell formatting via shared JsCode** in grid.py (`JS_MONEY`/`JS_DATE`/`JS_DELTA`/`JS_DELTA_PCT`/`JS_DIR_FMT`/
+  `JS_DIR_STYLE`, plus `js_row_bg(field,bg)` for the orange forecast-row shading). Values pass raw (numbers/dates)
+  so **sorting is correct**, formatting is display-only. Direction column → coloured ▲/▼/→.
+- **Skin** = `custom_css` in grid.py (`.ag-header` blue, white bold header text, rounded frame, zebra + hover).
+  Theme colours pulled from `theme.PRIMARY`/`theme.NEUTRAL`.
+- **Safety:** `grid.py` try/imports `st_aggrid`; if missing/incompatible it **falls back to `st.dataframe`** so the
+  app never crashes. `JS_*` are `None` when absent but only used inside the `configure` callback (run only when
+  AgGrid is present).
+- **Dependency:** `streamlit-aggrid>=1.0.5` added to root + `portal/requirements.txt`. Dry-run resolves to
+  **1.2.1.post2**, requires only `streamlit>=1.2` → **no change to the `streamlit==1.59.0` pin** (also pulls
+  `python-decouple`). ⚠ **Not installed in the `neuralforecast` env yet** — run `conda activate neuralforecast &&
+  pip install streamlit-aggrid` locally (Cloud picks it up from requirements on next deploy). Until installed
+  locally you'll see the `st.dataframe` fallback. **Runtime rendering on Streamlit 1.59 still needs a visual check.**
+- Files: `grid.py` (new), `app.py` (import + 2 call sites + removed helper), `theme.py` (dropped dead pager CSS),
+  `requirements.txt` ×2 (+ changelog + file map).
+
 ### 2026-07-14 (latest+++++++++++) — Tables: blue header, no sort UI, nicer pager (forecasting + performance)
 - **`render_sortable_table` (app.py) simplified — affects BOTH the forecasting *Actual vs forecast* table and the
   performance *Week-wise detail* table.** Removed the **"Sort by" dropdown** + the **↕ flip button** (and all the

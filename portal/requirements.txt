@@ -7,6 +7,7 @@ scikit-learn
 fpdf2
 requests
 python-pptx>=0.6.21   # extract deck text for the Admin analyst-call AI auto-fill (Gemini)
+streamlit-aggrid>=1.0.5   # themed grid for forecasting + performance tables (grid.py); falls back to st.dataframe if absent
 
 # Auth: self-managed user store in Neon Postgres (db.py, auth.py)
 argon2-cffi>=23.1                    # argon2id password hashing
