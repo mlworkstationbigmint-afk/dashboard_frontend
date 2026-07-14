@@ -340,12 +340,9 @@ def _methodology_infographic():
     """Modular, equation-heavy methodology block built from theme infographic CSS."""
     _sec("How landed cost is built", theme.icon("notes"))
     st.markdown(
-        "<div class='bm-meth-hero'>"
-        "<p>Every origin is walked through the <b>same customs pipeline</b> &mdash; from the quoted "
-        "FOB price to the final rupee cost at an Indian port &mdash; then measured against the "
-        "domestic benchmark. Change any global variable or per-location input, press "
-        "<b>Calculate</b>, and the whole chain re-solves.</p></div>",
-        unsafe_allow_html=True,
+        "Every origin is walked through the **same customs pipeline** — from the quoted FOB price to "
+        "the final rupee cost at an Indian port — then measured against the domestic benchmark. "
+        "Change any global variable or per-location input, press **Calculate**, and the whole chain re-solves."
     )
 
     # Inputs -> engine -> outputs
@@ -450,7 +447,8 @@ def render():
     banner_ph = st.empty()
 
     # --- graph on top (with a Graphical/Tabular switch), global variables to its side ---
-    col_chart, col_vars = st.columns([2.5, 1], gap="large")
+    # vertical_alignment centre so the 8-row variables table sits balanced against the tall graph.
+    col_chart, col_vars = st.columns([2.5, 1], gap="large", vertical_alignment="center")
     with col_chart:
         _sec("Landed cost by country vs domestic benchmark", theme.icon("trending"))
         with st.container(key="fc_view_box"):     # reuses theme.py's sliding-pill switch CSS
@@ -464,7 +462,6 @@ def render():
     view = view or VIEW_OPTS[0]                    # deselection falls back to the graph
 
     # --- customisable per-location table; edits stay pending until Calculate ---
-    st.divider()
     _sec("Scenario inputs by location", theme.icon("factory"))
     # Spot = the price fetched from the CSV feed for that origin; blank for origins not in the file.
     def _spot(r):
@@ -544,7 +541,6 @@ def render():
             st.caption(f"Sorted cheapest → priciest vs domestic benchmark Rs.{int(domestic):,}/t.")
 
     # --- exchange-rate sensitivity ---
-    st.divider()
     _sec("Exchange-rate sensitivity (landed Rs./t)", theme.icon("rupee"))
     fx_rows = []
     for r in regions:
@@ -590,7 +586,5 @@ def render():
         st.download_button("Download PDF Report", data=_pdf_bytes(pdf), file_name=unique_name, mime="application/pdf")
 
     # --- methodology (modular, equation-heavy) + glossary ---
-    st.divider()
     _methodology_infographic()
-    st.write("")
     _glossary()

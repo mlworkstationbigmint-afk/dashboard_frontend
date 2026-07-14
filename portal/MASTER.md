@@ -129,7 +129,16 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
-### 2026-07-14 (latest++++++++++++++++) — AgGrid pagination: default 50, size selector, visible nav buttons
+### 2026-07-14 (latest+++++++++++++++++) — Landed Cost polish: vars placement, tighter sections, plain methodology intro
+- **Global-variables table better placed:** graph/vars columns now `vertical_alignment="center"`, so the 8-row
+  table sits balanced against the tall graph instead of bunched at the top with empty space below.
+- **Less space between sections:** removed the three `st.divider()`s (before Scenario inputs, Sensitivity,
+  Methodology) + the blank line before Glossary — the accent-bar `.bm-sec` headings already separate sections.
+  (Element spacing inside sections stays at the 0.9rem gap from the prior entry.)
+- **"How landed cost is built" is now a plain description** below the heading (removed the blue `.bm-meth-hero`
+  card wrapper in `_methodology_infographic`; `.bm-meth-hero` itself stays in theme.py — the main Methodology page
+  still uses it).
+- File: `calculators/calc_import_price.py`.
 - **Fixed invisible pager nav buttons.** `_GRID_CSS` was whitening `.ag-icon` globally → the pagination arrows were
   white-on-white. Now only header icons are white (`.ag-header .ag-icon`); paging arrows are accent-blue (dim grey
   when disabled), so the prev/next/first/last buttons show **on the sides of "Page N of M"** as intended.
