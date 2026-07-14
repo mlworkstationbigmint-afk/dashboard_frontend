@@ -37,8 +37,10 @@ CALC_CSS = """
    compact on this dense page. Loosen the gap between stacked elements (injected after theme.py, so
    it wins). Scoped to the Calculators page since this CSS is only emitted while that page renders. */
 [data-testid="stVerticalBlock"] { gap: 0.9rem !important; }
-/* Column pairs (graph|globals, calculate row) get a touch more horizontal air too. */
+/* Column pairs (graph|globals) get a touch more horizontal air too. */
 [data-testid="stHorizontalBlock"] { gap: 1.1rem !important; }
+/* ...except the Calculate/Reset row: keep Reset hugging Calculate (override the wider gap above). */
+.st-key-imp_btnrow [data-testid="stHorizontalBlock"] { gap: 0.4rem !important; }
 /* Lowest-cost banner -> theme-blue gradient (was flat green) so it reads as the page headline. */
 .kpi-banner { border-radius: 12px; padding: 13px 18px; margin: 2px 0 4px; font-size: 16px; font-weight: 700;
     color: #fff; background: linear-gradient(120deg, var(--bm-primary), var(--bm-primary-dark));
@@ -253,9 +255,9 @@ def _results_table(regions, results, domestic):
         gob.configure_column("vsDomestic", headerName="vs Domestic", type=["numericColumn"], valueFormatter=vsd)
         gob.configure_column("Decision", cellStyle=dec, width=150)
 
-    # Fixed height = the plotly chart's height (see _landed_figure) so the Tabular view fills the
-    # SAME footprint as the graph it toggles with — no autoHeight here.
-    grid.bm_grid(df, key="imp_results", configure=_cfg, page_size=0, height=400, fit=True)
+    # Height tuned to match the plotly chart's rendered footprint (see _landed_figure, height=400):
+    # the AgGrid header + border sit inside this, so ~370 lines up with the graph it toggles with.
+    grid.bm_grid(df, key="imp_results", configure=_cfg, page_size=0, height=370, fit=True)
 
 
 # -----------------------------------------------------------------------------
@@ -291,7 +293,7 @@ def _read_globals(domestic_default):
     df = pd.DataFrame({"Value": [seed[k] for k in GVAR_ORDER]}, index=GVAR_ORDER)
     df.index.name = "Variable"
     edited = st.data_editor(
-        df, key="imp_gvars", width="stretch", hide_index=False,
+        df, key=f"imp_gvars_{st.session_state.get('imp_gvars_ver', 0)}", width="stretch", hide_index=False,
         column_config={"Value": st.column_config.NumberColumn("Value", format="%.2f", step=0.5)},
     )
     v = {k: float(edited.loc[k, "Value"]) for k in GVAR_ORDER}
@@ -427,22 +429,25 @@ def render():
 
     fob_data, domestic_default, feed_as_of, feed_ok = fetch_fob_prices()
     regions = list(fob_data.keys())
+    st.session_state.setdefault("imp_locs_ver", 0)     # bump -> new editor key -> fresh widget
+    st.session_state.setdefault("imp_gvars_ver", 0)
     for r in regions:
         st.session_state.setdefault(f"fob_{r}", fob_data[r]["fob"])   # editable reference (seeded from feed)
         st.session_state.setdefault(f"freight_{r}", fob_data[r]["freight"])
         st.session_state.setdefault(f"fta_{r}", fob_data[r]["fta_default"])
 
-    # Reset callbacks run BEFORE widgets re-instantiate (on_click), so they can safely pop the
-    # editor-state keys — that's what actually clears the in-cell edits back to the fetched values.
+    # Reset callbacks run BEFORE widgets re-instantiate (on_click). Bumping the editor's key version
+    # gives it a brand-new key, so the widget re-initialises from the fresh (default) DataFrame —
+    # reliably clearing edited numbers AND the FTA checkboxes (popping the old key could miss cells).
     def _reset_locs():
         for r in regions:
             st.session_state[f"fob_{r}"] = fob_data[r]["fob"]
             st.session_state[f"freight_{r}"] = fob_data[r]["freight"]
             st.session_state[f"fta_{r}"] = fob_data[r]["fta_default"]
-        st.session_state.pop("imp_locs", None)
+        st.session_state["imp_locs_ver"] += 1
 
     def _reset_gvars():
-        st.session_state.pop("imp_gvars", None)
+        st.session_state["imp_gvars_ver"] += 1
 
     st.markdown(
         "<div class='bm-calc-head'>"
@@ -492,7 +497,7 @@ def render():
     }, index=regions)
     loc_df.index.name = "Location"
     loc_edit = st.data_editor(
-        loc_df, key="imp_locs", width="stretch", hide_index=False,
+        loc_df, key=f"imp_locs_{st.session_state.get('imp_locs_ver', 0)}", width="stretch", hide_index=False,
         column_config={
             "Spot Rs./t": st.column_config.NumberColumn("Spot Rs./t", format="Rs.%.0f", disabled=True,
                         help="Derived: FOB × FX (read-only). Refreshes on Calculate."),
@@ -517,12 +522,14 @@ def render():
         or bool(st.session_state[f"fta_{r}"]) != bool(fob_data[r]["fta_default"])
         for r in regions
     )
-    bcol1, bcol2, bcol3 = st.columns([1, 1, 5])
-    calc = bcol1.button("Calculate", key="imp_calc", type="primary", disabled=not pending)
-    bcol2.button("↺ Reset", key="imp_reset", on_click=_reset_locs, disabled=not dirty,
-                 help="Reset FOB / Freight / FTA back to the fetched values.")
-    bcol3.caption("Edit FOB, freight or FTA, then press **Calculate** to apply. "
-                  "Spot Rs./t = FOB × FX (read-only); **Reset** restores the fetched values.")
+    with st.container(key="imp_btnrow"):           # scoped tight gap so Reset hugs Calculate
+        bcol1, bcol2, bcol3 = st.columns([1, 1, 6], vertical_alignment="center")
+        calc = bcol1.button("Calculate", key="imp_calc", type="primary", disabled=not pending,
+                            width="stretch")
+        bcol2.button("↺ Reset", key="imp_reset", on_click=_reset_locs, disabled=not dirty,
+                     width="stretch", help="Reset FOB / Freight / FTA back to the fetched values.")
+        bcol3.caption("Edit FOB, freight or FTA, then press **Calculate** to apply. "
+                      "Spot Rs./t = FOB × FX (read-only); **Reset** restores the fetched values.")
     if calc:                                       # commit the buffer -> everything recomputes below
         for r in regions:
             st.session_state[f"fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])

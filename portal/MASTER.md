@@ -129,7 +129,16 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
-### 2026-07-14 (latest+++++++++++++++++++++) — Equation pipeline: fix safeguard conditional (steps 3 & 4)
+### 2026-07-14 (latest++++++++++++++++++++++) — Landed Cost: reliable Reset, tighter button gap, table height
+- **Reset now works reliably (values + FTA checkbox).** Popping the editor key could miss cells; switched to
+  **versioned editor keys** — `imp_locs_ver` / `imp_gvars_ver` counters; the editors key on `imp_locs_{ver}` /
+  `imp_gvars_{ver}`, and each Reset callback resets the committed defaults and **bumps the version** → the widget
+  gets a brand-new key and re-initialises from the default DataFrame (numbers AND FTA checkboxes cleared).
+- **Reset hugs Calculate:** wrapped the button row in `st.container(key="imp_btnrow")` with a scoped
+  `stHorizontalBlock` gap of 0.4rem (overrides the page's 1.1rem); buttons `width="stretch"` in `[1,1,6]` columns.
+- **Tabular view height** 400 → **370** so the table lines up with the graph (AgGrid header/border sit inside the
+  height, so it was rendering a touch taller than the plotly chart).
+- File: `calculators/calc_import_price.py`.
 - Steps 3/4 misrepresented the engine: old step 4 `Cost$ = TVD + SG` implied SG is always added and dropped the
   cess-on-safeguard. Now step 3 defines the whole term conditionally — `SG = (SG + Cess) if TVD < Thr else 0` —
   and step 4 `Cost$ = TVD + SG` is correct in both branches (= TVD above threshold, = TVD+SG+cess below). Matches
