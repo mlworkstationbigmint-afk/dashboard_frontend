@@ -47,8 +47,9 @@ CALC_CSS = """
 .mgmt-box { border-radius: 12px; padding: 14px 18px; margin-bottom: 4px; font-size: 15px; font-weight: 600; }
 .mgmt-good { background: #e8f7ee; border: 1px solid #b7e4c7; color: #0b3d2e; }
 .mgmt-bad  { background: #fdecea; border: 1px solid #f5b7b1; color: #7b241c; }
-/* equation chip inside the methodology pipeline (reuses theme .bm-flow*). */
-.bm-eq { margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+/* equation chip inside the methodology pipeline (reuses theme .bm-flow*). margin-top:auto pins it to
+   the card bottom so all six equations align on one row (cards already stretch to equal height). */
+.bm-eq { margin-top: auto; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 12px; font-weight: 600; color: var(--bm-primary-dark);
     background: var(--bm-primary-soft); border: 1px solid #dbe7f7; border-radius: 8px;
     padding: 7px 9px; line-height: 1.45; width: 100%; box-sizing: border-box; }
@@ -375,17 +376,17 @@ def _methodology_infographic():
     st.write("")
     _sec("The equation pipeline", theme.icon("notes"))
     steps = [
-        ("factory",   "Cost &amp; Freight", "Origin quote plus ocean freight.",
+        ("factory",   "Cost &amp; Freight", "Origin quote + freight.",
          "CFR = FOB + Freight"),
-        ("calculator", "Duty",            "Basic customs duty and its cess. FTA origins waive both.",
+        ("calculator", "Duty",            "Duty + cess (FTA waives).",
          "TVD = CFR + <b>BCD</b> + Cess"),
-        ("target",    "Safeguard",        "Extra duty only when TVD sits below the threshold CIF.",
+        ("target",    "Safeguard",        "Only if TVD &lt; threshold.",
          "if TVD &lt; Thr &rarr; +<b>SG</b> + Cess"),
-        ("gauge",     "USD cost",         "Total customs value plus any safeguard.",
+        ("gauge",     "USD cost",         "Customs value + safeguard.",
          "Cost$ = TVD + SG"),
-        ("rupee",     "Rupee landed",     "Convert at FX and add port handling &amp; misc.",
+        ("rupee",     "Rupee landed",     "Convert at FX, add port.",
          "Landed = Cost$&times;<b>FX</b> + Port"),
-        ("trending",  "Verdict",          "Beat the domestic benchmark to be import-viable.",
+        ("trending",  "Verdict",          "Beat the domestic price.",
          "Landed &lt; <b>Domestic</b> &rArr; VIABLE"),
     ]
     cells = []
