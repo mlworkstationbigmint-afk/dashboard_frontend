@@ -216,6 +216,11 @@ def _sec(text, icon=""):
     st.markdown(f"<div class='bm-sec'>{ic}{text}</div>", unsafe_allow_html=True)
 
 
+def _space(px=20):
+    """Vertical breathing room between sections."""
+    st.markdown(f"<div style='height:{px}px'></div>", unsafe_allow_html=True)
+
+
 def _results_table(regions, results, domestic):
     """Tabular twin of the landed-cost chart (cheapest first) — themed AgGrid."""
     ordered = sorted(regions, key=lambda r: results[r]["landed"])
@@ -245,9 +250,10 @@ def _results_table(regions, results, domestic):
         gob.configure_column("Landed", headerName="Landed Rs./t", type=["numericColumn"], valueFormatter=grid.JS_MONEY)
         gob.configure_column("vsDomestic", headerName="vs Domestic", type=["numericColumn"], valueFormatter=vsd)
         gob.configure_column("Decision", cellStyle=dec, width=150)
-        gob.configure_grid_options(domLayout="autoHeight")
 
-    grid.bm_grid(df, key="imp_results", configure=_cfg, page_size=0, height=320)
+    # Fixed height = the plotly chart's height (see _landed_figure) so the Tabular view fills the
+    # SAME footprint as the graph it toggles with — no autoHeight here.
+    grid.bm_grid(df, key="imp_results", configure=_cfg, page_size=0, height=400, fit=True)
 
 
 # -----------------------------------------------------------------------------
@@ -441,7 +447,7 @@ def render():
     # --- top: management verdict + lowest-cost banner (filled after compute) ---
     mgmt_ph = st.empty()
     banner_ph = st.empty()
-    st.write("")
+    _space(24)
 
     # --- graph on top (with a Graphical/Tabular switch), global variables to its side ---
     col_chart, col_vars = st.columns([2.5, 1], gap="large")
@@ -456,9 +462,11 @@ def render():
         g = _read_globals(domestic_default)
     domestic = g["domestic"]
     view = view or VIEW_OPTS[0]                    # deselection falls back to the graph
+    _space(10)
 
     # --- customisable per-location table; edits stay pending until Calculate ---
     st.divider()
+    _space(6)
     _sec("Scenario inputs by location", theme.icon("factory"))
     # Spot = the price fetched from the CSV feed for that origin; blank for origins not in the file.
     def _spot(r):
@@ -538,7 +546,9 @@ def render():
             st.caption(f"Sorted cheapest → priciest vs domestic benchmark Rs.{int(domestic):,}/t.")
 
     # --- exchange-rate sensitivity ---
+    _space(10)
     st.divider()
+    _space(6)
     _sec("Exchange-rate sensitivity (landed Rs./t)", theme.icon("rupee"))
     fx_rows = []
     for r in regions:
@@ -557,6 +567,7 @@ def render():
 
     grid.bm_grid(pd.DataFrame(fx_rows), key="imp_fx", configure=_fx_cfg, page_size=0, height=320)
     st.caption(f"Domestic benchmark for reference: Rs.{int(domestic):,}/t.")
+    _space(22)
 
     # --- PDF snapshot ---
     ordered = sorted(regions, key=lambda r: results[r]["landed"])
@@ -584,7 +595,9 @@ def render():
         st.download_button("Download PDF Report", data=_pdf_bytes(pdf), file_name=unique_name, mime="application/pdf")
 
     # --- methodology (modular, equation-heavy) + glossary ---
+    _space(10)
     st.divider()
+    _space(6)
     _methodology_infographic()
-    st.write("")
+    _space(26)
     _glossary()
