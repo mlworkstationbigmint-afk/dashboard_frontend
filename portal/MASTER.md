@@ -129,6 +129,28 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-15 (latest++) — Cost Head calculator rebuilt from scratch (engine untouched)
+- **`calculators/calc_cost.py` `render()` fully rewritten; the calculation engine is byte-for-byte unchanged**
+  — `_elem_cost()` = `price × FX (if USD) × norm`, summed to ex-works total, `margin = market − total`;
+  HRC default total still **Rs. 53,445/MT**, electricity norm still 450 (HRC) / 400 (Rebar). Verified numerically.
+- **New layout (themed like Landed Cost):**
+  - **Dual-axis chart on top** (`_cost_margin_figure`, plotly): total-cost **bars** per plant + market-price
+    **dashed line** on the left axis; **mill margin** as diamonds on a **secondary right axis** (green/red by sign).
+  - **Scenario controls moved to the right of the chart** (`st.columns([2.5,1])`): Product, USD→INR rate,
+    Market price, + a Reset button. No card/box around them.
+  - **Plant cost cards → two editable `st.data_editor` tables** (`_editor`), columns Cost element / Basis /
+    Currency / Price / Norm; `num_rows="fixed"`, keyed by `cost_{p}_{product}_{ver}` so switching product
+    re-seeds and Reset (version bump) clears edits. Currency is now **per-row** (the old global
+    "Change All Currencies To" toggle + `sync_all_units` are gone). Edits update the chart **live** (no
+    Calculate button — no derived column feeds back into the editor, so no snap-back).
+  - **Cost breakup** = themed AgGrid (`grid.bm_grid`) comparing Plant 1 vs Plant 2 per element + a 4-metric
+    row (total cost + mill margin % per plant), replacing the old breakdown cards.
+  - **KPI banner + management verdict** placeholders (`.kpi-banner` / `.mgmt-box`) like Landed Cost.
+  - **Methodology & Logic → infographic** (`_methodology_infographic` + `_glossary`): Inputs→Engine→Outputs
+    panel, 6-step equation pipeline, glossary — reusing theme's `.bm-engine` / `.bm-flow` / `.bm-factor-grid`.
+  - PDF report preserved (same columns/rows, now sourced from the edited tables).
+- File: `calculators/calc_cost.py` only. ⚠ Visual-only rebuild — verify in-app.
+
 ### 2026-07-15 (latest+) — Dropdown double-border fix + Cost Head top-row box removed
 - **Selectbox "box outgrowing the border" fixed (app-wide).** `theme.py`'s `[data-testid="stSelectbox"] div`
   rule recoloured the border on *every* nested div, so any wrapper still carrying a stray reset border-width
