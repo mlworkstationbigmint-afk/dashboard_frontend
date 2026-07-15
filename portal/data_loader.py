@@ -21,6 +21,7 @@ import json
 import base64
 import tempfile
 from urllib.parse import quote
+import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -226,6 +227,17 @@ def _read_accuracy(path: str, acc_label: str, mtime: float) -> pd.DataFrame:
     df["ActualDir"] = (df["Actual"] - prev_actual).map(direction_flag)
     df.loc[df.index[0], ["PredDir", "ActualDir"]] = "Flat"               # no prior reference
     df["Hit"] = df["PredDir"] == df["ActualDir"]
+
+    # Delta accuracy — how close the PREDICTED week-over-week move is to the ACTUAL move.
+    #   predicted move = Forecast - prev spot ;  actual move = spot - prev spot
+    #   DeltaAcc% = 100 - |predicted move - actual move| / |actual move| * 100
+    # (|predicted move - actual move| == |Forecast - Actual|.) Undefined for week 1 (no prior
+    # reference) and when the market was flat (actual move == 0) — left as NaN.
+    df["PredMove"] = df["Forecast"] - prev_actual
+    df["ActMove"] = df["Actual"] - prev_actual
+    df["DeltaAcc"] = 100 - (df["PredMove"] - df["ActMove"]).abs() / df["ActMove"].abs() * 100
+    df.loc[(df["ActMove"] == 0) | (df.index == df.index[0]), "DeltaAcc"] = np.nan
+    df["DeltaAcc"] = df["DeltaAcc"].replace([np.inf, -np.inf], np.nan)
     return df
 
 
@@ -240,19 +252,26 @@ def load_accuracy(window: str, acc_label: str) -> pd.DataFrame:
 
 
 def accuracy_kpis(df: pd.DataFrame) -> dict:
-    """Compute MAPA (absolute accuracy), directional accuracy and the last-12-week hit rate."""
+    """Compute MAPA (absolute accuracy), the last-12-week directional hit rate and delta accuracy."""
     if df.empty:
-        return {"mapa": None, "dir_acc": None, "hit_rate_12": None}
+        return {"mapa": None, "dir_acc": None, "hit_rate_12": None, "delta_acc": None}
     valid = df.dropna(subset=["Actual", "Forecast"])
     mape = (valid["Delta"].abs() / valid["Actual"]).mean() * 100
     rows = valid.iloc[1:]   # first row has no previous reference
     dir_acc = rows["Hit"].mean() * 100 if len(rows) else None
     last12 = rows.tail(12)   # last 12 weekly directional calls
     hit_rate_12 = last12["Hit"].sum() / 12 * 100 if len(last12) else None
+    # Delta accuracy = 1 - (total move-prediction error / total actual move), over weeks with a
+    # prior reference and a non-flat actual move. Weighted (robust to tiny-move weeks that would
+    # otherwise blow the per-week ratio up).
+    dm = rows[rows["ActMove"].abs() > 0]
+    denom = dm["ActMove"].abs().sum()
+    delta_acc = (100 - (dm["PredMove"] - dm["ActMove"]).abs().sum() / denom * 100) if denom else None
     return {
         "mapa": 100 - mape,
         "dir_acc": dir_acc,
         "hit_rate_12": hit_rate_12,
+        "delta_acc": delta_acc,
     }
 
 

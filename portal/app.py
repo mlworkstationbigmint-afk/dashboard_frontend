@@ -620,6 +620,36 @@ def delta_bar(view):
         st.bar_chart(view.set_index("Date")[["Delta"]])
 
 
+def delta_acc_bar(view):
+    """Weekly delta accuracy (%) — how close the predicted week-over-week MOVE (Forecast − prior
+    spot) was to the actual move (spot − prior spot). Green-heavy gradient (higher = greener).
+    Weeks with no prior reference or a flat market are undefined and skipped. Bars are floored at
+    0 so the axis stays readable; the hover shows the true value."""
+    try:
+        import plotly.graph_objects as go
+        raw = list(view["DeltaAcc"])
+        ys = [None if pd.isna(v) else max(0.0, float(v)) for v in raw]
+        cvals = [0.0 if pd.isna(v) else max(0.0, float(v)) for v in raw]
+        texts = ["No prior reference / flat week" if pd.isna(v) else f"Delta accuracy: {float(v):.1f}%"
+                 for v in raw]
+        fig = go.Figure(go.Bar(
+            x=view["Date"], y=ys, customdata=texts,
+            marker=dict(color=cvals, cmin=0, cmax=100, showscale=False, line=dict(width=0),
+                        colorscale=[[0.0, theme.DANGER], [0.35, "#F5A623"], [0.6, "#8DC63F"], [1.0, theme.SUCCESS]]),
+            hovertemplate="%{customdata}<extra></extra>"))
+        fig.update_layout(height=200, margin=dict(l=_PERF_ML, r=16, t=10, b=30, autoexpand=False),
+                          plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
+                          hovermode="x unified", bargap=0.3,
+                          hoverlabel=dict(bgcolor="white", bordercolor="#e2e8f0"),
+                          font=dict(size=11, color="#334155"))
+        fig.update_yaxes(range=[0, 100], ticksuffix="%", gridcolor="#eef2f7",
+                         automargin=False, ticklabelstandoff=3)
+        fig.update_xaxes(gridcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+    except Exception:
+        st.bar_chart(view.set_index("Date")[["DeltaAcc"]])
+
+
 def accuracy_chart(view):
     """Weekly forecast absolute accuracy (%) = 100 - |forecast-vs-spot % error|, as a GREEN-HEAVY
     gradient bar chart (highest = green). Compact (h=200) and the y-axis is zoomed into the high band
@@ -1484,15 +1514,17 @@ def page_performance():
     k1.markdown(theme.kpi_card("Absolute accuracy (MAPA)",
                 f"{kpis['mapa']:.1f}%" if kpis['mapa'] is not None else "-", f"100 - mean abs % error · {len(view)} wk", theme.icon("target")), unsafe_allow_html=True)
     k2.markdown(theme.kpi_card("Directional accuracy",
-                f"{kpis['dir_acc']:.0f}%" if kpis['dir_acc'] is not None else "-", "correct up/down/flat calls", theme.icon("gauge")), unsafe_allow_html=True)
+                f"{kpis['hit_rate_12']:.0f}%" if kpis['hit_rate_12'] is not None else "-", "correct calls / last 12 weeks", theme.icon("gauge")), unsafe_allow_html=True)
     k3.markdown(theme.kpi_card("Delta accuracy",
-                f"{kpis['hit_rate_12']:.0f}%" if kpis['hit_rate_12'] is not None else "-", "correct calls / last 12 weeks", theme.icon("trending")), unsafe_allow_html=True)
+                f"{kpis['delta_acc']:.0f}%" if kpis['delta_acc'] is not None else "-", "predicted vs actual weekly move", theme.icon("trending")), unsafe_allow_html=True)
 
     st.write("")
     theme.section_title("Actual vs forecast", theme.icon("trending"))
     perf_chart(view)
     theme.section_title("Actual vs Forecast deviation", theme.icon("gauge"))
     delta_bar(view)
+    theme.section_title("Weekly delta accuracy", theme.icon("trending"))
+    delta_acc_bar(view)
     theme.section_title("Weekly forecast absolute accuracy", theme.icon("target"))
     accuracy_chart(view)
     theme.section_title("Weekly directional hit accuracy", theme.icon("gauge"))

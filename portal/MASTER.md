@@ -129,6 +129,23 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-15 (latest+++++++) — Performance tab: fixed KPI meanings + new Delta accuracy chart
+- **KPI cards relabelled.** "Directional accuracy" now shows the **last-12-week hit rate**
+  (`kpis['hit_rate_12']`, caption "correct calls / last 12 weeks") — the all-weeks `dir_acc` card was
+  dropped. "Delta accuracy" now shows a **new metric** (`kpis['delta_acc']`, caption "predicted vs actual
+  weekly move"), not the old last-12 hit rate.
+- **New Delta accuracy definition** (`data_loader._read_accuracy` + `accuracy_kpis`): how close the
+  predicted week-over-week MOVE (`Forecast − prior spot`) is to the actual move (`spot − prior spot`).
+  Per week: `DeltaAcc% = 100 − |predicted move − actual move| / |actual move| × 100` (note
+  `|pred move − act move| == |Forecast − Actual|`); undefined (NaN) for week 1 and flat-market weeks
+  (`ActMove == 0`). KPI aggregate = weighted `1 − Σ|move error| / Σ|actual move|` over valid weeks (robust
+  to tiny-move weeks blowing up the ratio). New df cols: `PredMove`, `ActMove`, `DeltaAcc`. `data_loader`
+  now imports `numpy as np`.
+- **New chart `delta_acc_bar(view)`** — weekly delta-accuracy % bars, green-heavy gradient, placed under a
+  new **"Weekly delta accuracy"** section **just below "Actual vs Forecast deviation"**. Bars floored at 0
+  for readability (true value in the hover); NaN weeks are gaps.
+- Files: `portal/app.py`, `portal/data_loader.py`.
+
 ### 2026-07-15 (latest++++++) — Removed PDF generation from all calculators
 - **The "Generate branded PDF report" feature is gone from all three calculators.** Removed the download buttons
   and all PDF-building code: `calc_elasticity.py` (inline PDF block + `datetime` import), `calc_import_price.py`
