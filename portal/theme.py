@@ -513,9 +513,14 @@ div[data-baseweb="popover"] li[role="option"], ul[role="listbox"] li {{
 [data-testid="stSelectbox"] div,
 [data-testid="stSelectbox"] input {{
     background:#fff !important; background-color:#fff !important;
+    border-color:transparent !important; box-shadow:none !important;
 }}
-[data-testid="stSelectbox"] div {{
-    border-color:var(--bm-accent) !important; box-shadow:none !important;
+/* Paint exactly ONE rounded orange border on the control itself (the last child of the
+   selectbox = the baseweb select wrapper, after the label). Zeroing the inner borders above
+   first stops stray reset-borders on wrapper divs from showing as a second box that "outgrows"
+   the control. */
+[data-testid="stSelectbox"] > div:last-child {{
+    border:1px solid var(--bm-accent) !important; border-radius:8px !important; box-shadow:none !important;
 }}
 [data-testid="stSelectbox"] svg {{ fill:var(--bm-accent) !important; color:var(--bm-accent) !important; }}
 

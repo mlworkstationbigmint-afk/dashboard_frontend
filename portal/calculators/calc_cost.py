@@ -11,13 +11,22 @@ from datetime import datetime
 
 CALC_CSS = """
 <style>
+/* Section panels: soft, lightly-tinted grouping cards (was a stark #fff box that read as a
+   heavy white rectangle behind each section title). */
 div[data-testid="stVerticalBlockBorderWrapper"] {
-    border: 1px solid #e6e9ef; border-radius: 10px;
-    background-color: #ffffff; padding: 18px; margin-bottom: 10px;
+    border: 1px solid #e8edf3; border-radius: 12px;
+    background-color: #fbfcff; padding: 16px 18px; margin-bottom: 10px;
 }
 div[data-testid="stContainer"] { border: none !important; background: transparent !important; padding: 0px !important; }
-h2 { color: #073A7D; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-h3 { color: #1e293b; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+h2 { color: var(--bm-primary-dark); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+/* Section titles inside the panels -> branded accent-bar heading, so they read as intentional
+   section headers rather than plain text floating in a white box. */
+div[data-testid="stVerticalBlockBorderWrapper"] h3 {
+    color: var(--bm-primary-dark) !important; font-size: 15px !important; font-weight: 700 !important;
+    margin: 0 0 12px !important; padding: 2px 0 2px 11px !important;
+    border-left: 3px solid var(--bm-accent) !important; line-height: 1.25;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
 .material-label { font-size: 14px; color: #334155; line-height: 38px; font-weight: 500; }
 </style>
 """
