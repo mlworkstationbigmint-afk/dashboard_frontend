@@ -1524,12 +1524,12 @@ def page_performance():
     perf_chart(view)
     theme.section_title("Actual vs Forecast deviation", theme.icon("gauge"))
     delta_bar(view)
-    theme.section_title("Weekly delta accuracy", theme.icon("trending"))
-    delta_acc_bar(view)
     theme.section_title("Weekly forecast absolute accuracy", theme.icon("target"))
     accuracy_chart(view)
     theme.section_title("Weekly directional hit accuracy", theme.icon("gauge"))
     directional_accuracy_bar(view)
+    theme.section_title("Weekly delta accuracy", theme.icon("trending"))
+    delta_acc_bar(view)
 
     theme.section_title("Week-wise detail", theme.icon("calendar"))
     # Forecast rounded to Rs.50; Delta (and %) recomputed off the rounded forecast so the row is

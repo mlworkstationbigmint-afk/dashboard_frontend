@@ -144,8 +144,9 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
     (predicted-flat → `500/|move|`; wrong-way → negative). Blank (NaN) for week 1 and predicted-move-but-flat
     weeks. `th = FLAT_THRESHOLD (500)`.
 - **New chart `delta_acc_bar(view)`** — the weekly **Delta (%)** column (×100), green-heavy gradient, in a new
-  **"Weekly delta accuracy"** section **just below "Actual vs Forecast deviation"**. Display clamped to
-  [−100, 100] (true value in hover); blank weeks are gaps.
+  **"Weekly delta accuracy"** section. Display clamped to [−100, 100] (true value in hover); blank weeks are gaps.
+- **Accuracy-chart order matches the KPI cards: absolute → directional → delta** (below the Actual-vs-forecast
+  line + the Rs. deviation bars).
 - Card captions: Directional = "correct up/down/flat calls", Delta = "avg weekly move capture". `data_loader`
   imports `numpy as np`. Verified against the real file (HRC: MAPA 99.2 / Dir 88.9 / Delta 87.8).
 - Files: `portal/app.py`, `portal/data_loader.py`.
