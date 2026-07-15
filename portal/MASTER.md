@@ -133,7 +133,9 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **Restructured from HRC/Rebar tabs to two route tabs — "BF route" and "IF route" — each with a Product
   dropdown.** `PRODUCT_PLANTS` → `ROUTE_PRODUCTS`: BF = HRC (`JSW Vijaynagar [Southern region]`,
   `SAIL [Eastern region]`) + Rebar (`JSW`, `CG`); IF = Rebar (`Durgapur`, `Jalna`). `render()` loops the two
-  route tabs, shows an `st.selectbox` of that route's products, and renders the picked one.
+  route tabs, shows a **`st.segmented_control`** clickable tab-strip of that route's products (same widget
+  as the forecast page's product selector, `label_visibility="collapsed"` + `x if x in prods else names[0]`
+  fallback), and renders the picked one.
 - `_render_product(product, plants, key)` + `_editor(prefix, product, ver, key)` gained a **`key`** arg
   (route+product, e.g. `bf_rebar`/`if_rebar`) that namespaces every widget/session key — needed because
   `st.tabs` runs both tab bodies each rerun and Rebar now lives in both routes. `product` ('HRC'/'Rebar')

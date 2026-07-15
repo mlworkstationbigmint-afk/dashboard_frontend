@@ -346,7 +346,11 @@ def render():
         with tab:
             prods = ROUTE_PRODUCTS[route]
             rkey = route.split()[0].lower()          # 'bf' / 'if'
-            product = st.selectbox("Product", list(prods), key=f"cost_prod_{rkey}")
+            names = list(prods)
+            # clickable tab-strip (same widget as the forecast page's product selector)
+            product = st.segmented_control("Product", names, default=names[0],
+                                           key=f"cost_prod_{rkey}", label_visibility="collapsed")
+            product = product if product in prods else names[0]
             _render_product(product, prods[product], key=f"{rkey}_{product.lower()}")
 
     st.divider()
