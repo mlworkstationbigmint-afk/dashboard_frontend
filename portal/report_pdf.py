@@ -47,7 +47,7 @@ class BrandedPDF(FPDF):
         self.report_meta = meta          # small line under the header rule (e.g. product / date)
         self.page_title = title
         self._on_cover = False
-        self._content_pages = 0
+        self._cover_pages = set()        # page numbers of cover/back-cover (plain number, no red bar)
         self.set_auto_page_break(True, margin=20)
         self.set_margins(14, 32, 14)
         self.brand_font = "Helvetica"
@@ -83,7 +83,6 @@ class BrandedPDF(FPDF):
     def header(self):
         if self._on_cover:
             return
-        self._content_pages += 1
         if os.path.exists(LOGO_LIGHT):
             try:
                 self.image(LOGO_LIGHT, self.w - 14 - 34, 11, 34)
@@ -102,20 +101,28 @@ class BrandedPDF(FPDF):
         self.set_y(32)
 
     def footer(self):
-        if self._on_cover:
+        # Every page is numbered, cover = 1 (fpdf's page_no is 1-based).
+        n = self.page_no()
+        if n in self._cover_pages:
+            # cover / back cover: plain white number in the blue band above the red strip
+            self._f("B", 9, WHITE)
+            self.set_xy(self.w - 28, self.h - 15)
+            self.cell(14, 6, str(n), 0, 0, "R")
             return
+        # inner page: red footer bar with the site (left) + page number (right)
         self.set_fill_color(*RED)
         self.rect(0, self.h - 12, self.w, 12, "F")
         self._f("B", 9, WHITE)
         self.set_xy(14, self.h - 10)
         self.cell(0, 7, SITE, 0, 0, "L")
         self.set_xy(self.w - 44, self.h - 10)
-        self.cell(30, 7, f"pg. {self._content_pages}", 0, 0, "R")
+        self.cell(30, 7, f"pg. {n}", 0, 0, "R")
 
     # --- cover / back cover ---------------------------------------------------
     def cover(self):
         self._on_cover = True
         self.add_page()
+        self._cover_pages.add(self.page_no())
         self.set_fill_color(*BLUE)
         self.rect(0, 0, self.w, self.h, "F")
         if os.path.exists(LOGO_DARK):
@@ -146,6 +153,7 @@ class BrandedPDF(FPDF):
     def back_cover(self):
         self._on_cover = True
         self.add_page()
+        self._cover_pages.add(self.page_no())
         self.set_fill_color(*BLUE)
         self.rect(0, 0, self.w, self.h, "F")
         if os.path.exists(LOGO_DARK):
