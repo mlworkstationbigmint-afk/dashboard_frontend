@@ -129,6 +129,22 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-15 (latest+++) — Cost Head: HRC/Rebar tabs with named plants; drop cost-breakup table
+- **Removed the "Cost breakup — Plant 1 vs Plant 2" AgGrid + the 4 metric tiles below it.** `import grid`
+  dropped from `calc_cost.py` (no longer used). Per-plant totals/margins now read off the chart labels + banner.
+- **Product selectbox → HRC / Rebar tabs.** `render()` now renders a `bm-calc-head` heading, then
+  `st.tabs(["HRC","Rebar"])`, then the methodology/glossary once below. Each tab calls new
+  **`_render_product(product, plants)`** with its named plants:
+  - **HRC:** `JSW Vijaynagar [South]`, `SAIL [East]` (2 plants).
+  - **Rebar:** `JSW`, `CG`, `Durgapur`, `Jalna` (4 plants).
+  Plant list lives in `PRODUCT_PLANTS`. Editable tables lay out **two per row** (Rebar → 2×2). Controls
+  (USD→INR, Market price, Reset) and the reset-version are **per-product** (`cost_fx_{p}` / `cost_mkt_{p}` /
+  `cost_ver_{p}`); editor keys are `cost_p{idx}_{product}_{ver}`. Chart/banner/verdict now scale to N plants
+  (verdict: "X of N plants profitable… best margin …").
+- **PDF** moved to `_build_pdf(product, plants, …)` — one column per plant (2 or 4), widths computed from the
+  page width; `_ascii()` guards the latin-1 core font. Engine still **byte-for-byte unchanged** (HRC total
+  Rs. 53,445/MT verified). File: `calculators/calc_cost.py`. ⚠ Visual-only — verify in-app.
+
 ### 2026-07-15 (latest++) — Cost Head calculator rebuilt from scratch (engine untouched)
 - **`calculators/calc_cost.py` `render()` fully rewritten; the calculation engine is byte-for-byte unchanged**
   — `_elem_cost()` = `price × FX (if USD) × norm`, summed to ex-works total, `margin = market − total`;

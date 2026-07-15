@@ -11,7 +11,6 @@ from fpdf import FPDF
 from datetime import datetime
 
 import theme   # shared brand palette + infographic CSS/helpers
-import grid    # BigMint-themed AgGrid (blue header, sort/filter)
 
 # --- Engine inputs ------------------------------------------------------------
 CURRENCY_OPTS = ["INR (Rs.)", "USD ($)"]
@@ -261,22 +260,59 @@ def _glossary():
     st.markdown(html, unsafe_allow_html=True)
 
 
-def render():
-    st.markdown(CALC_CSS, unsafe_allow_html=True)
-    st.session_state.setdefault("cost_ver", 0)
+# Plants per product (editable display names). HRC: 2 plants; Rebar: 4.
+PRODUCT_PLANTS = {
+    "HRC":   ["JSW Vijaynagar [South]", "SAIL [East]"],
+    "Rebar": ["JSW", "CG", "Durgapur", "Jalna"],
+}
+
+
+def _ascii(s):
+    """FPDF core fonts are latin-1 only — strip anything they can't encode."""
+    return str(s).encode("latin-1", "replace").decode("latin-1")
+
+
+def _build_pdf(product, plants, plant_costs, totals, margins, ex_rate, mkt_price):
+    """Cost-element table with one column per plant (2 for HRC, 4 for Rebar)."""
+    pdf = Report_PDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 10)
+    pdf.cell(0, 8, f"Product: {product} | Market Price: Rs. {mkt_price:,.0f} | Conversion Rate: {ex_rate}", 0, 1)
+    pdf.ln(5)
+    epw = pdf.w - pdf.l_margin - pdf.r_margin
+    w_elem = 70.0
+    w_plant = (epw - w_elem) / len(plants)
+    pdf.set_fill_color(240, 240, 240)
+    pdf.set_font("Arial", "B", 8)
+    pdf.cell(w_elem, 9, "Cost Element", 1, 0, "C", 1)
+    for n in plants:
+        pdf.cell(w_plant, 9, _ascii(n), 1, 0, "C", 1)
+    pdf.ln()
+    pdf.set_font("Arial", "", 8)
+    for key, label, *_rest in ELEMENTS:
+        pdf.cell(w_elem, 8, _ascii(label), 1)
+        for n in plants:
+            pdf.cell(w_plant, 8, f"{plant_costs[n][key]:,.0f}", 1, 0, "R")
+        pdf.ln()
+    pdf.set_font("Arial", "B", 8)
+    pdf.cell(w_elem, 8, "Total Cost (Ex-Works)", 1, 0, "L", 1)
+    for n in plants:
+        pdf.cell(w_plant, 8, f"{totals[n]:,.0f}", 1, 0, "R", 1)
+    pdf.ln()
+    pdf.cell(w_elem, 8, "Mill Margin", 1, 0, "L", 1)
+    for n in plants:
+        pdf.cell(w_plant, 8, f"{margins[n]:,.0f}", 1, 0, "R", 1)
+    return pdf
+
+
+def _render_product(product, plants):
+    """One product tab: dual-axis chart + controls, an editable cost table per plant,
+    and the headline/verdict. Calculation engine unchanged."""
+    verkey = f"cost_ver_{product}"
+    st.session_state.setdefault(verkey, 0)
 
     def _reset_tables():
-        st.session_state["cost_ver"] = st.session_state.get("cost_ver", 0) + 1
-
-    st.markdown(
-        "<div class='bm-calc-head'>"
-        f"<div class='bm-calc-title'>{theme.icon('calculator', 30)} Production Cost &amp; Margin Simulation</div>"
-        "<div class='bm-calc-sub'>Two-plant ex-works cost build-up &middot; mill margin vs the market price</div>"
-        "</div>",
-        unsafe_allow_html=True,
-    )
-    st.caption("Compare the cost to produce one tonne of finished steel at two plants, and the resulting "
-               "mill margins at the current market price. Every value below is editable.")
+        st.session_state[verkey] = st.session_state.get(verkey, 0) + 1
 
     mgmt_ph = st.empty()      # margin verdict (filled after compute)
     banner_ph = st.empty()    # lower-cost headline
@@ -288,114 +324,87 @@ def render():
         chart_ph = st.empty()
     with col_ctrl:
         theme.section_title("Scenario controls", theme.icon("gauge"))
-        product = st.selectbox("Product", ["HRC", "Rebar"], key="cost_product")
-        ex_rate = st.number_input("USD → INR rate", value=93.0, step=0.5, key="cost_fx")
+        ex_rate = st.number_input("USD → INR rate", value=93.0, step=0.5, key=f"cost_fx_{product}")
         mkt_price = st.number_input(f"Market price — {product} (Rs./MT)", value=55000.0, step=500.0,
-                                    key="cost_mkt", min_value=0.0)
-        st.button("↺ Reset tables", key="cost_reset", on_click=_reset_tables, width="stretch",
-                  help="Restore both plants' cost tables to the defaults for the selected product.")
+                                    key=f"cost_mkt_{product}", min_value=0.0)
+        st.button("↺ Reset tables", key=f"cost_reset_{product}", on_click=_reset_tables, width="stretch",
+                  help="Restore every plant's cost table to the defaults for this product.")
 
-    # --- editable per-plant cost build-up ---
+    # --- editable per-plant cost build-up (two tables per row) ---
     _sec("Editable cost build-up by plant", theme.icon("factory"))
-    ver = st.session_state.get("cost_ver", 0)
-    e1, e2 = st.columns(2, gap="large")
-    with e1:
-        st.markdown("**Plant 1**")
-        ed1 = _editor("p1", product, ver)
-    with e2:
-        st.markdown("**Plant 2**")
-        ed2 = _editor("p2", product, ver)
+    ver = st.session_state.get(verkey, 0)
+    edited = {}
+    for i in range(0, len(plants), 2):
+        chunk = plants[i:i + 2]
+        cols = st.columns(len(chunk), gap="large")
+        for j, (col, name) in enumerate(zip(cols, chunk)):
+            with col:
+                st.markdown(f"**{name}**")
+                edited[name] = _editor(f"p{i + j}", product, ver)
     st.caption("Price basis is shown per row. **Norm** = consumption per tonne of steel. Switch a row's "
                "**Cur.** to USD ($) to enter a dollar price (converted at the USD→INR rate). Edits update "
                "the chart live; **Reset** restores the product defaults.")
 
-    costs1, total1 = _plant_costs(ed1, ex_rate)
-    costs2, total2 = _plant_costs(ed2, ex_rate)
-    margin1, margin2 = mkt_price - total1, mkt_price - total2
+    plant_costs, totals, margins = {}, {}, {}
+    for name in plants:
+        plant_costs[name], totals[name] = _plant_costs(edited[name], ex_rate)
+        margins[name] = mkt_price - totals[name]
 
     # --- fill the chart ---
     with chart_ph.container():
         try:
-            st.plotly_chart(_cost_margin_figure(["Plant 1", "Plant 2"], [total1, total2],
-                                                [margin1, margin2], mkt_price),
-                            width="stretch", config={"displayModeBar": False})
+            st.plotly_chart(
+                _cost_margin_figure(plants, [totals[n] for n in plants],
+                                    [margins[n] for n in plants], mkt_price),
+                width="stretch", config={"displayModeBar": False})
         except Exception:
-            st.bar_chart(pd.DataFrame({"Total cost": {"Plant 1": total1, "Plant 2": total2}}))
+            st.bar_chart(pd.DataFrame({"Total cost": {n: totals[n] for n in plants}}))
         st.caption("Bars = ex-works cost per plant (left axis). Dashed line = market price. "
                    "Diamonds = mill margin on the right axis (green = profit, red = loss).")
 
     # --- headline + verdict ---
-    lower = "Plant 1" if total1 <= total2 else "Plant 2"
-    lower_cost = min(total1, total2)
+    lower = min(plants, key=lambda n: totals[n])
     banner_ph.markdown(
-        f"<div class='kpi-banner'>Lower-cost producer: {lower} — Rs.{lower_cost:,.0f}/MT "
+        f"<div class='kpi-banner'>Lower-cost producer: {lower} — Rs.{totals[lower]:,.0f}/MT "
         f"(vs market Rs.{mkt_price:,.0f}/MT)</div>", unsafe_allow_html=True)
-    best_margin = max(margin1, margin2)
-    css = "mgmt-good" if best_margin >= 0 else "mgmt-bad"
-    if best_margin >= 0:
-        msg = (f"Both plants priced against market Rs.{mkt_price:,.0f}/MT. "
-               f"Mill margin — Plant 1: Rs.{margin1:,.0f}/MT ({margin1/mkt_price*100:.1f}%), "
-               f"Plant 2: Rs.{margin2:,.0f}/MT ({margin2/mkt_price*100:.1f}%).")
+    best = max(plants, key=lambda n: margins[n])
+    profitable = [n for n in plants if margins[n] >= 0]
+    if margins[best] >= 0:
+        css = "mgmt-good"
+        msg = (f"{len(profitable)} of {len(plants)} plants profitable at market Rs.{mkt_price:,.0f}/MT. "
+               f"Best margin: {best} at Rs.{margins[best]:,.0f}/MT ({margins[best]/mkt_price*100:.1f}%).")
     else:
-        msg = (f"Both plants are under water at market Rs.{mkt_price:,.0f}/MT. "
-               f"Loss — Plant 1: Rs.{margin1:,.0f}/MT, Plant 2: Rs.{margin2:,.0f}/MT.")
+        css = "mgmt-bad"
+        msg = (f"No plant is profitable at market Rs.{mkt_price:,.0f}/MT. "
+               f"Smallest loss: {best} at Rs.{margins[best]:,.0f}/MT.")
     mgmt_ph.markdown(f"<div class='mgmt-box {css}'>Management view: {msg}</div>", unsafe_allow_html=True)
 
-    # --- cost breakup comparison ---
-    _sec("Cost breakup — Plant 1 vs Plant 2", theme.icon("rupee"))
-    comp = pd.DataFrame([{"Group": grp, "Cost element": label,
-                          "Plant 1": costs1[key], "Plant 2": costs2[key]}
-                         for (key, label, grp, *_rest) in ELEMENTS])
-
-    def _cmp_cfg(gob, Js):
-        gob.configure_column("Group", width=140)
-        gob.configure_column("Cost element", width=240)
-        gob.configure_column("Plant 1", headerName="Plant 1 (Rs./MT)", type=["numericColumn"],
-                             valueFormatter=grid.JS_MONEY)
-        gob.configure_column("Plant 2", headerName="Plant 2 (Rs./MT)", type=["numericColumn"],
-                             valueFormatter=grid.JS_MONEY)
-        gob.configure_grid_options(domLayout="autoHeight")
-
-    grid.bm_grid(comp, key="cost_cmp", configure=_cmp_cfg, page_size=0, height=400, fit=True)
-
-    k1, k2, k3, k4 = st.columns(4)
-    k1.metric("Plant 1 — Total cost", f"Rs.{total1:,.0f}/MT")
-    k2.metric("Plant 1 — Mill margin", f"Rs.{margin1:,.0f}/MT", delta=f"{margin1/mkt_price*100:.1f}%")
-    k3.metric("Plant 2 — Total cost", f"Rs.{total2:,.0f}/MT")
-    k4.metric("Plant 2 — Mill margin", f"Rs.{margin2:,.0f}/MT", delta=f"{margin2/mkt_price*100:.1f}%")
-
-    # --- PDF snapshot (unchanged report content) ---
-    if st.button("Generate PDF Report", key="cost_pdf"):
-        pdf = Report_PDF()
-        pdf.add_page()
-        pdf.set_font("Arial", "B", 10)
-        pdf.cell(0, 8, f"Product: {product} | Market Price: Rs. {mkt_price:,.0f} | Conversion Rate: {ex_rate}", 0, 1)
-        pdf.ln(5)
-        pdf.set_fill_color(240, 240, 240)
-        pdf.set_font("Arial", "B", 9)
-        headers = ["Cost Element", "Plant 1 (Rs./MT)", "Plant 2 (Rs./MT)"]
-        widths = [90, 50, 50]
-        for idx, h in enumerate(headers):
-            pdf.cell(widths[idx], 10, h, 1, 0, "C", 1)
-        pdf.ln()
-        pdf.set_font("Arial", "", 9)
-        for key, label, *_rest in ELEMENTS:
-            pdf.cell(widths[0], 10, label, 1)
-            pdf.cell(widths[1], 10, f"{costs1[key]:,.2f}", 1, 0, "R")
-            pdf.cell(widths[2], 10, f"{costs2[key]:,.2f}", 1, 0, "R")
-            pdf.ln()
-        pdf.set_font("Arial", "B", 9)
-        pdf.cell(widths[0], 10, "Total Cost (Ex-Works)", 1, 0, "L", 1)
-        pdf.cell(widths[1], 10, f"{total1:,.2f}", 1, 0, "R", 1)
-        pdf.cell(widths[2], 10, f"{total2:,.2f}", 1, 0, "R", 1)
-        pdf.ln()
-        pdf.cell(widths[0], 10, "Mill Margin", 1, 0, "L", 1)
-        pdf.cell(widths[1], 10, f"{margin1:,.2f}", 1, 0, "R", 1)
-        pdf.cell(widths[2], 10, f"{margin2:,.2f}", 1, 0, "R", 1)
-        unique_name = f"Steel_Cost_Analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    # --- PDF snapshot (one column per plant) ---
+    if st.button("Generate PDF Report", key=f"cost_pdf_{product}"):
+        pdf = _build_pdf(product, plants, plant_costs, totals, margins, ex_rate, mkt_price)
+        unique_name = f"Steel_Cost_{product}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         st.download_button("Download PDF Report", data=_pdf_bytes(pdf), file_name=unique_name,
-                           mime="application/pdf")
+                           mime="application/pdf", key=f"cost_dl_{product}")
 
-    # --- methodology (infographic) + glossary ---
+
+def render():
+    st.markdown(CALC_CSS, unsafe_allow_html=True)
+    st.markdown(
+        "<div class='bm-calc-head'>"
+        f"<div class='bm-calc-title'>{theme.icon('calculator', 30)} Production Cost &amp; Margin Simulation</div>"
+        "<div class='bm-calc-sub'>Multi-plant ex-works cost build-up &middot; mill margin vs the market price</div>"
+        "</div>",
+        unsafe_allow_html=True,
+    )
+    st.caption("Pick a product tab, then compare the cost to produce one tonne of finished steel across its "
+               "plants and the resulting mill margins at the current market price. Every value is editable.")
+
+    tab_hrc, tab_rebar = st.tabs(["HRC", "Rebar"])
+    with tab_hrc:
+        _render_product("HRC", PRODUCT_PLANTS["HRC"])
+    with tab_rebar:
+        _render_product("Rebar", PRODUCT_PLANTS["Rebar"])
+
+    st.divider()
     _methodology_infographic()
     _glossary()
