@@ -226,25 +226,53 @@ def _read_accuracy(path: str, acc_label: str, mtime: float) -> pd.DataFrame:
     df["PredDir"] = (df["Forecast"] - prev_actual).map(direction_flag)   # vs prior week's spot, +/-500 => Flat
     df["ActualDir"] = (df["Actual"] - prev_actual).map(direction_flag)
     df.loc[df.index[0], ["PredDir", "ActualDir"]] = "Flat"               # no prior reference
-    df["Hit"] = df["PredDir"] == df["ActualDir"]
 
-    # Delta accuracy — how close the PREDICTED week-over-week move is to the ACTUAL move.
-    #   predicted move = Forecast - prev spot ;  actual move = spot - prev spot
-    #   DeltaAcc% = 100 - |predicted move - actual move| / |actual move| * 100
-    # (|predicted move - actual move| == |Forecast - Actual|.) Undefined for week 1 (no prior
-    # reference) and when the market was flat (actual move == 0) — left as NaN.
-    df["PredMove"] = df["Forecast"] - prev_actual
-    df["ActMove"] = df["Actual"] - prev_actual
-    df["DeltaAcc"] = 100 - (df["PredMove"] - df["ActMove"]).abs() / df["ActMove"].abs() * 100
-    df.loc[(df["ActMove"] == 0) | (df.index == df.index[0]), "DeltaAcc"] = np.nan
-    df["DeltaAcc"] = df["DeltaAcc"].replace([np.inf, -np.inf], np.nan)
+    # ---- per-week accuracy columns, replicated EXACTLY from Accuracy_Table_11.xlsx -------------
+    # Each commodity block in the sheet carries Actual, Forecast, MAE, MAPA (%), Delta (%),
+    # Directional (%). Those metric cells are Excel FORMULAS (no cached values), so we recompute
+    # them here. All three are in POINTS (0..1); the UI multiplies by 100 to show a %. th = the
+    # +/-500 Rs./ton dead-band (FLAT_THRESHOLD). am = actual week-over-week move (spot - prior spot);
+    # pm = predicted move (forecast - prior spot).
+    th = FLAT_THRESHOLD
+    am = df["Actual"] - prev_actual
+    pm = df["Forecast"] - prev_actual
+
+    # MAPA (%) = 1 - |Actual - Forecast| / Actual  (absolute price accuracy, per week)
+    df["AbsAcc"] = 1 - (df["Actual"] - df["Forecast"]).abs() / df["Actual"]
+    df.loc[df["Actual"] == 0, "AbsAcc"] = np.nan
+
+    amflat, pmflat = am.abs() < th, pm.abs() < th
+    amf, af = amflat.to_numpy(), am.to_numpy()
+
+    # Directional (%) = 1 when the predicted direction matches the actual (both inside the dead-band
+    # counts as a correct 'flat' call), else 0.
+    df["DirAcc"] = np.where(amflat, np.where(pmflat, 1.0, 0.0), np.where(am * pm > 0, 1.0, 0.0))
+
+    # Delta (%) = share of the actual move that the forecast captured (signed, capped at 1). Blank
+    # when the forecast called a move but the market stayed flat.
+    up, down = (pm >= th).to_numpy(), (pm <= -th).to_numpy()
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio = (am.abs() / pm.abs()).to_numpy()               # |am/pm|; inf where pm==0 (unused)
+        capped = np.minimum(1.0, ratio)
+        # base = predicted-flat weeks: perfect if actual also flat, else partial credit 500/|am|
+        delta = np.where(pmflat.to_numpy(),
+                         np.where(amf, 1.0, np.minimum(1.0, th / np.abs(af))), np.nan)
+        delta = np.where(up & ~amf & (af < 0), -ratio, delta)      # predicted up, actual down
+        delta = np.where(up & ~amf & (af >= 0), capped, delta)     # predicted up, actual up
+        delta = np.where(down & ~amf & (af > 0), -ratio, delta)    # predicted down, actual up
+        delta = np.where(down & ~amf & (af <= 0), capped, delta)   # predicted down, actual down
+    df["DeltaAcc"] = delta
+
+    df.loc[df.index[0], ["DirAcc", "DeltaAcc"]] = np.nan        # first week has no prior reference
+    df["Hit"] = df["DirAcc"] == 1.0                             # drives the weekly directional chart
     return df
 
 
 def load_accuracy(window: str, acc_label: str) -> pd.DataFrame:
     """Week-wise Actual/Forecast for one product from an accuracy table.
 
-    Returns Date, Actual, Forecast, Delta, DeltaPct, PredDir, ActualDir, Hit.
+    Returns Date, Actual, Forecast, Delta, DeltaPct, PredDir, ActualDir, Hit,
+    AbsAcc, DirAcc, DeltaAcc (the last three in points, 0..1).
     Re-read when the file changes.
     """
     path = acc_path(window)
@@ -252,26 +280,20 @@ def load_accuracy(window: str, acc_label: str) -> pd.DataFrame:
 
 
 def accuracy_kpis(df: pd.DataFrame) -> dict:
-    """Compute MAPA (absolute accuracy), the last-12-week directional hit rate and delta accuracy."""
+    """Absolute (MAPA), directional and delta accuracy — the averages of the accuracy-table's
+    MAPA (%) / Directional (%) / Delta (%) columns (points -> %), matching the sheet's AVERAGE rows
+    (blank weeks ignored)."""
     if df.empty:
-        return {"mapa": None, "dir_acc": None, "hit_rate_12": None, "delta_acc": None}
-    valid = df.dropna(subset=["Actual", "Forecast"])
-    mape = (valid["Delta"].abs() / valid["Actual"]).mean() * 100
-    rows = valid.iloc[1:]   # first row has no previous reference
-    dir_acc = rows["Hit"].mean() * 100 if len(rows) else None
-    last12 = rows.tail(12)   # last 12 weekly directional calls
-    hit_rate_12 = last12["Hit"].sum() / 12 * 100 if len(last12) else None
-    # Delta accuracy = 1 - (total move-prediction error / total actual move), over weeks with a
-    # prior reference and a non-flat actual move. Weighted (robust to tiny-move weeks that would
-    # otherwise blow the per-week ratio up).
-    dm = rows[rows["ActMove"].abs() > 0]
-    denom = dm["ActMove"].abs().sum()
-    delta_acc = (100 - (dm["PredMove"] - dm["ActMove"]).abs().sum() / denom * 100) if denom else None
+        return {"mapa": None, "dir_acc": None, "delta_acc": None}
+
+    def _avg_pct(col):
+        s = df[col].dropna()
+        return s.mean() * 100 if len(s) else None
+
     return {
-        "mapa": 100 - mape,
-        "dir_acc": dir_acc,
-        "hit_rate_12": hit_rate_12,
-        "delta_acc": delta_acc,
+        "mapa": _avg_pct("AbsAcc"),
+        "dir_acc": _avg_pct("DirAcc"),
+        "delta_acc": _avg_pct("DeltaAcc"),
     }
 
 
