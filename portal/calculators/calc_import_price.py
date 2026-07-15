@@ -5,11 +5,9 @@
 # =============================================================================
 import streamlit as st
 import pandas as pd
-from datetime import datetime
 
 import theme        # shared brand palette + infographic CSS/helpers (same as the rest of the portal)
 import grid         # BigMint-themed AgGrid (blue header, sort/filter); falls back to st.dataframe
-import report_pdf as report   # BigMint-branded PDF base (CodeG formatting)
 
 HRC_FULL_NAME = "HRC, Exy-Mumbai, India, 2.5-8mm / CTL, IS2062, Gr E250 Br."
 
@@ -151,31 +149,6 @@ def compute_landed(fob, freight, is_fta, g):
         "tvd": tvd, "sg_applied": sg_applied, "addl_usd": addl, "addl_inr": addl * g["fx"],
         "cost_usd": cost_usd, "cost_inr": cost_inr, "landed": landed, "diff": diff, "is_fta": is_fta,
     }
-
-
-def build_pdf(pdf_rows, g, summary_line, best_line):
-    """One BigMint-branded PDF: cover -> HRC landed-cost section -> back cover."""
-    pdf = report.BrandedPDF(
-        "Import Price Scenario Report",
-        "Hot-Rolled Coil  ·  import vs landed-cost parity",
-        f"Generated {datetime.now().strftime('%d %b %Y, %H:%M')}",
-    )
-    pdf.cover()
-    pdf.start_section(
-        "HRC — Import vs Landed Cost",
-        f"Domestic Rs.{int(g['domestic']):,}/t   |   FX {g['fx']}   |   Threshold CIF ${int(g['threshold_cif'])}",
-    )
-    pdf.subheader("Summary")
-    pdf.body(summary_line)
-    pdf.body(best_line)
-    pdf.subheader("Landed cost by origin")
-    headers = ["Region", "FTA", "CFR $", "TVD $", "Safeguard", "Landed Rs.", "Decision"]
-    rows = [[r["Region"], r["FTA"], r["CFR"], r["TVD"], r["SG"], r["Landed"], r["Decision"]]
-            for r in pdf_rows]
-    pdf.table(headers, rows, widths=[26, 12, 24, 24, 26, 30, 40],
-              aligns=["L", "C", "R", "R", "C", "R", "C"])
-    pdf.back_cover()
-    return pdf
 
 
 VIEW_OPTS = ["Graphical view", "Tabular view"]
@@ -574,32 +547,6 @@ def render(is_admin=False):
 
     grid.bm_grid(pd.DataFrame(fx_rows), key="imp_fx", configure=_fx_cfg, page_size=0, height=320)
     st.caption(f"Domestic benchmark for reference: Rs.{int(domestic):,}/t.")
-
-    # --- PDF snapshot ---
-    ordered = sorted(regions, key=lambda r: results[r]["landed"])
-    pdf_data = [{
-        "Region": r,
-        "FTA": "Yes" if results[r]["is_fta"] else "No",
-        "CFR": f"${results[r]['cfr']:,.0f}",
-        "TVD": f"${results[r]['tvd']:,.0f}",
-        "SG": "Applied" if results[r]["sg_applied"] else "No",
-        "Landed": f"Rs.{int(results[r]['landed']):,}",
-        "Decision": "IMPORT VIABLE" if results[r]["diff"] < 0 else "NOT VIABLE",
-        "Viable": results[r]["diff"] < 0,
-    } for r in ordered]
-    if viable:
-        bv = min(viable, key=lambda r: results[r]["landed"])
-        summary_line = (f"Summary: {len(viable)} of {len(regions)} sources viable. "
-                        f"Cheapest viable {bv} at Rs.{int(results[bv]['landed']):,}/t.")
-    else:
-        summary_line = (f"Summary: Imports not viable. Domestic Rs.{int(domestic):,}/t beats cheapest import "
-                        f"({cheapest} Rs.{int(cl):,}/t) by Rs.{int(cl - domestic):,}/t.")
-    best_line = f"Lowest cost source: {cheapest} at Rs.{int(cl):,}/t."
-    if st.button("Generate branded PDF report", key=f"{p}_pdf", type="primary"):
-        pdf = build_pdf(pdf_data, g, summary_line, best_line)
-        unique_name = f"BigMint_Import_Price_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        st.download_button("Download report", data=report.pdf_bytes(pdf), file_name=unique_name,
-                           mime="application/pdf")
 
     # --- methodology (modular, equation-heavy) + glossary ---
     _methodology_infographic()

@@ -9,9 +9,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from sklearn.linear_model import Ridge
-from datetime import datetime
-
-import report_pdf as report   # BigMint-branded PDF base (CodeG formatting)
 
 try:  # resolve the in-repo CSV path via the shared loader; fall back to a sibling file
     import data_loader as _dl
@@ -141,30 +138,6 @@ def render():
         "Price Change (Rs.)": np.round(price_contributions, 0),
     }).sort_values(by="Price Change (Rs.)", ascending=False)
     st.dataframe(contrib_df, width="stretch")
-
-    st.divider()
-    if st.button("Generate branded PDF report", key="elas_pdf", type="primary"):
-        pdf = report.BrandedPDF(
-            "Price Elasticity & Forecast Report",
-            "Hot-Rolled Coil  ·  driver-shock price forecast",
-            f"Generated {datetime.now().strftime('%d %b %Y, %H:%M')}",
-        )
-        pdf.cover()
-        pdf.start_section("HRC — Price Elasticity Forecast")
-        pdf.subheader("Market forecast summary")
-        pdf.keyvals([("Current market price", f"Rs.{current_price:,}"),
-                     ("Forecasted price", f"Rs.{round(final_price,0):,.0f}")])
-        pdf.keyvals([("Expected change", f"{round(impact*100,2)}%"),
-                     ("Absolute change", f"Rs.{round(price_change,0):,.0f}")])
-        pdf.subheader("Driver contribution breakdown")
-        rows = [[row["Factor"], f"Rs.{row['Price Change (Rs.)']:,.0f}"]
-                for _, row in contrib_df.iterrows()]
-        pdf.table(["Market Factor / Driver", "Price Change (Rs.)"], rows,
-                  widths=[122, 60], aligns=["L", "R"])
-        pdf.back_cover()
-        unique_name = f"BigMint_Elasticity_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        st.download_button("Download report", data=report.pdf_bytes(pdf), file_name=unique_name,
-                           mime="application/pdf")
 
     st.divider()
     with st.expander("Methodology & Logic"):
