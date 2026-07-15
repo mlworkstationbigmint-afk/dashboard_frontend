@@ -96,11 +96,12 @@ def _sec(text, icon=""):
     st.markdown(f"<div class='bm-sec'>{ic}{text}</div>", unsafe_allow_html=True)
 
 
-def _editor(prefix, product, ver):
-    """One plant's editable cost table. Keyed by product + reset-version so switching
-    product re-seeds fresh values and Reset clears edits (fresh widget key)."""
+def _editor(prefix, product, ver, key):
+    """One plant's editable cost table. Keyed by route+product (`key`) + reset-version so switching
+    product re-seeds fresh values and Reset clears edits (fresh widget key). `product` ('HRC'/'Rebar')
+    only drives the seeded defaults."""
     return st.data_editor(
-        _seed_df(product), key=f"cost_{prefix}_{product}_{ver}", hide_index=True,
+        _seed_df(product), key=f"cost_{prefix}_{key}_{ver}", hide_index=True,
         num_rows="fixed", width="stretch",
         column_config={
             "Cost element": st.column_config.TextColumn("Cost element", disabled=True, width="medium"),
@@ -239,17 +240,24 @@ def _glossary():
     st.markdown(html, unsafe_allow_html=True)
 
 
-# Plants per product (editable display names). HRC: 2 plants; Rebar: 4.
-PRODUCT_PLANTS = {
-    "HRC":   ["JSW Vijaynagar [South]", "SAIL [East]"],
-    "Rebar": ["JSW", "CG", "Durgapur", "Jalna"],
+# Two production routes, each with its own product dropdown and named plants.
+# BF (blast furnace): HRC + Rebar; IF (induction furnace): Rebar only.
+ROUTE_PRODUCTS = {
+    "BF route": {
+        "HRC":   ["JSW Vijaynagar [Southern region]", "SAIL [Eastern region]"],
+        "Rebar": ["JSW", "CG"],
+    },
+    "IF route": {
+        "Rebar": ["Durgapur", "Jalna"],
+    },
 }
 
 
-def _render_product(product, plants):
-    """One product tab: dual-axis chart + controls, an editable cost table per plant,
-    and the headline/verdict. Calculation engine unchanged."""
-    verkey = f"cost_ver_{product}"
+def _render_product(product, plants, key):
+    """One product view: dual-axis chart + controls, an editable cost table per plant, and the
+    headline/verdict. `key` (route+product, e.g. 'bf_rebar') namespaces every widget so the same
+    product in two routes never collides; `product` drives labels + seeded defaults. Engine unchanged."""
+    verkey = f"cost_ver_{key}"
     st.session_state.setdefault(verkey, 0)
 
     def _reset_tables():
@@ -265,10 +273,10 @@ def _render_product(product, plants):
         chart_ph = st.empty()
     with col_ctrl:
         theme.section_title("Scenario controls", theme.icon("gauge"))
-        ex_rate = st.number_input("USD → INR rate", value=93.0, step=0.5, key=f"cost_fx_{product}")
+        ex_rate = st.number_input("USD → INR rate", value=93.0, step=0.5, key=f"cost_fx_{key}")
         mkt_price = st.number_input(f"Market price — {product} (Rs./MT)", value=55000.0, step=500.0,
-                                    key=f"cost_mkt_{product}", min_value=0.0)
-        st.button("↺ Reset tables", key=f"cost_reset_{product}", on_click=_reset_tables, width="stretch",
+                                    key=f"cost_mkt_{key}", min_value=0.0)
+        st.button("↺ Reset tables", key=f"cost_reset_{key}", on_click=_reset_tables, width="stretch",
                   help="Restore every plant's cost table to the defaults for this product.")
 
     # --- editable per-plant cost build-up (two tables per row) ---
@@ -281,7 +289,7 @@ def _render_product(product, plants):
         for j, (col, name) in enumerate(zip(cols, chunk)):
             with col:
                 st.markdown(f"**{name}**")
-                edited[name] = _editor(f"p{i + j}", product, ver)
+                edited[name] = _editor(f"p{i + j}", product, ver, key)
     st.caption("Price basis is shown per row. **Norm** = consumption per tonne of steel. Switch a row's "
                "**Cur.** to USD ($) to enter a dollar price (converted at the USD→INR rate). Edits update "
                "the chart live; **Reset** restores the product defaults.")
@@ -330,14 +338,16 @@ def render():
         "</div>",
         unsafe_allow_html=True,
     )
-    st.caption("Pick a product tab, then compare the cost to produce one tonne of finished steel across its "
-               "plants and the resulting mill margins at the current market price. Every value is editable.")
+    st.caption("Pick a route (BF / IF) and product, then compare the cost to produce one tonne of finished "
+               "steel across its plants and the resulting mill margins at the current market price. "
+               "Every value is editable.")
 
-    tab_hrc, tab_rebar = st.tabs(["HRC", "Rebar"])
-    with tab_hrc:
-        _render_product("HRC", PRODUCT_PLANTS["HRC"])
-    with tab_rebar:
-        _render_product("Rebar", PRODUCT_PLANTS["Rebar"])
+    for tab, route in zip(st.tabs(list(ROUTE_PRODUCTS)), ROUTE_PRODUCTS):
+        with tab:
+            prods = ROUTE_PRODUCTS[route]
+            rkey = route.split()[0].lower()          # 'bf' / 'if'
+            product = st.selectbox("Product", list(prods), key=f"cost_prod_{rkey}")
+            _render_product(product, prods[product], key=f"{rkey}_{product.lower()}")
 
     st.divider()
     _methodology_infographic()
