@@ -129,6 +129,32 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-15 (latest++++) — BigMint-branded (CodeG) PDFs; one PDF per report with a section per commodity
+- **New shared module `portal/report_pdf.py` — `BrandedPDF(FPDF)` (CodeG formatting).** A4 portrait: solid-blue
+  **cover** (white logo + title/subtitle/meta, gray site band, red bottom strip), **inner pages** (white, blue
+  Archivo-Bold page title top-left, blue logo top-right, gray rule, **red full-width footer bar** with
+  `www.bigmint.co` + `pg. N`), and a **back cover** (Contact Us). Palette = brand blue `#024CA1` / red `#FF4036` /
+  body `#1A1A1A` / gray `#E8E8E8`. Helpers: `cover()`, `back_cover()`, `start_section(title, meta)` (new page per
+  section), `subheader()`, `body()`, `keyvals()`, `table(headers, rows, widths, aligns, bold_rows)` (blue header,
+  zebra rows, thin gray rules, bold+tinted total rows), `pdf_bytes()`.
+- **Brand assets bundled into the repo** so PDFs render branded on the deployed app (the `C:\…\CodeG\` paths are
+  local-only): `portal/assets/fonts/Archivo-{Regular,SemiBold,Bold}.ttf`, `portal/assets/bm_logo_light_bg.png`
+  (blue logo → white pages), `portal/assets/bm_logo_dark_bg.png` (white logo → blue cover). **Graceful fallback:**
+  missing fonts → core Helvetica (with latin-1 sanitising); missing logos → skipped. Never crashes. Needs `fpdf2`
+  (`add_font`); on plain fpdf it falls back to Helvetica.
+- **All three calculators now emit ONE branded PDF** (cover → section(s) → back cover), replacing their old
+  ad-hoc `FPDF` subclasses (`HRC_Snapshot_PDF` / two `Report_PDF`) + local `_pdf_bytes`:
+  - **Cost Head (multi-commodity):** a single **"Generate branded PDF report (HRC + Rebar)"** button *below the
+    tabs* produces one PDF with **a separate page/section per commodity** (HRC page, Rebar page). Each
+    `_render_product` stashes its results in `st.session_state[f"cost_report_{product}"]` (both tab bodies run
+    each rerun), and `_cost_report_bytes()` / `_cost_section()` assemble them. The per-tab PDF buttons are gone.
+  - **Landed Cost:** `build_pdf()` now returns a `BrandedPDF` (cover + "HRC — Import vs Landed Cost" section + back
+    cover); button → `report.pdf_bytes`.
+  - **Price Sensitivity:** branded cover + "HRC — Price Elasticity Forecast" section (summary keyvals + driver table).
+- Files: `report_pdf.py` (new), `calculators/calc_cost.py`, `calculators/calc_import_price.py`,
+  `calculators/calc_elasticity.py`, `portal/assets/*`. Engines untouched. Verified: each builds a valid multi-page
+  PDF with Archivo (Cost report = 4 pages: cover+HRC+Rebar+back). ⚠ Eyeball the branded output in-app.
+
 ### 2026-07-15 (latest+++) — Cost Head: HRC/Rebar tabs with named plants; drop cost-breakup table
 - **Removed the "Cost breakup — Plant 1 vs Plant 2" AgGrid + the 4 metric tiles below it.** `import grid`
   dropped from `calc_cost.py` (no longer used). Per-plant totals/margins now read off the chart labels + banner.

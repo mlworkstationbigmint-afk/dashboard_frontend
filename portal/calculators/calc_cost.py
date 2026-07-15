@@ -7,10 +7,10 @@
 # =============================================================================
 import streamlit as st
 import pandas as pd
-from fpdf import FPDF
 from datetime import datetime
 
-import theme   # shared brand palette + infographic CSS/helpers
+import theme        # shared brand palette + infographic CSS/helpers
+import report_pdf as report   # BigMint-branded PDF base (CodeG formatting)
 
 # --- Engine inputs ------------------------------------------------------------
 CURRENCY_OPTS = ["INR (Rs.)", "USD ($)"]
@@ -91,25 +91,6 @@ CALC_CSS = """
 .bm-eq b { color: var(--bm-accent); }
 </style>
 """
-
-
-def _pdf_bytes(pdf):
-    raw = pdf.output(dest="S")
-    return raw.encode("latin-1") if isinstance(raw, str) else bytes(raw)
-
-
-class Report_PDF(FPDF):
-    def header(self):
-        self.set_font("Arial", "B", 14)
-        self.cell(0, 10, "Steel Production Cost and Margin Analysis Report", 0, 1, "C")
-        self.set_font("Arial", "I", 8)
-        self.cell(0, 5, f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', 0, 1, "C")
-        self.ln(5)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font("Arial", "I", 8)
-        self.cell(0, 10, f"Page {self.page_no()}", 0, 0, "C")
 
 
 def _sec(text, icon=""):
@@ -267,42 +248,48 @@ PRODUCT_PLANTS = {
 }
 
 
-def _ascii(s):
-    """FPDF core fonts are latin-1 only — strip anything they can't encode."""
-    return str(s).encode("latin-1", "replace").decode("latin-1")
+def _cost_section(pdf, product, r):
+    """Write one product's cost build-up as a section in a BrandedPDF (`r` = the
+    stashed results dict from _render_product)."""
+    plants, pc = r["plants"], r["plant_costs"]
+    totals, margins, mkt = r["totals"], r["margins"], r["mkt_price"]
+    pdf.start_section(
+        f"{product} — Production Cost & Margin",
+        f"Product: {product}   |   USD->INR {r['ex_rate']:.2f}   |   Market Rs.{mkt:,.0f}/MT",
+    )
+    best = r["best"]
+    pdf.subheader("Summary")
+    if margins[best] >= 0:
+        pdf.body(f"{r['profitable']} of {len(plants)} plants profitable at the market price. "
+                 f"Best margin: {best} at Rs.{margins[best]:,.0f}/MT ({margins[best]/mkt*100:.1f}%). "
+                 f"Lower-cost producer: {r['lower']} at Rs.{totals[r['lower']]:,.0f}/MT.")
+    else:
+        pdf.body(f"No plant is profitable at the market price Rs.{mkt:,.0f}/MT. "
+                 f"Smallest loss: {best} at Rs.{margins[best]:,.0f}/MT.")
+    pdf.subheader("Cost build-up (Rs./MT)")
+    headers = ["Cost Element"] + plants
+    rows = [[label] + [f"{pc[n][key]:,.0f}" for n in plants] for key, label, *_ in ELEMENTS]
+    rows.append(["Total Cost (Ex-Works)"] + [f"{totals[n]:,.0f}" for n in plants])
+    rows.append(["Mill Margin"] + [f"{margins[n]:,.0f}" for n in plants])
+    w_plant = (182.0 - 62.0) / len(plants)
+    pdf.table(headers, rows, widths=[62.0] + [w_plant] * len(plants),
+              bold_rows=[len(rows) - 2, len(rows) - 1])
 
 
-def _build_pdf(product, plants, plant_costs, totals, margins, ex_rate, mkt_price):
-    """Cost-element table with one column per plant (2 for HRC, 4 for Rebar)."""
-    pdf = Report_PDF()
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 10)
-    pdf.cell(0, 8, f"Product: {product} | Market Price: Rs. {mkt_price:,.0f} | Conversion Rate: {ex_rate}", 0, 1)
-    pdf.ln(5)
-    epw = pdf.w - pdf.l_margin - pdf.r_margin
-    w_elem = 70.0
-    w_plant = (epw - w_elem) / len(plants)
-    pdf.set_fill_color(240, 240, 240)
-    pdf.set_font("Arial", "B", 8)
-    pdf.cell(w_elem, 9, "Cost Element", 1, 0, "C", 1)
-    for n in plants:
-        pdf.cell(w_plant, 9, _ascii(n), 1, 0, "C", 1)
-    pdf.ln()
-    pdf.set_font("Arial", "", 8)
-    for key, label, *_rest in ELEMENTS:
-        pdf.cell(w_elem, 8, _ascii(label), 1)
-        for n in plants:
-            pdf.cell(w_plant, 8, f"{plant_costs[n][key]:,.0f}", 1, 0, "R")
-        pdf.ln()
-    pdf.set_font("Arial", "B", 8)
-    pdf.cell(w_elem, 8, "Total Cost (Ex-Works)", 1, 0, "L", 1)
-    for n in plants:
-        pdf.cell(w_plant, 8, f"{totals[n]:,.0f}", 1, 0, "R", 1)
-    pdf.ln()
-    pdf.cell(w_elem, 8, "Mill Margin", 1, 0, "L", 1)
-    for n in plants:
-        pdf.cell(w_plant, 8, f"{margins[n]:,.0f}", 1, 0, "R", 1)
-    return pdf
+def _cost_report_bytes():
+    """One BigMint-branded PDF: cover -> a section per product -> back cover."""
+    pdf = report.BrandedPDF(
+        "Production Cost & Margin Report",
+        "Multi-plant ex-works cost build-up  ·  mill margin vs the market price",
+        f"Generated {datetime.now().strftime('%d %b %Y, %H:%M')}",
+    )
+    pdf.cover()
+    for product in ("HRC", "Rebar"):
+        r = st.session_state.get(f"cost_report_{product}")
+        if r:
+            _cost_section(pdf, product, r)
+    pdf.back_cover()
+    return report.pdf_bytes(pdf)
 
 
 def _render_product(product, plants):
@@ -379,12 +366,14 @@ def _render_product(product, plants):
                f"Smallest loss: {best} at Rs.{margins[best]:,.0f}/MT.")
     mgmt_ph.markdown(f"<div class='mgmt-box {css}'>Management view: {msg}</div>", unsafe_allow_html=True)
 
-    # --- PDF snapshot (one column per plant) ---
-    if st.button("Generate PDF Report", key=f"cost_pdf_{product}"):
-        pdf = _build_pdf(product, plants, plant_costs, totals, margins, ex_rate, mkt_price)
-        unique_name = f"Steel_Cost_{product}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        st.download_button("Download PDF Report", data=_pdf_bytes(pdf), file_name=unique_name,
-                           mime="application/pdf", key=f"cost_dl_{product}")
+    # Stash this product's results so the single combined report (rendered below the
+    # tabs) can build one branded PDF covering every commodity. Both tab bodies run
+    # each rerun, so both products' results are always current here.
+    st.session_state[f"cost_report_{product}"] = {
+        "plants": plants, "plant_costs": plant_costs, "totals": totals, "margins": margins,
+        "ex_rate": ex_rate, "mkt_price": mkt_price, "lower": lower, "best": best,
+        "profitable": len(profitable),
+    }
 
 
 def render():
@@ -404,6 +393,15 @@ def render():
         _render_product("HRC", PRODUCT_PLANTS["HRC"])
     with tab_rebar:
         _render_product("Rebar", PRODUCT_PLANTS["Rebar"])
+
+    # --- one branded PDF covering BOTH commodities (HRC + Rebar as separate pages) ---
+    st.divider()
+    _sec("Report", theme.icon("notes"))
+    if st.button("Generate branded PDF report (HRC + Rebar)", key="cost_pdf", type="primary"):
+        st.download_button(
+            "Download report", data=_cost_report_bytes(),
+            file_name=f"BigMint_Production_Cost_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+            mime="application/pdf", key="cost_dl")
 
     st.divider()
     _methodology_infographic()

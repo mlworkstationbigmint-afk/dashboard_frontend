@@ -5,11 +5,11 @@
 # =============================================================================
 import streamlit as st
 import pandas as pd
-from fpdf import FPDF
 from datetime import datetime
 
-import theme   # shared brand palette + infographic CSS/helpers (same as the rest of the portal)
-import grid    # BigMint-themed AgGrid (blue header, sort/filter); falls back to st.dataframe
+import theme        # shared brand palette + infographic CSS/helpers (same as the rest of the portal)
+import grid         # BigMint-themed AgGrid (blue header, sort/filter); falls back to st.dataframe
+import report_pdf as report   # BigMint-branded PDF base (CodeG formatting)
 
 HRC_FULL_NAME = "HRC, Exy-Mumbai, India, 2.5-8mm / CTL, IS2062, Gr E250 Br."
 
@@ -123,12 +123,6 @@ CALC_CSS = """
 """
 
 
-def _pdf_bytes(pdf):
-    """Return PDF bytes regardless of fpdf (str) or fpdf2 (bytearray)."""
-    raw = pdf.output(dest="S")
-    return raw.encode("latin-1") if isinstance(raw, str) else bytes(raw)
-
-
 def compute_landed(fob, freight, is_fta, g):
     cfr = fob + freight
     if is_fta:
@@ -159,54 +153,28 @@ def compute_landed(fob, freight, is_fta, g):
     }
 
 
-class HRC_Snapshot_PDF(FPDF):
-    def header(self):
-        self.set_font("Arial", "B", 14)
-        self.cell(0, 10, "HRC Import Price Scenario Report", 0, 1, "C")
-        self.set_font("Arial", "I", 8)
-        self.cell(0, 5, f'Generated on: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}', 0, 1, "C")
-        self.ln(4)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font("Arial", "I", 8)
-        self.cell(0, 10, f"Page {self.page_no()}", 0, 0, "C")
-
-
 def build_pdf(pdf_rows, g, summary_line, best_line):
-    pdf = HRC_Snapshot_PDF()
-    pdf.add_page()
-    epw = pdf.w - pdf.l_margin - pdf.r_margin
-    pdf.set_font("Arial", "B", 9)
-    pdf.set_x(pdf.l_margin)
-    pdf.multi_cell(epw, 5, summary_line)
-    pdf.set_font("Arial", "", 8)
-    pdf.set_x(pdf.l_margin)
-    pdf.multi_cell(epw, 5, best_line)
-    pdf.set_x(pdf.l_margin)
-    pdf.cell(0, 6, f"Domestic: Rs.{int(g['domestic']):,}/t  |  FX: {g['fx']}  |  Threshold CIF: ${int(g['threshold_cif'])}", 0, 1)
-    pdf.ln(3)
-
+    """One BigMint-branded PDF: cover -> HRC landed-cost section -> back cover."""
+    pdf = report.BrandedPDF(
+        "Import Price Scenario Report",
+        "Hot-Rolled Coil  ·  import vs landed-cost parity",
+        f"Generated {datetime.now().strftime('%d %b %Y, %H:%M')}",
+    )
+    pdf.cover()
+    pdf.start_section(
+        "HRC — Import vs Landed Cost",
+        f"Domestic Rs.{int(g['domestic']):,}/t   |   FX {g['fx']}   |   Threshold CIF ${int(g['threshold_cif'])}",
+    )
+    pdf.subheader("Summary")
+    pdf.body(summary_line)
+    pdf.body(best_line)
+    pdf.subheader("Landed cost by origin")
     headers = ["Region", "FTA", "CFR $", "TVD $", "Safeguard", "Landed Rs.", "Decision"]
-    widths = [28, 12, 24, 24, 26, 30, 46]
-    pdf.set_fill_color(240, 240, 240)
-    pdf.set_font("Arial", "B", 8)
-    for w, h in zip(widths, headers):
-        pdf.cell(w, 9, h, 1, 0, "C", 1)
-    pdf.ln()
-
-    pdf.set_font("Arial", "", 8)
-    for r in pdf_rows:
-        pdf.cell(widths[0], 9, r["Region"], 1)
-        pdf.cell(widths[1], 9, r["FTA"], 1, 0, "C")
-        pdf.cell(widths[2], 9, r["CFR"], 1, 0, "R")
-        pdf.cell(widths[3], 9, r["TVD"], 1, 0, "R")
-        pdf.cell(widths[4], 9, r["SG"], 1, 0, "C")
-        pdf.cell(widths[5], 9, r["Landed"], 1, 0, "R")
-        pdf.set_text_color(0, 128, 0) if r["Viable"] else pdf.set_text_color(200, 0, 0)
-        pdf.cell(widths[6], 9, r["Decision"], 1, 0, "C")
-        pdf.set_text_color(0, 0, 0)
-        pdf.ln()
+    rows = [[r["Region"], r["FTA"], r["CFR"], r["TVD"], r["SG"], r["Landed"], r["Decision"]]
+            for r in pdf_rows]
+    pdf.table(headers, rows, widths=[26, 12, 24, 24, 26, 30, 40],
+              aligns=["L", "C", "R", "R", "C", "R", "C"])
+    pdf.back_cover()
     return pdf
 
 
@@ -627,10 +595,11 @@ def render(is_admin=False):
         summary_line = (f"Summary: Imports not viable. Domestic Rs.{int(domestic):,}/t beats cheapest import "
                         f"({cheapest} Rs.{int(cl):,}/t) by Rs.{int(cl - domestic):,}/t.")
     best_line = f"Lowest cost source: {cheapest} at Rs.{int(cl):,}/t."
-    if st.button("Generate PDF Report", key=f"{p}_pdf"):
+    if st.button("Generate branded PDF report", key=f"{p}_pdf", type="primary"):
         pdf = build_pdf(pdf_data, g, summary_line, best_line)
-        unique_name = f"HRC_Snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-        st.download_button("Download PDF Report", data=_pdf_bytes(pdf), file_name=unique_name, mime="application/pdf")
+        unique_name = f"BigMint_Import_Price_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        st.download_button("Download report", data=report.pdf_bytes(pdf), file_name=unique_name,
+                           mime="application/pdf")
 
     # --- methodology (modular, equation-heavy) + glossary ---
     _methodology_infographic()
