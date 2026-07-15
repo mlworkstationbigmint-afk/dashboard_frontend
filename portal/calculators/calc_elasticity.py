@@ -20,13 +20,12 @@ except Exception:
 
 CALC_CSS = """
 <style>
-/* Section panels: soft, lightly-tinted grouping cards (was a stark #fff box). */
 div[data-testid="stVerticalBlockBorderWrapper"] {
-    border: 1px solid #e8edf3; border-radius: 12px;
-    background-color: #fbfcff; padding: 16px 18px; margin-bottom: 10px;
+    border: 1px solid #e6e9ef; border-radius: 10px;
+    background-color: #ffffff; padding: 18px; margin-bottom: 10px;
 }
 div[data-testid="stContainer"] { border: none !important; background: transparent !important; padding: 0px !important; }
-h2 { color: var(--bm-primary-dark); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+h2 { color: #073A7D; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 h3 { color: #1e293b; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
 </style>
 """

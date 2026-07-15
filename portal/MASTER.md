@@ -129,19 +129,18 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
-### 2026-07-15 (latest+) — Dropdown double-border + calc section-card white-box cleanup
+### 2026-07-15 (latest+) — Dropdown double-border fix + Cost Head top-row box removed
 - **Selectbox "box outgrowing the border" fixed (app-wide).** `theme.py`'s `[data-testid="stSelectbox"] div`
   rule recoloured the border on *every* nested div, so any wrapper still carrying a stray reset border-width
   showed as a second box around the rounded control. Now: zero all inner borders (`border-color:transparent`)
   and paint exactly one rounded orange border on `[data-testid="stSelectbox"] > div:last-child` (the baseweb
   select wrapper, after the label). File: `theme.py`.
-- **Cost Head / Price Sensitivity section cards softened.** The per-section `st.container(border=True)` panels
-  were a stark `#fff` box that read as a heavy white rectangle behind each section title. Softened to a
-  light-tinted panel (`#fbfcff`, `#e8edf3` border, radius 12); in **Cost Head** the in-card `### ` titles
-  (Raw Material / Fluxes & Alloys / Power / OpEx) now get a **branded accent-bar heading** (blue text, orange
-  left bar) so they read as section headers, not text floating in a box. Files: `calculators/calc_cost.py`,
-  `calculators/calc_elasticity.py`. ⚠ Visual-only; verify in-app (esp. whether the box should be removed
-  entirely vs softened).
+- **Cost Head top control row: white card box removed.** The Product / USD-to-INR / Market Price / Change-All-
+  Currencies row was wrapped in `st.container(border=True)` → a stark white card ("weird white backbox" behind
+  the labels). Dropped to a plain `st.container()` so the controls sit clean on the page. File:
+  `calculators/calc_cost.py`. ⚠ Visual-only. The per-section panels (Raw Material / Fluxes & Alloys / Power /
+  OpEx) + breakdown cards still use the same white `border=True` card — left as-is (not flagged); flatten them
+  too if wanted.
 
 ### 2026-07-15 (latest) — Landed Cost: admin-set org defaults + per-user sandbox, FOB snap-back fixed, no price sheet
 - **FOB no longer snaps back on edit.** Root cause: `Spot Rs./t` was re-derived from the editor's *live* edit buffer
