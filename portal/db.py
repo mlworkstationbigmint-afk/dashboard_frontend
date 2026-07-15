@@ -13,6 +13,7 @@ connection; writes use ``engine.begin()`` so they commit atomically.
 from __future__ import annotations
 
 import os
+import json
 import datetime as dt
 
 from sqlalchemy import create_engine, text
@@ -154,6 +155,16 @@ _DDL = [
         PRIMARY KEY (role, commodity)
     )
     """,
+    # Generic org-wide key/value store (JSON text). Used for admin-set calculator
+    # defaults (e.g. the Landed Cost globals + per-location inputs) that seed every
+    # user's private sandbox.
+    """
+    CREATE TABLE IF NOT EXISTS app_settings (
+        key        TEXT PRIMARY KEY,
+        value      TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+    """,
 ]
 
 
@@ -284,6 +295,27 @@ def set_role_commodities(role: str, commodities: list[str]) -> None:
                 text("INSERT INTO role_commodities (role, commodity) VALUES (:r, :c)"),
                 {"r": role, "c": commodity},
             )
+
+
+# ---------------------------------------------------------------------------
+# App settings (generic JSON key/value)
+# ---------------------------------------------------------------------------
+def get_setting(key: str):
+    """Return the stored JSON value for ``key`` (a dict/list), or None if unset."""
+    sql = text("SELECT value FROM app_settings WHERE key = :k")
+    with get_engine().connect() as conn:
+        row = conn.execute(sql, {"k": key}).first()
+    return json.loads(row[0]) if row else None
+
+
+def set_setting(key: str, value) -> None:
+    """Upsert a JSON-serialisable value under ``key``."""
+    sql = text(
+        "INSERT INTO app_settings (key, value, updated_at) VALUES (:k, :v, now()) "
+        "ON CONFLICT (key) DO UPDATE SET value = :v, updated_at = now()"
+    )
+    with get_engine().begin() as conn:
+        conn.execute(sql, {"k": key, "v": json.dumps(value)})
 
 
 # ---------------------------------------------------------------------------

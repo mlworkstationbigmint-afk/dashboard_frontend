@@ -129,6 +129,31 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-15 (latest) — Landed Cost: admin-set org defaults + per-user sandbox, FOB snap-back fixed, no price sheet
+- **FOB no longer snaps back on edit.** Root cause: `Spot Rs./t` was re-derived from the editor's *live* edit buffer
+  (`_live_fob`), which changed the data_editor's source frame on every keystroke; Streamlit 1.59 discards a
+  data_editor's pending edits when its input `data` changes, so the typed FOB reverted. Fix: **Spot is now derived
+  from the COMMITTED FOB** (× FX) only — the source frame is stable across edit-reruns, so edits persist until
+  **Calculate**. `_live_fob` and the edit-buffer read removed.
+- **No more price-sheet fetch.** Dropped the CSV feed entirely from this calculator: removed `fetch_fob_prices`,
+  `load_price_feed`, `_load_price_feed`, `_csv_mtime`, the `HRC - Copy.csv` path resolution, `CSV_FOB_COLS`,
+  `DOMESTIC_COL`, and the `os`/`data_loader` deps here. FOB/freight/FTA/globals now come from **defaults only**.
+- **One org-wide set of defaults, editable by the Admin.** New built-in fallbacks `GVAR_DEFAULTS` + `LOC_DEFAULTS`
+  in `calc_import_price.py`; `_effective_defaults()` merges the **admin-saved values** on top (persisted in Postgres).
+  Storage: new generic **`app_settings`** table (`key TEXT PK, value TEXT JSON, updated_at`) + `db.get_setting` /
+  `db.set_setting` (upsert). Table added to `_DDL` so `init_db()` auto-creates it on next run.
+- **Admin panel now hosts the same calculator.** `calc_import_price.render(is_admin=True)` is embedded in
+  `page_admin()` (under an expander "Admin — Landed Cost defaults"); a **"💾 Save as default for all users"** button
+  writes the current globals + committed per-location inputs to `app_settings`.
+- **Every user gets a private sandbox** seeded from those defaults; their edits live in session only (reset on
+  logout). Independence is via a **key namespace**: admin editor uses `adm_*` session/editor keys, users use `imp_*`
+  (`fob_`/`freight_`/`fta_`, `_locs_ver`/`_gvars_ver`, editor keys, `_view`/`_calc`/`_reset`/`_gv_reset`/`_pdf`).
+  Container keys `fc_view_box`/`imp_btnrow` stay literal (CSS hooks; only one calc renders per run so no collision).
+- Captions reworded (admin: "org-wide defaults … Save as default"; user: "private what-if sandbox … resets on
+  logout"). `render()` now takes `is_admin=False`.
+- Files: `calculators/calc_import_price.py`, `db.py`, `app.py` (+ this changelog). ⚠ Needs the Neon `database_url`
+  secret for Save/seed to persist; with no DB it silently falls back to the built-in defaults (never raises).
+
 ### 2026-07-14 (latest+++++++++++++++++++++++) — Landed Cost: live Spot, one-line eq3, plain engine heading
 - **Spot Rs./t now tracks the FOB the user types (live), not just committed FOB.** Read the in-progress FOB from
   the data_editor's own state (`st.session_state[ekey]["edited_rows"]`, updated before the edit-triggered rerun) via

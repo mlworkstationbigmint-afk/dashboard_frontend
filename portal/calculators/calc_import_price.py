@@ -3,7 +3,6 @@
 # Adapted for the BigMint - AI Labs portal: wrapped in render(), robust CSV path,
 # fpdf/fpdf2-safe PDF output. Original calculation logic preserved.
 # =============================================================================
-import os
 import streamlit as st
 import pandas as pd
 from fpdf import FPDF
@@ -19,17 +18,70 @@ DEFAULT_CESS_PCT = 10.0       # Social Welfare Surcharge on BCD
 DEFAULT_SG_PCT = 12.0         # Safeguard duty
 DEFAULT_SG_CESS_PCT = 10.0    # Cess on safeguard duty
 
-try:  # resolve the in-repo CSV path via the shared loader; fall back to a sibling file
-    import data_loader as _dl
-    CSV_PATH = _dl.calculators_csv()
-except Exception:
-    CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HRC - Copy.csv")
-DOMESTIC_COL = "HRC, Exy-Mumbai, India, 2.5-8mm / CTL, IS2062, Gr E250 Br."
-CSV_FOB_COLS = {
-    "China":  "HRC, FOB Rizhao, China, 2.5mm",
-    "Russia": "HRC, FOB Black Sea, Russia, 3mm, SAE1006",
-    "EU":     "Platts North European HRC, EXW Ruhr",
+# --- Defaults -----------------------------------------------------------------
+# The calculator no longer reads FOB from the price sheet. Instead there is one
+# org-wide set of defaults: the built-in fallback below, overridden by whatever
+# the Admin saves (persisted in the DB under SETTINGS_KEY). Every user's private
+# sandbox is seeded from these defaults; their edits stay in the session only.
+SETTINGS_KEY = "landed_cost_defaults"
+
+# g-dict key -> the human label used in the globals editor (order preserved).
+GMAP = {
+    "domestic":      "Domestic benchmark (Rs./t)",
+    "fx":            "FX (USD→INR)",
+    "threshold_cif": "Threshold CIF ($/t)",
+    "port_inr":      "Port handling & misc (Rs./t)",
+    "bcd_pct":       "BCD %",
+    "cess_pct":      "Cess on BCD %",
+    "sg_pct":        "Safeguard duty %",
+    "sg_cess_pct":   "Cess on safeguard %",
 }
+
+GVAR_DEFAULTS = {
+    "Domestic benchmark (Rs./t)":   52450.0,
+    "FX (USD→INR)":                 93.0,
+    "Threshold CIF ($/t)":          675.0,
+    "Port handling & misc (Rs./t)": 2000.0,
+    "BCD %":                        DEFAULT_BCD_PCT,
+    "Cess on BCD %":                DEFAULT_CESS_PCT,
+    "Safeguard duty %":             DEFAULT_SG_PCT,
+    "Cess on safeguard %":          DEFAULT_SG_CESS_PCT,
+}
+
+LOC_DEFAULTS = {
+    "China":       {"fob": 470.0, "freight": 25.0, "fta": False},
+    "Russia":      {"fob": 460.0, "freight": 30.0, "fta": False},
+    "EU":          {"fob": 742.0, "freight": 35.0, "fta": False},
+    "Middle East": {"fob": 520.0, "freight": 15.0, "fta": True},
+    "Custom 1":    {"fob": 535.0, "freight": 20.0, "fta": False},
+    "Custom 2":    {"fob": 535.0, "freight": 20.0, "fta": False},
+}
+
+
+def _effective_defaults():
+    """Built-in defaults with the admin-saved values (if any) merged on top.
+    Returns (gvars: {label: float}, locs: {region: {fob, freight, fta}}). Never
+    raises — a missing DB / no saved row just yields the built-in fallback."""
+    gvars = dict(GVAR_DEFAULTS)
+    locs = {r: dict(v) for r, v in LOC_DEFAULTS.items()}
+    try:
+        import db
+        saved = db.get_setting(SETTINGS_KEY)
+    except Exception:
+        saved = None
+    if saved:
+        for lbl, val in (saved.get("globals") or {}).items():
+            if lbl in gvars:
+                try:
+                    gvars[lbl] = float(val)
+                except (TypeError, ValueError):
+                    pass
+        for r, v in (saved.get("locations") or {}).items():
+            if r in locs and isinstance(v, dict):
+                locs[r] = {"fob": float(v.get("fob", locs[r]["fob"])),
+                           "freight": float(v.get("freight", locs[r]["freight"])),
+                           "fta": bool(v.get("fta", locs[r]["fta"]))}
+    return gvars, locs
 
 CALC_CSS = """
 <style>
@@ -75,64 +127,6 @@ def _pdf_bytes(pdf):
     """Return PDF bytes regardless of fpdf (str) or fpdf2 (bytearray)."""
     raw = pdf.output(dest="S")
     return raw.encode("latin-1") if isinstance(raw, str) else bytes(raw)
-
-
-def _csv_mtime():
-    try:
-        return os.path.getmtime(CSV_PATH)
-    except OSError:
-        return 0.0
-
-
-@st.cache_data(show_spinner=False)
-def _load_price_feed(mtime):   # mtime in the cache key => re-read when the CSV changes
-    """Read 'HRC - Copy.csv' and return (latest_row_dict, as_of_date) or (None, None)."""
-    try:
-        df = pd.read_csv(CSV_PATH, encoding="utf-8-sig")
-    except Exception:
-        return None, None
-    df.columns = [str(c).strip() for c in df.columns]
-    date_col = df.columns[0]
-    for c in df.columns:
-        if c == date_col:
-            continue
-        df[c] = pd.to_numeric(df[c].astype(str).str.replace(",", "").str.strip(), errors="coerce")
-    df = df.dropna(how="all")
-    if df.empty:
-        return None, None
-    last = df.iloc[-1]
-    as_of = str(last[date_col])
-    feed = {c: (None if pd.isna(last[c]) else float(last[c])) for c in df.columns if c != date_col}
-    return feed, as_of
-
-
-def load_price_feed():
-    """Latest price-feed row. Re-read when the CSV changes."""
-    return _load_price_feed(_csv_mtime())
-
-
-def fetch_fob_prices():
-    feed, as_of = load_price_feed()
-    label = as_of if as_of else "-"
-    data = {
-        "China":       {"fob": 470.0, "freight": 25.0, "source": "Manual default", "source_date": "-", "fta_default": False},
-        "Russia":      {"fob": 460.0, "freight": 30.0, "source": "Manual default", "source_date": "-", "fta_default": False},
-        "EU":          {"fob": 742.0, "freight": 35.0, "source": "Manual default", "source_date": "-", "fta_default": False},
-        "Middle East": {"fob": 520.0, "freight": 15.0, "source": "Manual entry (not in feed)", "source_date": "-", "fta_default": True},
-        "Custom 1":    {"fob": 535.0, "freight": 20.0, "source": "Manual entry", "source_date": "-", "fta_default": False},
-        "Custom 2":    {"fob": 535.0, "freight": 20.0, "source": "Manual entry", "source_date": "-", "fta_default": False},
-    }
-    if feed:
-        for region, col in CSV_FOB_COLS.items():
-            val = feed.get(col)
-            if val is not None:
-                data[region]["fob"] = float(val)
-                data[region]["source"] = col
-                data[region]["source_date"] = label
-    domestic_default = 52450.0
-    if feed and feed.get(DOMESTIC_COL) is not None:
-        domestic_default = float(feed[DOMESTIC_COL])
-    return data, domestic_default, as_of, bool(feed)
 
 
 def compute_landed(fob, freight, is_fta, g):
@@ -276,24 +270,16 @@ GVAR_ORDER = [
 ]
 
 
-def _read_globals(domestic_default):
+def _read_globals(seed, p):
     """Render the editable global-variables table and return the `g` dict the
-    engine expects. Streamlit persists the edits under the widget key, so the
-    seeded defaults only apply on first load."""
-    seed = {
-        "Domestic benchmark (Rs./t)": float(domestic_default),
-        "FX (USD→INR)":               93.0,
-        "Threshold CIF ($/t)":        675.0,
-        "Port handling & misc (Rs./t)": 2000.0,
-        "BCD %":                      DEFAULT_BCD_PCT,
-        "Cess on BCD %":              DEFAULT_CESS_PCT,
-        "Safeguard duty %":           DEFAULT_SG_PCT,
-        "Cess on safeguard %":        DEFAULT_SG_CESS_PCT,
-    }
+    engine expects. `seed` = the effective defaults (built-in + admin-saved); `p`
+    namespaces the widget key so the admin editor and each user's sandbox stay
+    independent. Streamlit persists edits under the key, so `seed` only applies
+    on first load (or after a Reset bumps the version)."""
     df = pd.DataFrame({"Value": [seed[k] for k in GVAR_ORDER]}, index=GVAR_ORDER)
     df.index.name = "Variable"
     edited = st.data_editor(
-        df, key=f"imp_gvars_{st.session_state.get('imp_gvars_ver', 0)}", width="stretch", hide_index=False,
+        df, key=f"{p}_gvars_{st.session_state.get(f'{p}_gvars_ver', 0)}", width="stretch", hide_index=False,
         column_config={"Value": st.column_config.NumberColumn("Value", format="%.2f", step=0.5)},
     )
     v = {k: float(edited.loc[k, "Value"]) for k in GVAR_ORDER}
@@ -424,30 +410,36 @@ def _glossary():
     st.markdown(grid, unsafe_allow_html=True)
 
 
-def render():
+def render(is_admin=False):
     st.markdown(CALC_CSS, unsafe_allow_html=True)
 
-    fob_data, domestic_default, feed_as_of, feed_ok = fetch_fob_prices()
-    regions = list(fob_data.keys())
-    st.session_state.setdefault("imp_locs_ver", 0)     # bump -> new editor key -> fresh widget
-    st.session_state.setdefault("imp_gvars_ver", 0)
+    # Key namespace: the Admin editor ("adm") edits the org-wide defaults; every
+    # other view ("imp") is a private per-session sandbox. Only one of the two
+    # ever renders in a single script run (different pages), but the session-state
+    # DATA keys persist across page switches, so they must not collide.
+    p = "adm" if is_admin else "imp"
+
+    gvars_def, locs_def = _effective_defaults()
+    regions = list(locs_def.keys())
+    st.session_state.setdefault(f"{p}_locs_ver", 0)     # bump -> new editor key -> fresh widget
+    st.session_state.setdefault(f"{p}_gvars_ver", 0)
     for r in regions:
-        st.session_state.setdefault(f"fob_{r}", fob_data[r]["fob"])   # editable reference (seeded from feed)
-        st.session_state.setdefault(f"freight_{r}", fob_data[r]["freight"])
-        st.session_state.setdefault(f"fta_{r}", fob_data[r]["fta_default"])
+        st.session_state.setdefault(f"{p}_fob_{r}", locs_def[r]["fob"])
+        st.session_state.setdefault(f"{p}_freight_{r}", locs_def[r]["freight"])
+        st.session_state.setdefault(f"{p}_fta_{r}", locs_def[r]["fta"])
 
     # Reset callbacks run BEFORE widgets re-instantiate (on_click). Bumping the editor's key version
     # gives it a brand-new key, so the widget re-initialises from the fresh (default) DataFrame —
     # reliably clearing edited numbers AND the FTA checkboxes (popping the old key could miss cells).
     def _reset_locs():
         for r in regions:
-            st.session_state[f"fob_{r}"] = fob_data[r]["fob"]
-            st.session_state[f"freight_{r}"] = fob_data[r]["freight"]
-            st.session_state[f"fta_{r}"] = fob_data[r]["fta_default"]
-        st.session_state["imp_locs_ver"] += 1
+            st.session_state[f"{p}_fob_{r}"] = locs_def[r]["fob"]
+            st.session_state[f"{p}_freight_{r}"] = locs_def[r]["freight"]
+            st.session_state[f"{p}_fta_{r}"] = locs_def[r]["fta"]
+        st.session_state[f"{p}_locs_ver"] += 1
 
     def _reset_gvars():
-        st.session_state["imp_gvars_ver"] += 1
+        st.session_state[f"{p}_gvars_ver"] += 1
 
     st.markdown(
         "<div class='bm-calc-head'>"
@@ -456,9 +448,12 @@ def render():
         "</div>",
         unsafe_allow_html=True,
     )
-    feed_note = (f"Live feed · HRC - Copy.csv · latest assessment {feed_as_of}"
-                 if feed_ok else "Feed HRC - Copy.csv not found · manual fallback values in use")
-    st.caption(f"{HRC_FULL_NAME}  ·  {feed_note}")
+    if is_admin:
+        st.caption(f"{HRC_FULL_NAME}  ·  These are the **org-wide defaults** every user starts from. "
+                   "Edit the globals and per-location inputs, press **Calculate**, then **Save as default** below.")
+    else:
+        st.caption(f"{HRC_FULL_NAME}  ·  Your private what-if sandbox — seeded from the org defaults; "
+                   "edits reset when you log out.")
 
     # --- top: management verdict + lowest-cost banner (filled after compute) ---
     mgmt_ph = st.empty()
@@ -471,42 +466,28 @@ def render():
         _sec("Landed cost by country vs domestic benchmark", theme.icon("trending"))
         with st.container(key="fc_view_box"):     # reuses theme.py's sliding-pill switch CSS
             view = st.segmented_control("View", VIEW_OPTS, default=VIEW_OPTS[0],
-                                        key="imp_view", label_visibility="collapsed")
+                                        key=f"{p}_view", label_visibility="collapsed")
         chart_ph = st.empty()
     with col_vars:
         theme.section_title("Global variables", theme.icon("gauge"))
-        g = _read_globals(domestic_default)
-        gv_dirty = (g["domestic"] != float(domestic_default) or g["fx"] != 93.0
-                    or g["threshold_cif"] != 675.0 or g["port_inr"] != 2000.0
-                    or g["bcd_pct"] != DEFAULT_BCD_PCT or g["cess_pct"] != DEFAULT_CESS_PCT
-                    or g["sg_pct"] != DEFAULT_SG_PCT or g["sg_cess_pct"] != DEFAULT_SG_CESS_PCT)
-        st.button("↺ Reset variables", key="imp_gv_reset", on_click=_reset_gvars,
+        g = _read_globals(gvars_def, p)
+        gv_dirty = any(float(g[k]) != float(gvars_def[lbl]) for k, lbl in GMAP.items())
+        st.button("↺ Reset variables", key=f"{p}_gv_reset", on_click=_reset_gvars,
                   disabled=not gv_dirty, help="Reset all global variables to their defaults.")
     domestic = g["domestic"]
     view = view or VIEW_OPTS[0]                    # deselection falls back to the graph
 
     # --- customisable per-location table; edits stay pending until Calculate ---
     _sec("Scenario inputs by location", theme.icon("factory"))
-    ekey = f"imp_locs_{st.session_state.get('imp_locs_ver', 0)}"
-    # data_editor stores in-progress edits under its key ({"edited_rows": {row_i: {col: val}}}), and
-    # updates that BEFORE the edit-triggered rerun — so we can read the FOB the user just typed here
-    # and derive Spot from it live (not just after Calculate).
-    _buf = st.session_state.get(ekey)
-    _edited = _buf.get("edited_rows", {}) if isinstance(_buf, dict) else {}
-
-    def _live_fob(i, r):
-        e = _edited.get(i) or _edited.get(str(i)) or {}
-        try:
-            return float(e.get("FOB $/t", st.session_state[f"fob_{r}"]))
-        except (TypeError, ValueError):
-            return float(st.session_state[f"fob_{r}"])
-
+    ekey = f"{p}_locs_{st.session_state.get(f'{p}_locs_ver', 0)}"
+    # Spot Rs./t is derived from the COMMITTED FOB (× FX), not the live edit buffer. Rebuilding the
+    # editor's source frame from in-progress edits made Streamlit treat the data as changed and drop
+    # the edit (the "FOB snaps back" bug); keeping the frame stable lets edits persist until Calculate.
     loc_df = pd.DataFrame({
-        # Spot Rs./t = (user-typed FOB) x FX, read-only. Tracks the FOB cell live; default until edited.
-        "Spot Rs./t": [_live_fob(i, r) * g["fx"] for i, r in enumerate(regions)],
-        "FTA": [bool(st.session_state[f"fta_{r}"]) for r in regions],
-        "FOB $/t": [float(st.session_state[f"fob_{r}"]) for r in regions],
-        "Freight $/t": [float(st.session_state[f"freight_{r}"]) for r in regions],
+        "Spot Rs./t": [float(st.session_state[f"{p}_fob_{r}"]) * g["fx"] for r in regions],
+        "FTA": [bool(st.session_state[f"{p}_fta_{r}"]) for r in regions],
+        "FOB $/t": [float(st.session_state[f"{p}_fob_{r}"]) for r in regions],
+        "Freight $/t": [float(st.session_state[f"{p}_freight_{r}"]) for r in regions],
     }, index=regions)
     loc_df.index.name = "Location"
     loc_edit = st.data_editor(
@@ -516,42 +497,59 @@ def render():
                         help="Derived: FOB × FX (read-only). Refreshes on Calculate."),
             "FTA": st.column_config.CheckboxColumn("FTA?", help="Waives BCD + its cess for this origin."),
             "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0,
-                        help="Origin reference price — pre-filled from the CSV feed; editable."),
+                        help="Origin reference price — editable; press Calculate to apply."),
             "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
         },
     )
     # pending = the editor buffer differs from the applied (committed) values -> lights Calculate
     # (Spot is derived/read-only, so it isn't part of the diff.)
     pending = any(
-        float(loc_edit.loc[r, "FOB $/t"]) != float(st.session_state[f"fob_{r}"])
-        or float(loc_edit.loc[r, "Freight $/t"]) != float(st.session_state[f"freight_{r}"])
-        or bool(loc_edit.loc[r, "FTA"]) != bool(st.session_state[f"fta_{r}"])
+        float(loc_edit.loc[r, "FOB $/t"]) != float(st.session_state[f"{p}_fob_{r}"])
+        or float(loc_edit.loc[r, "Freight $/t"]) != float(st.session_state[f"{p}_freight_{r}"])
+        or bool(loc_edit.loc[r, "FTA"]) != bool(st.session_state[f"{p}_fta_{r}"])
         for r in regions
     )
-    # reset enabled whenever anything (buffer or committed) differs from the fetched defaults
+    # reset enabled whenever anything (buffer or committed) differs from the effective defaults
     dirty = pending or any(
-        float(st.session_state[f"fob_{r}"]) != float(fob_data[r]["fob"])
-        or float(st.session_state[f"freight_{r}"]) != float(fob_data[r]["freight"])
-        or bool(st.session_state[f"fta_{r}"]) != bool(fob_data[r]["fta_default"])
+        float(st.session_state[f"{p}_fob_{r}"]) != float(locs_def[r]["fob"])
+        or float(st.session_state[f"{p}_freight_{r}"]) != float(locs_def[r]["freight"])
+        or bool(st.session_state[f"{p}_fta_{r}"]) != bool(locs_def[r]["fta"])
         for r in regions
     )
     with st.container(key="imp_btnrow"):           # scoped tight gap so Reset hugs Calculate
         bcol1, bcol2, bcol3 = st.columns([1, 1, 6], vertical_alignment="center")
-        calc = bcol1.button("Calculate", key="imp_calc", type="primary", disabled=not pending,
+        calc = bcol1.button("Calculate", key=f"{p}_calc", type="primary", disabled=not pending,
                             width="stretch")
-        bcol2.button("↺ Reset", key="imp_reset", on_click=_reset_locs, disabled=not dirty,
-                     width="stretch", help="Reset FOB / Freight / FTA back to the fetched values.")
+        bcol2.button("↺ Reset", key=f"{p}_reset", on_click=_reset_locs, disabled=not dirty,
+                     width="stretch", help="Reset FOB / Freight / FTA back to the default values.")
         bcol3.caption("Edit FOB, freight or FTA, then press **Calculate** to apply. "
-                      "Spot Rs./t = FOB × FX (read-only); **Reset** restores the fetched values.")
+                      "Spot Rs./t = FOB × FX (read-only); **Reset** restores the default values.")
     if calc:                                       # commit the buffer -> everything recomputes below
         for r in regions:
-            st.session_state[f"fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
-            st.session_state[f"freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
-            st.session_state[f"fta_{r}"] = bool(loc_edit.loc[r, "FTA"])
+            st.session_state[f"{p}_fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
+            st.session_state[f"{p}_freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
+            st.session_state[f"{p}_fta_{r}"] = bool(loc_edit.loc[r, "FTA"])
+
+    # --- Admin: persist the current values as the org-wide defaults for every user ---
+    if is_admin:
+        if st.button("💾 Save as default for all users", key=f"{p}_save", type="primary",
+                     help="Press Calculate first to apply any pending edits, then save. These "
+                          "values become the starting point in every user's sandbox."):
+            try:
+                import db
+                db.set_setting(SETTINGS_KEY, {
+                    "globals": {lbl: float(g[k]) for k, lbl in GMAP.items()},
+                    "locations": {r: {"fob": float(st.session_state[f"{p}_fob_{r}"]),
+                                      "freight": float(st.session_state[f"{p}_freight_{r}"]),
+                                      "fta": bool(st.session_state[f"{p}_fta_{r}"])} for r in regions},
+                })
+                st.success("Saved — these are now the defaults for all users.")
+            except Exception as e:
+                st.error(f"Save failed: {e}")
 
     # --- compute with the committed inputs ---
     results = {
-        r: compute_landed(st.session_state[f"fob_{r}"], st.session_state[f"freight_{r}"], st.session_state[f"fta_{r}"], g)
+        r: compute_landed(st.session_state[f"{p}_fob_{r}"], st.session_state[f"{p}_freight_{r}"], st.session_state[f"{p}_fta_{r}"], g)
         for r in regions
     }
     cheapest = min(regions, key=lambda r: results[r]["landed"])
@@ -595,8 +593,8 @@ def render():
     for r in regions:
         row = {"Location": r}
         for fxs in [91.0, 93.0, 95.0]:
-            res_fx = compute_landed(st.session_state[f"fob_{r}"], st.session_state[f"freight_{r}"],
-                                    st.session_state[f"fta_{r}"], {**g, "fx": fxs})
+            res_fx = compute_landed(st.session_state[f"{p}_fob_{r}"], st.session_state[f"{p}_freight_{r}"],
+                                    st.session_state[f"{p}_fta_{r}"], {**g, "fx": fxs})
             row[f"FX {fxs:.0f}"] = res_fx["landed"]
         fx_rows.append(row)
 
@@ -628,8 +626,8 @@ def render():
     else:
         summary_line = (f"Summary: Imports not viable. Domestic Rs.{int(domestic):,}/t beats cheapest import "
                         f"({cheapest} Rs.{int(cl):,}/t) by Rs.{int(cl - domestic):,}/t.")
-    best_line = f"Lowest cost source: {cheapest} at Rs.{int(cl):,}/t. Feed as of {feed_as_of if feed_as_of else 'n/a'}."
-    if st.button("Generate PDF Report", key="imp_pdf"):
+    best_line = f"Lowest cost source: {cheapest} at Rs.{int(cl):,}/t."
+    if st.button("Generate PDF Report", key=f"{p}_pdf"):
         pdf = build_pdf(pdf_data, g, summary_line, best_line)
         unique_name = f"HRC_Snapshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
         st.download_button("Download PDF Report", data=_pdf_bytes(pdf), file_name=unique_name, mime="application/pdf")

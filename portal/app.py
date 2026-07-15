@@ -1302,6 +1302,10 @@ def page_admin():
     _admin_users_panel()
     _admin_access_panel()
 
+    st.markdown("## Admin — Landed Cost defaults")
+    with st.expander("Set the org-wide Landed Cost defaults (the starting point for every user)", expanded=False):
+        calc_import_price.render(is_admin=True)
+
     st.markdown("## Admin — Analyst calls")
     if not dl.can_admin_write():
         st.warning("Saving is disabled — no write credentials found. Add a **`github_write_token`** "
