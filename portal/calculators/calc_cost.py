@@ -27,7 +27,8 @@ BF_ELEMENTS = [
     ("Depreciation & Amortization",      2000.0,   1.0,  "Rs./MT"),
 ]
 # IF route: metallic-mix feedstock (Sponge Iron / Scrap / Pig Iron / Ferroalloys) then
-# Non coking coal, power and OpEx. Norms are the final metallic-mix values (see _METALLIC_MIX).
+# Non coking coal, power and OpEx. Metallic norms are plant-specific (see IF_MIX); the norms
+# below are only fallbacks for a plant not listed in IF_MIX.
 IF_ELEMENTS = [
     ("Sponge Iron",                      9500.0, 0.976,  "Rs./MT"),
     ("Scrap HMS 80:20",                 38000.0, 0.1575, "Rs./MT"),
@@ -40,9 +41,13 @@ IF_ELEMENTS = [
     ("Finance Cost (Avg)",               1500.0,   1.0,  "Rs./MT"),
     ("Depreciation & Amortization",      2000.0,   1.0,  "Rs./MT"),
 ]
-# Footnote spelling out how the IF metallic-mix norms are derived (norm = yield x mix share).
-_METALLIC_MIX = ("Sponge Iron 1.22 × 80% = 0.976, Scrap 1.05 × 15% = 0.1575, "
-                 "Pig Iron 1.04 × 5% = 0.052, Ferroalloys 1 × 1.2% = 0.012 (MT/MT)")
+# Metallic charge: fixed finished-tonne-per-input-tonne yields, and each IF plant's mix shares.
+# Consumption norm = yield × mix share; Ferroalloys stays a fixed 1 × 1.2% = 0.012 additive.
+IF_YIELD = {"Sponge Iron": 1.22, "Scrap HMS 80:20": 1.05, "Pig Iron": 1.04}
+IF_MIX = {
+    "Durgapur": {"Sponge Iron": 0.80, "Scrap HMS 80:20": 0.15, "Pig Iron": 0.05},
+    "Jalna":    {"Sponge Iron": 0.20, "Scrap HMS 80:20": 0.75, "Pig Iron": 0.05},
+}
 
 
 def _elem_cost(price, norm):
@@ -50,12 +55,29 @@ def _elem_cost(price, norm):
     return price * norm
 
 
-def _seed_df(product, is_if=False):
-    """Default editable cost build-up for one plant, from the BF or IF element list.
-    Electricity's norm is product-based (450 kWh/MT for HRC, 400 for Rebar)."""
+def _mix_note(plant):
+    """Per-plant metallic-mix footnote (norm = yield × mix share); None for non-IF plants."""
+    mix = IF_MIX.get(plant)
+    if not mix:
+        return None
+    parts = ", ".join(f"{m} {IF_YIELD[m]:g} × {round(share * 100):g}% = {IF_YIELD[m] * share:g}"
+                      for m, share in mix.items())
+    return f"† Metallic mix — {parts}; Ferroalloys 1 × 1.2% = 0.012 (MT/MT)."
+
+
+def _seed_df(product, is_if=False, plant=None):
+    """Default editable cost build-up for one plant, from the BF or IF element list. Electricity's
+    norm is product-based (450 kWh/MT for HRC, 400 for Rebar); IF metallic norms come from the
+    plant's mix (IF_MIX), falling back to the IF_ELEMENTS defaults if the plant isn't listed."""
+    mix = IF_MIX.get(plant) if is_if else None
     rows = []
     for label, price, norm, unit in (IF_ELEMENTS if is_if else BF_ELEMENTS):
-        n = (450.0 if product == "HRC" else 400.0) if norm is None else float(norm)
+        if norm is None:
+            n = 450.0 if product == "HRC" else 400.0
+        elif mix and label in mix:
+            n = IF_YIELD[label] * mix[label]
+        else:
+            n = float(norm)
         rows.append({"Cost element": label, "Unit": unit, "Price": float(price), "Norm": n})
     return pd.DataFrame(rows, columns=["Cost element", "Unit", "Price", "Norm"])
 
@@ -103,13 +125,13 @@ def _sec(text, icon=""):
     st.markdown(f"<div class='bm-sec'>{ic}{text}</div>", unsafe_allow_html=True)
 
 
-def _editor(prefix, product, ver, key, is_if=False):
+def _editor(prefix, product, ver, key, is_if=False, plant=None):
     """One plant's editable cost table. Keyed by route+product (`key`) + reset-version so switching
     product re-seeds fresh values and Reset clears edits (fresh widget key). `product` ('HRC'/'Rebar')
-    only drives the seeded defaults; `is_if` picks the IF element list. Columns:
-    Cost element · Unit · Unit price · Consumption norm · Total cost (norm x unit price)."""
+    only drives the seeded defaults; `is_if` picks the IF element list and `plant` its metallic mix.
+    Columns: Cost element · Unit · Unit price · Consumption norm · Total cost (norm x unit price)."""
     wkey = f"cost_{prefix}_{key}_{ver}"
-    df = _seed_df(product, is_if)
+    df = _seed_df(product, is_if, plant)
     # Fold any stored edits back in so the read-only Total cost reflects the latest inputs.
     state = st.session_state.get(wkey)
     if state and state.get("edited_rows"):
@@ -272,7 +294,7 @@ ROUTE_PRODUCTS = {
         "Rebar": ["Southern region", "Chhattisgarh"],
     },
     "IF route": {
-        "Rebar": ["Durgapur"],
+        "Rebar": ["Durgapur", "Jalna"],
     },
 }
 
@@ -313,12 +335,13 @@ def _render_product(product, plants, key, is_if=False):
         for j, (col, name) in enumerate(zip(cols, chunk)):
             with col:
                 st.markdown(f"**{name}**")
-                edited[name] = _editor(f"p{i + j}", product, ver, key, is_if)
+                edited[name] = _editor(f"p{i + j}", product, ver, key, is_if, name)
                 totals[name] = _plant_costs(edited[name])
                 margins[name] = mkt_price - totals[name]
                 _totals_line(totals[name], margins[name])
-    if is_if:
-        st.caption(f"† **Metallic mix** — consumption norms shown are the final values: {_METALLIC_MIX}.")
+                note = _mix_note(name)
+                if note:
+                    st.caption(note)
     st.caption("**Total cost = consumption norm × unit price** (auto-computed per row). **Consumption norm** = "
                "input consumed per tonne of steel; **Unit** is Rs./MT (Rs./kWh for electricity). Edits update the "
                "chart live; **Reset** restores the product defaults.")

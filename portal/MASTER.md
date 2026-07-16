@@ -197,6 +197,13 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - Files: `portal/calculators/calc_elasticity.py` (rewritten), `portal/calculators/engine_sensitivity.py`
   (new). ⚠ Visual-only rebuild — verify in-app.
 
+### 2026-07-16 (latest+++++++++++++++) — Cost Head: Jalna IF plant restored with its own metallic mix
+- IF metallic norms are now **plant-specific**: `IF_YIELD` (Sponge 1.22 / Scrap 1.05 / Pig 1.04) × per-plant
+  `IF_MIX` shares. Durgapur = Sponge 80 / Scrap 15 / Pig 5; **Jalna = Scrap 75 / Sponge 20 / Pig 5** (Ferroalloys
+  fixed 0.012 both). `_seed_df(product, is_if, plant)` and `_editor(..., plant)` thread the plant name.
+- New `_mix_note(plant)` builds each plant's `yield × mix%` footnote; rendered per-plant below its table (replaced
+  the single section-level footnote). Jalna re-added to `ROUTE_PRODUCTS["IF route"]["Rebar"]`.
+
 ### 2026-07-16 (latest++++++++++++++) — Cost Head: IF route rebuilt (metallic-mix series, Durgapur only)
 - Replaced the single shared `ELEMENTS` list with route-specific **`BF_ELEMENTS`** / **`IF_ELEMENTS`**
   (`(label, price, norm, unit)` tuples; the per-element key/`ELEM_KEYS`/`IF_LABELS` machinery is gone since
