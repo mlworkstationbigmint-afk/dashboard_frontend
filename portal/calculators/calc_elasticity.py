@@ -69,16 +69,35 @@ CALC_CSS = """
 .st-key-sens_knobwrap [data-testid="stVerticalBlockBorderWrapper"]:hover {
     box-shadow: 0 12px 26px rgba(2,76,161,.13), inset 0 1px 0 #ffffff !important;
     transform: translateY(-2px); }
-/* driver name = clean centred caption (like LEVEL / WIDTH on the reference) */
-.st-key-sens_knobwrap [data-testid="stSlider"] [data-testid="stWidgetLabel"] { min-height: 34px; }
-.st-key-sens_knobwrap [data-testid="stSlider"] [data-testid="stWidgetLabel"] p {
-    font-size: 11.5px !important; font-weight: 700 !important; color: var(--bm-primary-dark) !important;
-    text-align: center; line-height: 1.25; letter-spacing: .3px; text-transform: uppercase; }
-/* the current-value bubble above the thumb — make it a crisp accent pill */
+/* driver name = clean centred uppercase caption (like LEVEL / WIDTH on the reference) */
+.knob-label { text-align: center; font-size: 11.5px; font-weight: 700; letter-spacing: .4px;
+    text-transform: uppercase; color: var(--bm-primary-dark); min-height: 30px; line-height: 1.2;
+    display: flex; align-items: center; justify-content: center; margin: 0 0 2px; }
+/* the current-value bubble above the thumb */
 .st-key-sens_knobwrap [data-testid="stSliderThumbValue"] {
     font-size: 12px !important; font-weight: 700 !important; color: var(--bm-primary-dark) !important; }
-/* de-clutter: hide the -20 / +20 end ticks (a caption explains the range instead) */
+/* hide the widget's own -20/+20 ticks; we render our own aligned scale under the slider */
 .st-key-sens_knobwrap [data-testid="stSliderTickBar"] { display: none !important; }
+.knob-ticks { display: flex; justify-content: space-between; font-size: 9.5px; color: #a3adbb;
+    letter-spacing: .2px; margin: -6px 3px 2px; }
+/* baseline -> shocked result line (coloured delta) */
+.knob-res { text-align: center; font-size: 12px; color: #334155; line-height: 1.45; margin: 8px 0 3px; }
+.knob-res b { color: var(--bm-primary-dark); }
+.knob-res .arw { color: #94a3b8; margin: 0 3px; }
+.knob-res .dl { font-weight: 700; }
+.knob-res.up .dl { color: #1F9D55; }
+.knob-res.down .dl { color: #D8382B; }
+.knob-res.muted { color: #94a3b8; }
+/* compact preset chips + quiet per-driver reset inside the knob cards */
+.st-key-sens_knobwrap div[class*="st-key-pre_"] button {
+    padding: 3px 0 !important; min-height: 26px !important; font-size: 11px !important;
+    font-weight: 700 !important; border-radius: 8px !important; }
+.st-key-sens_knobwrap div[class*="st-key-rst_"] button {
+    padding: 1px 0 !important; min-height: 22px !important; font-size: 11px !important;
+    background: transparent !important; border: none !important; box-shadow: none !important;
+    color: #94a3b8 !important; }
+.st-key-sens_knobwrap div[class*="st-key-rst_"] button:hover { color: var(--bm-accent) !important; }
+.st-key-sens_knobwrap [data-testid="stNumberInput"] input { padding: 4px 6px !important; }
 </style>
 """
 
@@ -152,16 +171,36 @@ _HRC_SHORT = {
     "India weekly HRC Exports MT": "HRC Exports (India, weekly)",
 }
 
+# Per-driver (baseline, unit) for HRC. Iron Ore Fines is real (₹6,450/t, Jun-26);
+# the rest are ⚠ PLACEHOLDERS — order-of-magnitude sane per unit so the
+# "baseline → shocked" readout is legible, but replace with real values before use.
+# Baselines only scale the ₹/unit ⇄ % conversion; the % shock itself (what the
+# model consumes) never depends on them.
+_HRC_META = {
+    "Iron Ore Fines (Odisha, Fe62)":     (6450.0,   "₹/t"),
+    "Coking Coal (CNF Paradip)":         (210.0,    "$/t"),   # ⚠ placeholder
+    "Melting Scrap HMS 80:20 (Mumbai)":  (36000.0,  "₹/t"),   # ⚠ placeholder
+    "HRC FOB Rizhao (China)":            (560.0,    "$/t"),   # ⚠ placeholder
+    "HRC FOB Black Sea (Russia)":        (570.0,    "$/t"),   # ⚠ placeholder
+    "HRC EXW Ruhr (N. Europe)":          (620.0,    "€/t"),   # ⚠ placeholder
+    "CRC Exy-Mumbai":                    (62000.0,  "₹/t"),   # ⚠ placeholder
+    "Flat Steel Production (India)":     (10.5,     "Mt"),    # ⚠ placeholder
+    "HRC Imports (India, weekly)":       (150.0,    "kt"),    # ⚠ placeholder
+    "HRC Exports (India, weekly)":       (120.0,    "kt"),    # ⚠ placeholder
+}
+_HRC_PLACEHOLDER = 10000.0     # fallback baseline for any unmapped driver
+
 
 def _hrc_spec():
     """Build the HRC product spec from the LIVE Ridge fit (sensitivities =
-    coefficients). No per-driver base prices ship with the model, so HRC takes
-    % shocks only."""
+    coefficients). Per-driver baselines + units come from _HRC_META so HRC also
+    supports absolute (₹/$/€/unit) shock entry, same as HR Plate / Rebar."""
     model, columns = load_model()
     drivers = []
     for col, beta in zip(columns, model.coef_):
-        raw = col.split("_lag")[0]
-        drivers.append((_HRC_SHORT.get(raw, raw[:34]), 0.0, float(beta), "% chg"))
+        name = _HRC_SHORT.get(col.split("_lag")[0], col.split("_lag")[0][:34])
+        baseline, unit = _HRC_META.get(name, (_HRC_PLACEHOLDER, "unit"))
+        drivers.append((name, float(baseline), float(beta), unit))
     return {
         "label": "HRC", "full_name": HRC_FULL_NAME, "current": 50000.0,
         "model": "Ridge regression (α=10) on log-differenced weekly prices",
@@ -204,22 +243,135 @@ def _contrib_figure(names, contrib_rs, height):
     return fig
 
 
-def _changes_table(drivers, dpct, dunit, base, contrib_rs, has_base, height):
+def _changes_table(drivers, key, contrib_rs, height):
     """Driver-by-driver 'table of changes': the shock applied and its ₹ effect."""
+    ss = st.session_state
     rows = []
-    for i, (nm, _b0, _beta, unit) in enumerate(drivers):
-        eff_pct = dpct[i] + ((dunit[i] / base[i] * 100.0) if (has_base and base[i]) else 0.0)
-        shock = f"{eff_pct:+.2f}%"
-        if has_base and dunit[i]:
-            sign = "+" if dunit[i] >= 0 else "−"
-            shock += f"  ({sign}{abs(dunit[i]):,.0f} {unit})"
+    for i, (nm, base, _beta, unit) in enumerate(drivers):
+        pct = ss.get(f"shock_{key}_{i}", 0.0)
+        shock = f"{pct:+.2f}%"
+        if pct:
+            dabs = base * pct / 100.0
+            shock += f"  ({'+' if dabs >= 0 else '−'}{_fmt_val(abs(dabs), unit)})"
         rows.append({"Driver": nm, "Shock applied": shock,
+                     "Baseline → shocked": f"{_fmt_val(base, unit)} → {_fmt_val(base * (1 + pct / 100.0), unit)}",
                      "Contribution (Rs./t)": round(contrib_rs[nm], 0)})
     df = (pd.DataFrame(rows)
           .sort_values("Contribution (Rs./t)", key=lambda s: s.abs(), ascending=False))
     st.dataframe(df, width="stretch", hide_index=True, height=height, column_config={
         "Contribution (Rs./t)": st.column_config.NumberColumn("Contribution (Rs./t)", format="Rs.%+.0f"),
     })
+
+
+# -----------------------------------------------------------------------------
+# Shared shock state, formatting + the reusable per-driver control
+# -----------------------------------------------------------------------------
+# Canonical shock lives in st.session_state[f"shock_{key}_{i}"] as a % in [-20, 20].
+# Both input modes (Sliders, Table) read and write it, so a shock set in one mode
+# shows in the other. Recompute is LIVE (cheap: cached Ridge fit + a vectorised
+# dot·exp over ≤10 drivers), so there is no "Apply" gate.
+_ZERO_SNAP = 0.75      # |shock| within this snaps to exactly 0 (neutral / no change)
+
+
+def _snap(v):
+    """Clamp to [-20, 20] and snap the neutral zone to exactly 0."""
+    v = max(-20.0, min(20.0, float(v)))
+    return 0.0 if abs(v) <= _ZERO_SNAP else v
+
+
+def _cb_slider(did):
+    st.session_state[f"shock_{did}"] = _snap(st.session_state[f"sl_{did}"])
+
+
+def _cb_number(did):
+    st.session_state[f"shock_{did}"] = _snap(st.session_state[f"num_{did}"])
+
+
+def _cb_preset(did, val):
+    st.session_state[f"shock_{did}"] = _snap(val)
+
+
+def _cur(unit):
+    """Currency symbol implied by a unit string ('' for quantity drivers)."""
+    u = (unit or "").lower()
+    if "₹" in unit or u.startswith("rs") or "inr" in u:
+        return "₹"
+    if "$" in unit or "usd" in u:
+        return "$"
+    if "€" in unit or "eur" in u:
+        return "€"
+    return ""
+
+
+def _indian(n):
+    """Integer with Indian digit grouping (e.g. 12,34,567), sign preserved."""
+    n = int(round(n))
+    neg, s = n < 0, str(abs(n))
+    if len(s) > 3:
+        head, tail = s[:-3], s[-3:]
+        groups = []
+        while len(head) > 2:
+            groups.insert(0, head[-2:])
+            head = head[:-2]
+        if head:
+            groups.insert(0, head)
+        s = ",".join(groups) + "," + tail
+    return ("-" if neg else "") + s
+
+
+def _fmt_val(v, unit):
+    """Format a value with the right grouping/symbol for its unit."""
+    cur = _cur(unit)
+    if cur == "₹":
+        return "₹" + _indian(v)
+    if cur:                                    # $ or €
+        return f"{cur}{v:,.0f}"
+    suffix = (unit or "").strip()              # quantity: Mt / kt / MT
+    return (f"{v:,.2f} {suffix}" if abs(v) < 100 else f"{v:,.0f} {suffix}").strip()
+
+
+def _result_html(baseline, pct, unit):
+    """'baseline → shocked (Δ abs, Δ%)' with a colour-coded delta."""
+    shocked = baseline * (1 + pct / 100.0)
+    dabs = shocked - baseline
+    if pct == 0:
+        return f"<div class='knob-res muted'>{_fmt_val(baseline, unit)} · no change</div>"
+    cls = "up" if pct > 0 else "down"
+    sign = "+" if dabs >= 0 else "−"
+    return (f"<div class='knob-res {cls}'>{_fmt_val(baseline, unit)}"
+            f"<span class='arw'>→</span><b>{_fmt_val(shocked, unit)}</b> "
+            f"<span class='dl'>({sign}{_fmt_val(abs(dabs), unit)}, {pct:+.1f}%)</span></div>")
+
+
+def driver_control(driver_id, label, baseline, unit):
+    """One driver card: coupled slider + number_input (two-way synced via the
+    shared shock state), a tick scale, ±20/±10/0 presets, a baseline→shocked
+    readout, and a per-driver reset. Adding a driver is a single call."""
+    ss = st.session_state
+    sk = f"shock_{driver_id}"
+    ss.setdefault(sk, 0.0)
+    # push the canonical value into both widgets BEFORE they render (this is what
+    # keeps slider⇄number in sync and carries shocks across modes/presets/resets)
+    ss[f"sl_{driver_id}"] = ss[sk]
+    ss[f"num_{driver_id}"] = ss[sk]
+
+    with st.container(border=True):
+        st.markdown(f"<div class='knob-label'>{label}</div>", unsafe_allow_html=True)
+        c_sl, c_num = st.columns([2, 1], vertical_alignment="center")
+        with c_sl:
+            st.slider(label, -20.0, 20.0, step=0.5, key=f"sl_{driver_id}",
+                      on_change=_cb_slider, args=(driver_id,), label_visibility="collapsed")
+            st.markdown("<div class='knob-ticks'><span>-20</span><span>-10</span>"
+                        "<span>0</span><span>+10</span><span>+20</span></div>", unsafe_allow_html=True)
+        with c_num:
+            st.number_input(label, -20.0, 20.0, step=0.5, key=f"num_{driver_id}", format="%.1f",
+                            on_change=_cb_number, args=(driver_id,), label_visibility="collapsed")
+        for c, val in zip(st.columns(5), (-20, -10, 0, 10, 20)):
+            c.button("0" if val == 0 else f"{val:+d}", key=f"pre_{driver_id}_{val}",
+                     on_click=_cb_preset, args=(driver_id, float(val)), width="stretch")
+        st.markdown(_result_html(baseline, ss[sk], unit), unsafe_allow_html=True)
+        st.button("↺ Reset", key=f"rst_{driver_id}", on_click=_cb_preset,
+                  args=(driver_id, 0.0), width="stretch")
 
 
 def _model_note(spec):
@@ -240,26 +392,18 @@ def _render_product(spec, key):
     drivers = spec["drivers"]
     n = len(drivers)
     names = [d[0] for d in drivers]
-    has_base = any(d[1] for d in drivers)
 
     ss = st.session_state
-    # canonical shock state (shared by BOTH input modes): per-driver Δ%, Δ₹, base
-    ss.setdefault(f"sens_dpct_{key}", {i: 0.0 for i in range(n)})
-    ss.setdefault(f"sens_dunit_{key}", {i: 0.0 for i in range(n)})
-    ss.setdefault(f"sens_base_{key}", {i: float(drivers[i][1]) for i in range(n)})
-    ss.setdefault(f"sens_ver_{key}", 0)      # bumped by Reset -> remounts editors
-    ss.setdefault(f"sens_sync_{key}", 0)     # bumped on mode switch -> reseeds from canonical
-    dpct, dunit, base = (ss[f"sens_dpct_{key}"], ss[f"sens_dunit_{key}"], ss[f"sens_base_{key}"])
+    # canonical shock state (shared by BOTH input modes): one % per driver, in
+    # session keyed by driver id so the rest of the model can read it.
+    for i in range(n):
+        ss.setdefault(f"shock_{key}_{i}", 0.0)
+    ss.setdefault(f"sens_sync_{key}", 0)     # bumped on mode/toggle switch -> reseeds the table
 
-    def _reset():
+    def _reset_all():                         # single global "Reset all shocks"
         for i in range(n):
-            dpct[i] = 0.0
-            dunit[i] = 0.0
-            base[i] = float(drivers[i][1])
-        ss[f"sens_ver_{key}"] += 1
-
-    def _eff_pct(i):
-        return dpct[i] + ((dunit[i] / base[i] * 100.0) if (has_base and base[i]) else 0.0)
+            ss[f"shock_{key}_{i}"] = 0.0
+        ss[f"sens_sync_{key}"] += 1
 
     st.caption(spec["full_name"])
 
@@ -277,7 +421,7 @@ def _render_product(spec, key):
         current = st.number_input(f"Current {spec['label']} price (Rs./t)", value=float(spec["current"]),
                                   step=250.0, min_value=0.0, key=f"sens_cur_{key}")
         kpi_ph = st.empty()      # predicted-move cards sit right under the current price
-        st.button("↺ Reset shocks", key=f"sens_reset_{key}", on_click=_reset, width="stretch",
+        st.button("↺ Reset all shocks", key=f"sens_reset_{key}", on_click=_reset_all, width="stretch",
                   help="Clear every driver shock back to zero.")
         st.markdown(_model_note(spec), unsafe_allow_html=True)
 
@@ -286,63 +430,73 @@ def _render_product(spec, key):
     mode = st.segmented_control("Input mode", ["Sliders", "Table"], default="Sliders",
                                 key=f"sens_mode_{key}", label_visibility="collapsed") or "Sliders"
     prevk = f"sens_modeprev_{key}"
-    if ss.get(prevk) not in (None, mode):     # switched modes -> reseed the new editor from canonical
+    if ss.get(prevk) not in (None, mode):     # switched modes -> reseed the table from canonical
         ss[f"sens_sync_{key}"] += 1
     ss[prevk] = mode
-    tok = f"{ss[f'sens_ver_{key}']}_{ss[f'sens_sync_{key}']}"
 
     if mode == "Sliders":
-        per = 4                                    # fixed grid -> every knob card is the same width
+        per = 2                                # roomy 2-up grid; each card holds the full control set
         with st.container(key="sens_knobwrap"):
             for r0 in range(0, n, per):
                 cols = st.columns(per)
                 for j in range(per):
                     i = r0 + j
                     if i >= n:
-                        continue                   # leave the trailing cells empty (keeps widths equal)
-                    with cols[j], st.container(border=True):
-                        seed = max(-20.0, min(20.0, round(_eff_pct(i), 2)))   # knobs cap at ±20%
-                        v = st.slider(names[i], -20.0, 20.0, value=seed, step=0.5,
-                                      key=f"sl_{key}_{i}_{tok}")
-                    dpct[i] = v      # a knob expresses the whole shock as a %, so the ₹ part folds in
-                    dunit[i] = 0.0
-        st.caption("Drag a knob to shock a driver by ±20%. Switch to **Table** to type exact values "
-                   "or enter absolute ₹ / unit changes — your shocks carry across both modes.")
+                        continue               # leave the trailing cell empty (keeps widths equal)
+                    with cols[j]:
+                        driver_control(f"{key}_{i}", names[i], drivers[i][1], drivers[i][3])
+        st.caption("Drag a knob or type a %, or use the ±20 / ±10 / 0 presets. Values within ±0.75% snap "
+                   "to no-change. Switch to **Table** to type exact values or absolute unit changes — "
+                   "shocks carry across both modes.")
     else:
+        pct_mode = (st.segmented_control("Enter shocks as", ["% shock", "Absolute change"],
+                    default="% shock", key=f"sens_enter_{key}") or "% shock") == "% shock"
+        if ss.get(f"sens_enterprev_{key}") not in (None, pct_mode):     # toggle flip -> reseed editor
+            ss[f"sens_sync_{key}"] += 1
+        ss[f"sens_enterprev_{key}"] = pct_mode
+
+        editcol = "Shock %" if pct_mode else "Δ (native unit)"
         rows = []
-        for i, (nm, _b0, _beta, unit) in enumerate(drivers):
-            r = {"Driver": nm}
-            if has_base:
-                r["Base price"] = float(base[i])
-                r["Δ (₹ / unit)"] = float(dunit[i])
-            r["Δ %"] = float(dpct[i])
-            rows.append(r)
-        cols = ["Driver"] + (["Base price"] if has_base else []) + ["Δ %"] \
-            + (["Δ (₹ / unit)"] if has_base else [])
+        for i, (nm, b0, _beta, unit) in enumerate(drivers):
+            pct = ss[f"shock_{key}_{i}"]
+            shocked = b0 * (1 + pct / 100.0)
+            dabs = shocked - b0
+            rows.append({
+                "Driver": nm,
+                "Baseline": _fmt_val(b0, unit),
+                editcol: float(pct if pct_mode else round(dabs, 2)),
+                "Shocked": _fmt_val(shocked, unit),
+                "Result": "no change" if pct == 0 else
+                          f"{'+' if dabs >= 0 else '−'}{_fmt_val(abs(dabs), unit)}  ({pct:+.1f}%)",
+            })
+        order = ["Driver", "Baseline", editcol, "Shocked", "Result"]
         colcfg = {
             "Driver": st.column_config.TextColumn("Driver", disabled=True, width="large"),
-            "Δ %": st.column_config.NumberColumn("Δ %", format="%.2f", step=0.5,
-                help="Percentage change to apply to this driver."),
+            "Baseline": st.column_config.TextColumn("Baseline", disabled=True),
+            "Shocked": st.column_config.TextColumn("Shocked value", disabled=True),
+            "Result": st.column_config.TextColumn("Δ", disabled=True),
+            editcol: (st.column_config.NumberColumn("Shock %", format="%.1f", step=0.5,
+                        help="Percentage change (−20 to +20).") if pct_mode else
+                      st.column_config.NumberColumn("Δ (native unit)", format="%.2f", step=1.0,
+                        help="Absolute change in the driver's own unit — converted to % via the baseline.")),
         }
-        if has_base:
-            colcfg["Base price"] = st.column_config.NumberColumn("Base price", format="%.2f", step=1.0,
-                help="Reference level used to convert a ₹ / unit change into a %. Editable.")
-            colcfg["Δ (₹ / unit)"] = st.column_config.NumberColumn("Δ (₹ / unit)", format="%.2f", step=1.0,
-                help="Absolute change in the driver's own unit (Rs./t, USD/t, MT).")
-        edited = st.data_editor(pd.DataFrame(rows)[cols], key=f"tbl_{key}_{tok}",
+        tok = f"{ss[f'sens_sync_{key}']}_{'p' if pct_mode else 'a'}"
+        edited = st.data_editor(pd.DataFrame(rows)[order], key=f"tbl_{key}_{tok}",
                                 num_rows="fixed", hide_index=True, width="stretch", column_config=colcfg)
         for i in range(n):
-            dpct[i] = float(edited.iloc[i]["Δ %"])
-            if has_base:
-                base[i] = float(edited.iloc[i]["Base price"])
-                dunit[i] = float(edited.iloc[i]["Δ (₹ / unit)"])
-        st.caption("Enter a shock as **Δ %** and/or an absolute **Δ (₹ / unit)** — they add. "
-                   "₹ inputs convert to % via the editable **Base price**. Switch to **Sliders** for quick "
-                   "what-ifs — your shocks carry across both modes.")
+            b0 = drivers[i][1]
+            if pct_mode:
+                pct = float(edited.iloc[i]["Shock %"])
+            else:
+                dabs = float(edited.iloc[i]["Δ (native unit)"])
+                pct = (dabs / b0 * 100.0) if b0 else 0.0
+            ss[f"shock_{key}_{i}"] = _snap(pct)
+        st.caption("Toggle **% shock** / **Absolute change** to type either a percentage or a change in the "
+                   "driver's own unit (₹ / $ / € / Mt / kt) — converted via the baseline. Values within ±0.75% "
+                   "snap to no-change. Switch to **Sliders** for quick what-ifs — shocks carry across modes.")
 
-    # --- compute (shared engine) ---
-    eff = {names[i]: eng.effective_frac(dpct[i], dunit[i] if has_base else 0.0,
-                                        base[i] if has_base else 0.0) for i in range(n)}
+    # --- compute (shared engine) — LIVE on every change ---
+    eff = {names[i]: ss[f"shock_{key}_{i}"] / 100.0 for i in range(n)}
     impact, final, _cpct, crs = eng.compute(current, drivers, eff)
     change = final - current
 
@@ -356,7 +510,7 @@ def _render_product(spec, key):
             st.bar_chart(pd.DataFrame({"Rs./t": crs}))
         st.caption("Each bar = current price × driver shock. Green pushes the price up, red pulls it down.")
     with tbl_ph.container():
-        _changes_table(drivers, dpct, dunit, base, crs, has_base, vh)
+        _changes_table(drivers, key, crs, vh)
 
     # --- KPI cards (modular, forecast-page style) under the current price ---
     cards = [
@@ -390,8 +544,8 @@ def _methodology_infographic():
     engine = (
         "<div class='bm-engine'>"
         "<div class='bm-engine-col bm-engine-in'><div class='bm-engine-h'>Inputs</div>"
-        + _chips([("factory", "Driver shock: Δ% or Δ₹"),
-                  ("gauge",   "Editable base prices"),
+        + _chips([("factory", "Driver shock: % or absolute"),
+                  ("gauge",   "Fixed per-driver baselines"),
                   ("rupee",   "Current product price")]) +
         "</div>"
         "<div class='bm-engine-arrow'>&rarr;</div>"
@@ -411,10 +565,10 @@ def _methodology_infographic():
     st.write("")
     _sec("The equation pipeline", theme.icon("notes"))
     steps = [
-        ("factory",    "Shock",       "Enter Δ% or Δ₹ per driver.",
-         "shock = Δ% or Δ₹"),
-        ("gauge",      "To percent",  "₹ converts via base price.",
-         "eff% = Δ% + Δ₹ &divide; <b>Base</b>"),
+        ("factory",    "Shock",       "Enter a % or an absolute change.",
+         "shock = Δ% or Δunit"),
+        ("gauge",      "To percent",  "Absolute converts via the baseline.",
+         "shock% = Δunit &divide; <b>Base</b>"),
         ("calculator", "Weight",      "Scale by the driver's sensitivity.",
          "c = eff% &times; <b>sensitivity</b>"),
         ("notes",      "Sum",         "Add every driver's share.",
@@ -443,7 +597,7 @@ def _glossary():
     _sec("Glossary of terms", theme.icon("notes"))
     terms = [
         ("Sens.", "Sensitivity", "How much the product moves per 1% move in a driver — fixed per model, not shown."),
-        ("eff%", "Effective % change", "A driver's shock as a %: Δ% plus any Δ₹ divided by its base price."),
+        ("shock", "Driver shock", "The % move applied to a driver — typed directly, or an absolute change converted via its fixed baseline."),
         ("Σ", "Predicted move", "Sum of every driver's contribution (shock × sensitivity) — the total log-return."),
         ("e^Σ", "Compounding", "The summed move is applied as a growth factor: price × e^Σ."),
         ("R²", "Out-of-sample fit", "Share of real price moves the model explained on data it never saw."),
