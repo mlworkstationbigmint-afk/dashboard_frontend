@@ -192,16 +192,14 @@ def _cost_margin_figure(names, edited, mkt_prices):
         )
     margins = {n: mkt_prices[n] - totals[n] for n in names}
     fig.add_scatter(
-        x=names, y=[mkt_prices[n] for n in names], name="Market price", yaxis="y", mode="lines+markers",
-        line=dict(color=theme.ACCENT, width=2.5),
-        marker=dict(size=12, symbol="circle", color=theme.ACCENT, line=dict(color="white", width=2)),
+        x=names, y=[mkt_prices[n] for n in names], name="Market price", yaxis="y", mode="markers",
+        marker=dict(size=13, symbol="circle", color=theme.ACCENT, line=dict(color="white", width=2)),
         hovertemplate="<b>%{x}</b><br>Market price: Rs.%{y:,.0f}/MT<extra></extra>",
     )
     mcolors = [theme.SUCCESS if margins[n] >= 0 else theme.DANGER for n in names]
     fig.add_scatter(
-        x=names, y=[margins[n] for n in names], name="Mill margin", yaxis="y2", mode="lines+markers",
-        line=dict(color=theme.NEUTRAL, width=2, dash="dot"),
-        marker=dict(size=14, symbol="diamond", color=mcolors, line=dict(color="white", width=2)),
+        x=names, y=[margins[n] for n in names], name="Mill margin", yaxis="y2", mode="markers",
+        marker=dict(size=15, symbol="diamond", color=mcolors, line=dict(color="white", width=2)),
         hovertemplate="<b>%{x}</b><br>Mill margin: Rs.%{y:,.0f}/MT<extra></extra>",
     )
     ymax = max(max(totals.values()), max(mkt_prices.values())) * 1.16
