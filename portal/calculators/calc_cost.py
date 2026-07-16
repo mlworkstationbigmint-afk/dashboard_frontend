@@ -204,16 +204,19 @@ def _cost_margin_figure(names, edited, mkt_prices):
     )
     ymax = max(max(totals.values()), max(mkt_prices.values())) * 1.16
     fig.update_layout(
-        barmode="stack", height=520, margin=dict(l=10, r=55, t=92, b=10), plot_bgcolor="white",
+        barmode="stack", height=540, margin=dict(l=10, r=55, t=124, b=10), plot_bgcolor="white",
         paper_bgcolor="rgba(0,0,0,0)", font=dict(family="sans-serif", size=12, color="#334155"),
         bargap=0.45,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0.5, xanchor="center", font=dict(size=10.5)),
+        legend=dict(orientation="h", yanchor="bottom", y=1.04, x=0.5, xanchor="center",
+                    font=dict(size=10.5)),
         yaxis=dict(title="Cost / market (Rs./MT)", tickprefix="Rs.", tickformat=",.0f",
                    gridcolor="#f1f5f9", zeroline=False, range=[0, ymax]),
         yaxis2=dict(title="Mill margin (Rs./MT)", overlaying="y", side="right", tickprefix="Rs.",
                     tickformat=",.0f", showgrid=False, zeroline=True, zerolinecolor="#e2e8f0"),
         annotations=[dict(x=n, y=totals[n], xref="x", yref="y", text=f"Rs.{totals[n]:,.0f}",
-                          showarrow=False, yshift=12, font=dict(size=12, color="#0f172a"))
+                          showarrow=False, yshift=-17, font=dict(size=11.5, color="#0f172a"),
+                          bgcolor="rgba(255,255,255,0.92)", bordercolor="#cbd5e1",
+                          borderwidth=1, borderpad=3)
                      for n in names],
     )
     fig.update_xaxes(tickfont=dict(size=13.5, color="#0f172a"))
