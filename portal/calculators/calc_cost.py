@@ -244,8 +244,8 @@ def _glossary():
 # BF (blast furnace): HRC + Rebar; IF (induction furnace): Rebar only.
 ROUTE_PRODUCTS = {
     "BF route": {
-        "HRC":   ["JSW Vijaynagar [Southern region]", "SAIL [Eastern region]"],
-        "Rebar": ["JSW", "CG"],
+        "HRC":   ["Southern region", "Eastern region"],
+        "Rebar": ["Southern region", "Chhattisgarh"],
     },
     "IF route": {
         "Rebar": ["Durgapur", "Jalna"],

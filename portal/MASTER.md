@@ -187,8 +187,8 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 
 ### 2026-07-15 (latest++++++++) — Cost Head: BF / IF route tabs, each with a product dropdown
 - **Restructured from HRC/Rebar tabs to two route tabs — "BF route" and "IF route" — each with a Product
-  dropdown.** `PRODUCT_PLANTS` → `ROUTE_PRODUCTS`: BF = HRC (`JSW Vijaynagar [Southern region]`,
-  `SAIL [Eastern region]`) + Rebar (`JSW`, `CG`); IF = Rebar (`Durgapur`, `Jalna`). `render()` loops the two
+  dropdown.** `PRODUCT_PLANTS` → `ROUTE_PRODUCTS`: BF = HRC (`Southern region`,
+  `Eastern region`) + Rebar (`Southern region`, `Chhattisgarh`); IF = Rebar (`Durgapur`, `Jalna`). `render()` loops the two
   route tabs, shows a **`st.segmented_control`** clickable tab-strip of that route's products (same widget
   as the forecast page's product selector, `label_visibility="collapsed"` + `x if x in prods else names[0]`
   fallback), and renders the picked one.
@@ -269,8 +269,8 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **Product selectbox → HRC / Rebar tabs.** `render()` now renders a `bm-calc-head` heading, then
   `st.tabs(["HRC","Rebar"])`, then the methodology/glossary once below. Each tab calls new
   **`_render_product(product, plants)`** with its named plants:
-  - **HRC:** `JSW Vijaynagar [South]`, `SAIL [East]` (2 plants).
-  - **Rebar:** `JSW`, `CG`, `Durgapur`, `Jalna` (4 plants).
+  - **HRC:** `Southern region`, `Eastern region` (2 plants).
+  - **Rebar:** `Southern region`, `Chhattisgarh`, `Durgapur`, `Jalna` (4 plants).
   Plant list lives in `PRODUCT_PLANTS`. Editable tables lay out **two per row** (Rebar → 2×2). Controls
   (USD→INR, Market price, Reset) and the reset-version are **per-product** (`cost_fx_{p}` / `cost_mkt_{p}` /
   `cost_ver_{p}`); editor keys are `cost_p{idx}_{product}_{ver}`. Chart/banner/verdict now scale to N plants
