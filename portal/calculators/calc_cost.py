@@ -165,42 +165,46 @@ def _totals_line(total, margin):
         unsafe_allow_html=True)
 
 
-def _cost_margin_figure(names, totals, margins, mkt_price):
-    """Dual-axis: total-cost bars + market-price dashed line (left), mill margin on
-    a secondary right axis (diamonds, coloured by sign)."""
+# Categorical palette for the stacked cost-component segments (brand blues + accent + muted tones).
+SEG_COLORS = ["#024CA1", "#2E7CD6", "#5BA3E0", "#8FC1EA", "#EE4E24",
+              "#F5915F", "#1F9D55", "#7BC49A", "#64748B", "#A7B3C2"]
+
+
+def _cost_margin_figure(names, edited, mkt_prices):
+    """Stacked bars — one segment per cost element (its cost = consumption norm x unit price) — with
+    the per-plant market price drawn as a line on top; grand total labelled above each bar. Single
+    y-axis (Rs./MT)."""
     import plotly.graph_objects as go
     fig = go.Figure()
-    fig.add_bar(
-        x=names, y=totals, name="Total cost", yaxis="y",
-        marker=dict(color=theme.PRIMARY, cornerradius=9, line=dict(color="white", width=1.5)),
-        text=[f"Rs.{v:,.0f}" for v in totals], textposition="outside",
-        textfont=dict(size=12, color="#0f172a"), cliponaxis=False,
-        hovertemplate="<b>%{x}</b><br>Total cost: Rs.%{y:,.0f}/MT<extra></extra>",
-    )
-    mcolors = [theme.SUCCESS if m >= 0 else theme.DANGER for m in margins]
+    labels = list(edited[names[0]]["Cost element"])
+    totals = {n: 0.0 for n in names}
+    for k, label in enumerate(labels):
+        ys = []
+        for n in names:
+            r = edited[n].iloc[k]
+            c = _elem_cost(float(r["Price"]), float(r["Norm"]))
+            totals[n] += c
+            ys.append(c)
+        fig.add_bar(
+            x=names, y=ys, name=label,
+            marker=dict(color=SEG_COLORS[k % len(SEG_COLORS)], line=dict(color="white", width=0.5)),
+            hovertemplate="<b>%{x}</b><br>" + label + ": Rs.%{y:,.0f}/MT<extra></extra>",
+        )
     fig.add_scatter(
-        x=names, y=margins, name="Mill margin", yaxis="y2", mode="lines+markers+text",
-        line=dict(color=theme.ACCENT, width=2.5, dash="dot"),
-        marker=dict(size=14, symbol="diamond", color=mcolors, line=dict(color="white", width=2)),
-        text=[f"Rs.{v:,.0f}" for v in margins], textposition="top center",
-        textfont=dict(size=11.5, color=theme.ACCENT),
-        hovertemplate="<b>%{x}</b><br>Mill margin: Rs.%{y:,.0f}/MT<extra></extra>",
+        x=names, y=[mkt_prices[n] for n in names], name="Market price", mode="lines+markers",
+        line=dict(color=theme.ACCENT, width=2.5),
+        marker=dict(size=11, symbol="circle", color=theme.ACCENT, line=dict(color="white", width=2)),
+        hovertemplate="<b>%{x}</b><br>Market price: Rs.%{y:,.0f}/MT<extra></extra>",
     )
-    fig.add_hline(
-        y=mkt_price, line=dict(color=theme.NEUTRAL, width=2, dash="dash"),
-        annotation_text=f"  Market Rs.{mkt_price:,.0f}/MT  ", annotation_position="top right",
-        annotation_font=dict(color="#fff", size=12),
-        annotation_bgcolor=theme.NEUTRAL, annotation_bordercolor=theme.NEUTRAL, annotation_borderpad=4,
-    )
-    ymax = max(max(totals), mkt_price) * 1.18
+    ymax = max(max(totals.values()), max(mkt_prices.values())) * 1.16
     fig.update_layout(
-        height=420, margin=dict(l=10, r=10, t=44, b=10), plot_bgcolor="white",
+        barmode="stack", height=470, margin=dict(l=10, r=10, t=54, b=10), plot_bgcolor="white",
         paper_bgcolor="rgba(0,0,0,0)", font=dict(family="sans-serif", size=12, color="#334155"),
-        bargap=0.5, legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, font=dict(size=12)),
-        yaxis=dict(title="Cost / market (Rs./MT)", tickprefix="Rs.", tickformat=",.0f",
+        bargap=0.45, legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, font=dict(size=11)),
+        yaxis=dict(title="Rs./MT", tickprefix="Rs.", tickformat=",.0f",
                    gridcolor="#f1f5f9", zeroline=False, range=[0, ymax]),
-        yaxis2=dict(title="Mill margin (Rs./MT)", overlaying="y", side="right", tickprefix="Rs.",
-                    tickformat=",.0f", showgrid=False, zeroline=True, zerolinecolor="#e2e8f0"),
+        annotations=[dict(x=n, y=totals[n], text=f"Rs.{totals[n]:,.0f}", showarrow=False,
+                          yshift=12, font=dict(size=12, color="#0f172a")) for n in names],
     )
     fig.update_xaxes(tickfont=dict(size=13.5, color="#0f172a"))
     return fig
@@ -316,12 +320,13 @@ def _render_product(product, plants, key, is_if=False):
     # --- chart (left) + scenario controls (right) ---
     col_chart, col_ctrl = st.columns([2.5, 1], gap="large", vertical_alignment="center")
     with col_chart:
-        _sec("Total cost vs market price & margin", theme.icon("trending"))
+        _sec("Cost build-up vs market price", theme.icon("trending"))
         chart_ph = st.empty()
     with col_ctrl:
         theme.section_title("Scenario controls", theme.icon("gauge"))
-        mkt_price = st.number_input(f"Market price — {product} (Rs./MT)", value=55000.0, step=500.0,
-                                    key=f"cost_mkt_{key}", min_value=0.0)
+        mkt_prices = {n: st.number_input(f"Market price — {n} (Rs./MT)", value=55000.0, step=500.0,
+                                         key=f"cost_mkt_{key}_{n}", min_value=0.0)
+                      for n in plants}
         st.button("↺ Reset tables", key=f"cost_reset_{key}", on_click=_reset_tables, width="stretch",
                   help="Restore every plant's cost table to the defaults for this product.")
 
@@ -337,7 +342,7 @@ def _render_product(product, plants, key, is_if=False):
                 st.markdown(f"**{name}**")
                 edited[name] = _editor(f"p{i + j}", product, ver, key, is_if, name)
                 totals[name] = _plant_costs(edited[name])
-                margins[name] = mkt_price - totals[name]
+                margins[name] = mkt_prices[name] - totals[name]
                 _totals_line(totals[name], margins[name])
                 note = _mix_note(name)
                 if note:
@@ -350,28 +355,27 @@ def _render_product(product, plants, key, is_if=False):
     with chart_ph.container():
         try:
             st.plotly_chart(
-                _cost_margin_figure(plants, [totals[n] for n in plants],
-                                    [margins[n] for n in plants], mkt_price),
+                _cost_margin_figure(plants, edited, mkt_prices),
                 width="stretch", config={"displayModeBar": False})
         except Exception:
             st.bar_chart(pd.DataFrame({"Total cost": {n: totals[n] for n in plants}}))
-        st.caption("Bars = ex-works cost per plant (left axis). Dashed line = market price. "
-                   "Diamonds = mill margin on the right axis (green = profit, red = loss).")
+        st.caption("Stacked bars = each cost element's contribution to the ex-works cost per plant "
+                   "(total labelled above each bar). Orange line = market price per plant.")
 
     # --- headline + verdict ---
     lower = min(plants, key=lambda n: totals[n])
     banner_ph.markdown(
         f"<div class='kpi-banner'>Lower-cost producer: {lower} — Rs.{totals[lower]:,.0f}/MT "
-        f"(vs market Rs.{mkt_price:,.0f}/MT)</div>", unsafe_allow_html=True)
+        f"(vs market Rs.{mkt_prices[lower]:,.0f}/MT)</div>", unsafe_allow_html=True)
     best = max(plants, key=lambda n: margins[n])
     profitable = [n for n in plants if margins[n] >= 0]
     if margins[best] >= 0:
         css = "mgmt-good"
-        msg = (f"{len(profitable)} of {len(plants)} plants profitable at market Rs.{mkt_price:,.0f}/MT. "
-               f"Best margin: {best} at Rs.{margins[best]:,.0f}/MT ({margins[best]/mkt_price*100:.1f}%).")
+        msg = (f"{len(profitable)} of {len(plants)} plants profitable at current market prices. "
+               f"Best margin: {best} at Rs.{margins[best]:,.0f}/MT ({margins[best]/mkt_prices[best]*100:.1f}%).")
     else:
         css = "mgmt-bad"
-        msg = (f"No plant is profitable at market Rs.{mkt_price:,.0f}/MT. "
+        msg = (f"No plant is profitable at current market prices. "
                f"Smallest loss: {best} at Rs.{margins[best]:,.0f}/MT.")
     mgmt_ph.markdown(f"<div class='mgmt-box {css}'>Management view: {msg}</div>", unsafe_allow_html=True)
 
