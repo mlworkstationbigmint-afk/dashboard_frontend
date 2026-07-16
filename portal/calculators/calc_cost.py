@@ -17,11 +17,11 @@ USD = "USD ($)"
 # key, label, group, default price, default norm (None => product-based, see _seed),
 # price/norm basis (documentation shown in the editor).
 ELEMENTS = [
-    ("ore",   "Iron Ore (Fines/Lumps/Pellets)", "Raw Material",     9500.0, 1.650, "Rs./MT x MT/MT"),
+    ("ore",   "Iron Ore (Sinter/Lumps/Pellets)", "Raw Material",    9500.0, 1.650, "Rs./MT x MT/MT"),
     ("coal",  "Coking Coal / Met Coke / PCI",   "Raw Material",    22000.0, 0.800, "Rs./MT x MT/MT"),
     ("scrap", "Scrap HMS 80:20",                "Raw Material",    38000.0, 0.150, "Rs./MT x MT/MT"),
-    ("flux",  "Limestone / Dolomite",           "Fluxes & Alloys",     3.50, 250.0, "Rs./kg x kg/MT"),
-    ("alloy", "Ferroalloys (SiMn)",             "Fluxes & Alloys",    85.0,  12.0, "Rs./kg x kg/MT"),
+    ("flux",  "Limestone / Dolomite",           "Fluxes & Alloys",  3500.0, 0.250, "Rs./MT x MT/MT"),
+    ("alloy", "Ferroalloys (SiMn)",             "Fluxes & Alloys", 85000.0, 0.012, "Rs./MT x MT/MT"),
     ("elec",  "Electricity",                    "Power",               7.50, None, "Rs./kWh x kWh/MT"),
     ("proc",  "Processing Cost",                "OpEx",             4500.0,   1.0, "Rs./MT"),
     ("misc",  "Miscellaneous Expenses",         "OpEx",             1200.0,   1.0, "Rs./MT"),
@@ -111,7 +111,7 @@ def _editor(prefix, product, ver, key, ex_rate, is_if=False):
     """One plant's editable cost table. Keyed by route+product (`key`) + reset-version so switching
     product re-seeds fresh values and Reset clears edits (fresh widget key). `product` ('HRC'/'Rebar')
     only drives the seeded defaults; `is_if` relabels a few elements for the IF route. Columns:
-    Cost element · Consumption norm · Unit price · Cur. · Total cost (norm x unit price, FX-converted)."""
+    Cost element · Unit · Unit price · Consumption norm · Total cost (norm x unit price, FX-converted)."""
     wkey = f"cost_{prefix}_{key}_{ver}"
     df = _seed_df(product, is_if)
     # Fold any stored edits back in so the read-only Total cost reflects the latest inputs.
@@ -124,14 +124,14 @@ def _editor(prefix, product, ver, key, ex_rate, is_if=False):
                    for _, r in df.iterrows()]
     return st.data_editor(
         df, key=wkey, hide_index=True, num_rows="fixed", width="stretch",
-        column_order=["Cost element", "Norm", "Price", "Currency", "Total"],
+        column_order=["Cost element", "Currency", "Price", "Norm", "Total"],
         column_config={
             "Cost element": st.column_config.TextColumn("Cost element", disabled=True, width="medium"),
+            "Currency": st.column_config.SelectboxColumn("Unit", options=CURRENCY_OPTS, required=True,
+                        width="small", help="Set to USD ($) to enter a dollar price — converted at the USD->INR rate."),
+            "Price": st.column_config.NumberColumn("Unit price", format="%.2f", step=1.0, min_value=0.0),
             "Norm": st.column_config.NumberColumn("Consumption norm", format="%.3f", step=0.05, min_value=0.0,
                         help="Consumption per tonne of finished steel (OpEx rows use 1)."),
-            "Price": st.column_config.NumberColumn("Unit price", format="%.2f", step=1.0, min_value=0.0),
-            "Currency": st.column_config.SelectboxColumn("Cur.", options=CURRENCY_OPTS, required=True,
-                        width="small", help="Set to USD ($) to enter a dollar price — converted at the USD->INR rate."),
             "Total": st.column_config.NumberColumn("Total cost", format="%.0f", disabled=True,
                         help="Consumption norm x unit price (USD converted at the USD->INR rate)."),
         },
@@ -327,7 +327,7 @@ def _render_product(product, plants, key, is_if=False):
                 margins[name] = mkt_price - totals[name]
                 _totals_line(totals[name], margins[name])
     st.caption("**Total cost = consumption norm × unit price** (auto-computed per row). **Consumption norm** = "
-               "input consumed per tonne of steel. Switch a row's **Cur.** to USD ($) to enter a dollar price "
+               "input consumed per tonne of steel. Switch a row's **Unit** to USD ($) to enter a dollar price "
                "(converted at the USD→INR rate). Edits update the chart live; **Reset** restores the product defaults.")
 
     # --- fill the chart ---

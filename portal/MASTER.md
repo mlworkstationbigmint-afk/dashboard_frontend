@@ -197,6 +197,13 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - Files: `portal/calculators/calc_elasticity.py` (rewritten), `portal/calculators/engine_sensitivity.py`
   (new). ⚠ Visual-only rebuild — verify in-app.
 
+### 2026-07-16 (latest++++++++++++) — Cost Head: column reorder + kg→ton + Sinter
+- Column order now **Cost element · Unit · Unit price · Consumption norm · Total cost** (`Cur.` header renamed
+  **Unit**; still the INR/USD selectbox). `column_order` updated in `_editor`.
+- `ELEMENTS`: Limestone/Dolomite & Ferroalloys switched kg→ton — Limestone `3.50 Rs./kg × 250 kg/MT` →
+  `3500 Rs./MT × 0.250 MT/MT`; Ferroalloys `85 × 12` → `85000 × 0.012` (basis strings → `Rs./MT x MT/MT`;
+  totals unchanged: 875 / 1020). Iron Ore label `Fines`→`Sinter` (BF route).
+
 ### 2026-07-16 (latest+++++++++++) — Cost Head: table reformatted (norm · unit price · cur. · total cost)
 - Every plant table is now **Cost element · Consumption norm · Unit price · Cur. · Total cost**. Dropped the
   old `Basis`/`Price x Norm` column; renamed `Norm`→"Consumption norm", `Price`→"Unit price".
