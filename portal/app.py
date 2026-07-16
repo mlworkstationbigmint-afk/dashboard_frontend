@@ -875,6 +875,12 @@ def _loc_label(group, name):
     return FORECAST_LOCATION_LABELS.get(name, _location_label(group, name))
 
 
+def _default_loc(loc_labels):
+    """Default location for a group: the first Mumbai variant if the group has one, else the
+    first label. Keeps Mumbai as the landing selection across every forecast group."""
+    return next((l for l in loc_labels if "mumbai" in l.lower()), loc_labels[0])
+
+
 def page_forecasting():
     products = allowed_products(user["role"])
     if not products:
@@ -894,7 +900,7 @@ def page_forecasting():
         loc_labels = sorted(loc_map)
         loc_key = f"fc_loc_{group.replace(' ', '_')}"
         if st.session_state.get(loc_key) not in loc_labels:   # default/sanitise before the widget
-            st.session_state[loc_key] = loc_labels[0]
+            st.session_state[loc_key] = _default_loc(loc_labels)
         product = loc_map[st.session_state[loc_key]]
     else:
         keys = list(products.keys())
@@ -1490,7 +1496,7 @@ def page_performance():
         loc_labels = sorted(loc_map)
         loc_key = f"perf_loc_{group.replace(' ', '_')}"
         if st.session_state.get(loc_key) not in loc_labels:          # default/sanitise before the widget
-            st.session_state[loc_key] = loc_labels[0]
+            st.session_state[loc_key] = _default_loc(loc_labels)
         with lcol:
             with st.container(key="perf_loc_box"):
                 st.selectbox("Location", loc_labels, key=loc_key, label_visibility="collapsed")

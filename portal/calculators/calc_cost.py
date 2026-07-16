@@ -16,7 +16,7 @@ import theme        # shared brand palette + infographic CSS/helpers
 # The BF (blast-furnace) and IF (induction-furnace) routes have different build-ups.
 BF_ELEMENTS = [
     ("Iron Ore (Sinter/Lumps/Pellets)", 9500.0, 1.650, "Rs./MT"),
-    ("Coking Coal / Met Coke / PCI",    22000.0, 0.800, "Rs./MT"),
+    ("Coking Coal(PHCC inc PCI)",       22000.0, 0.800, "Rs./MT"),
     ("Scrap HMS 80:20",                 38000.0, 0.150, "Rs./MT"),
     ("Limestone / Dolomite",             3500.0, 0.250, "Rs./MT"),
     ("Ferroalloys (SiMn)",              85000.0, 0.012, "Rs./MT"),
@@ -48,6 +48,32 @@ IF_MIX = {
     "Durgapur": {"Sponge Iron": 0.80, "Scrap HMS 80:20": 0.15, "Pig Iron": 0.05},
     "Jalna":    {"Sponge Iron": 0.20, "Scrap HMS 80:20": 0.75, "Pig Iron": 0.05},
 }
+# Per-plant BF default overrides: unit prices by element + a plant electricity norm (kWh/MT, replaces
+# the product-based 450/400). Elements/plants not listed fall back to the BF_ELEMENTS defaults.
+BF_PLANT = {
+    "Southern region": {
+        "elec_norm": 650.0,
+        "prices": {
+            "Iron Ore (Sinter/Lumps/Pellets)": 4700.0,
+            "Coking Coal(PHCC inc PCI)":       27800.0,
+            "Scrap HMS 80:20":                 31555.0,
+            "Limestone / Dolomite":             1500.0,
+            "Ferroalloys (SiMn)":              75300.0,
+            "Processing Cost":                  6500.0,
+        },
+    },
+    "Eastern region": {
+        "elec_norm": 650.0,
+        "prices": {
+            "Iron Ore (Sinter/Lumps/Pellets)": 2100.0,
+            "Coking Coal(PHCC inc PCI)":       27500.0,
+            "Scrap HMS 80:20":                 35000.0,
+            "Limestone / Dolomite":             1500.0,
+            "Ferroalloys (SiMn)":              76300.0,
+            "Processing Cost":                  6500.0,
+        },
+    },
+}
 
 
 def _elem_cost(price, norm):
@@ -70,15 +96,17 @@ def _seed_df(product, is_if=False, plant=None):
     norm is product-based (450 kWh/MT for HRC, 400 for Rebar); IF metallic norms come from the
     plant's mix (IF_MIX), falling back to the IF_ELEMENTS defaults if the plant isn't listed."""
     mix = IF_MIX.get(plant) if is_if else None
+    bf = None if is_if else BF_PLANT.get(plant)
     rows = []
     for label, price, norm, unit in (IF_ELEMENTS if is_if else BF_ELEMENTS):
-        if norm is None:
-            n = 450.0 if product == "HRC" else 400.0
+        if norm is None:                       # electricity: BF plant norm, else product-based 450/400
+            n = bf["elec_norm"] if bf and "elec_norm" in bf else (450.0 if product == "HRC" else 400.0)
         elif mix and label in mix:
             n = IF_YIELD[label] * mix[label]
         else:
             n = float(norm)
-        rows.append({"Cost element": label, "Unit": unit, "Price": float(price), "Norm": n})
+        p = bf["prices"].get(label, price) if bf else price
+        rows.append({"Cost element": label, "Unit": unit, "Price": float(p), "Norm": n})
     return pd.DataFrame(rows, columns=["Cost element", "Unit", "Price", "Norm"])
 
 
