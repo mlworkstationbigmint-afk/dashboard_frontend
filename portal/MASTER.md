@@ -197,6 +197,12 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - Files: `portal/calculators/calc_elasticity.py` (rewritten), `portal/calculators/engine_sensitivity.py`
   (new). ⚠ Visual-only rebuild — verify in-app.
 
+### 2026-07-16 (latest++++++++++) — Cost Head: IF-route cost-element relabels + Ferroalloys everywhere
+- **Everywhere:** `ELEMENTS` alloy label `Ferroalloys (SiMn, FeMn, FeSi)` → `Ferroalloys (SiMn)`.
+- **IF route only:** new `IF_LABELS` map relabels (display only, engine keys/order unchanged) `ore`→`Sponge Iron`,
+  `coal`→`Non coking coal RB2`, `flux`→`Dolomite`. Threaded `is_if` flag: `render()` (`rkey=="if"`) →
+  `_render_product` → `_editor` → `_seed_df(product, is_if)`.
+
 ### 2026-07-16 (latest+++++++++) — Cost Head: rename region labels, "Price x Norm" column, per-table total/margin
 - Plant labels renamed to region names in `ROUTE_PRODUCTS`: BF HRC = `Southern region`, `Eastern region`;
   BF Rebar = `Southern region`, `Chhattisgarh` (was `JSW Vijaynagar […]`, `SAIL […]`, `JSW`, `CG`).

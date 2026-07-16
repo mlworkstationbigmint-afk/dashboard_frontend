@@ -21,7 +21,7 @@ ELEMENTS = [
     ("coal",  "Coking Coal / Met Coke / PCI",   "Raw Material",    22000.0, 0.800, "Rs./MT x MT/MT"),
     ("scrap", "Scrap HMS 80:20",                "Raw Material",    38000.0, 0.150, "Rs./MT x MT/MT"),
     ("flux",  "Limestone / Dolomite",           "Fluxes & Alloys",     3.50, 250.0, "Rs./kg x kg/MT"),
-    ("alloy", "Ferroalloys (SiMn, FeMn, FeSi)", "Fluxes & Alloys",    85.0,  12.0, "Rs./kg x kg/MT"),
+    ("alloy", "Ferroalloys (SiMn)",             "Fluxes & Alloys",    85.0,  12.0, "Rs./kg x kg/MT"),
     ("elec",  "Electricity",                    "Power",               7.50, None, "Rs./kWh x kWh/MT"),
     ("proc",  "Processing Cost",                "OpEx",             4500.0,   1.0, "Rs./MT"),
     ("misc",  "Miscellaneous Expenses",         "OpEx",             1200.0,   1.0, "Rs./MT"),
@@ -37,12 +37,23 @@ def _elem_cost(price, currency, norm, ex_rate):
     return base * norm
 
 
-def _seed_df(product):
+# IF route uses a different feedstock, so some cost elements are relabelled (display only —
+# the engine keys/order are unchanged).
+IF_LABELS = {
+    "ore":  "Sponge Iron",
+    "coal": "Non coking coal RB2",
+    "flux": "Dolomite",
+}
+
+
+def _seed_df(product, is_if=False):
     """Default editable cost build-up for one plant. Electricity's norm depends on
-    the product (450 kWh/MT for HRC, 400 for Rebar) — matches the original logic."""
+    the product (450 kWh/MT for HRC, 400 for Rebar) — matches the original logic.
+    In the IF route a few elements are relabelled via IF_LABELS (display only)."""
     rows = []
     for key, label, group, price, norm, basis in ELEMENTS:
         n = (450.0 if product == "HRC" else 400.0) if key == "elec" else float(norm)
+        label = IF_LABELS.get(key, label) if is_if else label
         rows.append({"Cost element": label, "Basis": basis, "Currency": CURRENCY_OPTS[0],
                      "Price": float(price), "Norm": n})
     return pd.DataFrame(rows, columns=["Cost element", "Basis", "Currency", "Price", "Norm"])
@@ -96,12 +107,12 @@ def _sec(text, icon=""):
     st.markdown(f"<div class='bm-sec'>{ic}{text}</div>", unsafe_allow_html=True)
 
 
-def _editor(prefix, product, ver, key):
+def _editor(prefix, product, ver, key, is_if=False):
     """One plant's editable cost table. Keyed by route+product (`key`) + reset-version so switching
     product re-seeds fresh values and Reset clears edits (fresh widget key). `product` ('HRC'/'Rebar')
-    only drives the seeded defaults."""
+    only drives the seeded defaults; `is_if` relabels a few elements for the IF route."""
     return st.data_editor(
-        _seed_df(product), key=f"cost_{prefix}_{key}_{ver}", hide_index=True,
+        _seed_df(product, is_if), key=f"cost_{prefix}_{key}_{ver}", hide_index=True,
         num_rows="fixed", width="stretch",
         column_config={
             "Cost element": st.column_config.TextColumn("Cost element", disabled=True, width="medium"),
@@ -263,10 +274,11 @@ ROUTE_PRODUCTS = {
 }
 
 
-def _render_product(product, plants, key):
+def _render_product(product, plants, key, is_if=False):
     """One product view: dual-axis chart + controls, an editable cost table per plant, and the
     headline/verdict. `key` (route+product, e.g. 'bf_rebar') namespaces every widget so the same
-    product in two routes never collides; `product` drives labels + seeded defaults. Engine unchanged."""
+    product in two routes never collides; `product` drives labels + seeded defaults. `is_if`
+    relabels IF-route cost elements. Engine unchanged."""
     verkey = f"cost_ver_{key}"
     st.session_state.setdefault(verkey, 0)
 
@@ -299,7 +311,7 @@ def _render_product(product, plants, key):
         for j, (col, name) in enumerate(zip(cols, chunk)):
             with col:
                 st.markdown(f"**{name}**")
-                edited[name] = _editor(f"p{i + j}", product, ver, key)
+                edited[name] = _editor(f"p{i + j}", product, ver, key, is_if)
                 plant_costs[name], totals[name] = _plant_costs(edited[name], ex_rate)
                 margins[name] = mkt_price - totals[name]
                 _totals_line(totals[name], margins[name])
@@ -359,7 +371,8 @@ def render():
             product = st.segmented_control("Product", names, default=names[0],
                                            key=f"cost_prod_{rkey}", label_visibility="collapsed")
             product = product if product in prods else names[0]
-            _render_product(product, prods[product], key=f"{rkey}_{product.lower()}")
+            _render_product(product, prods[product], key=f"{rkey}_{product.lower()}",
+                            is_if=(rkey == "if"))
 
     st.divider()
     _methodology_infographic()
