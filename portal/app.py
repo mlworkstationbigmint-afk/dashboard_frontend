@@ -1617,7 +1617,6 @@ def page_performance():
 # PAGE: CALCULATORS
 # ---------------------------------------------------------------------------
 def page_calculators():
-    st.markdown("## Scenario Simulation")
     t1, t2, t3 = st.tabs(["Price Sensitivity", "Landed Cost", "Cost Head"])
     with t1:
         calc_elasticity.render()

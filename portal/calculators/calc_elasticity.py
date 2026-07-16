@@ -58,7 +58,7 @@ CALC_CSS = """
 .bm-eq b { color: var(--bm-accent); }
 
 /* ---- knob cards (Sliders mode) — soft neumorphic panels, all identical size ---- */
-.st-key-sens_knobwrap [data-testid="stHorizontalBlock"] { gap: 0.85rem !important; align-items: stretch; }
+.st-key-sens_knobwrap [data-testid="stHorizontalBlock"] { gap: 0.5rem !important; align-items: stretch; }
 .st-key-sens_knobwrap [data-testid="stVerticalBlockBorderWrapper"] {
     border: 1px solid #edf1f7 !important; border-radius: 16px !important;
     background: linear-gradient(158deg, #ffffff 0%, #f4f7fb 100%) !important;
@@ -90,8 +90,8 @@ CALC_CSS = """
 .knob-res.muted { color: #94a3b8; }
 /* compact preset chips + quiet per-driver reset inside the knob cards */
 .st-key-sens_knobwrap div[class*="st-key-pre_"] button {
-    padding: 3px 0 !important; min-height: 26px !important; font-size: 11px !important;
-    font-weight: 700 !important; border-radius: 8px !important; }
+    padding: 2px 0 !important; min-height: 23px !important; font-size: 9.5px !important;
+    font-weight: 700 !important; border-radius: 7px !important; white-space: nowrap !important; }
 .st-key-sens_knobwrap div[class*="st-key-rst_"] button {
     padding: 1px 0 !important; min-height: 22px !important; font-size: 11px !important;
     background: transparent !important; border: none !important; box-shadow: none !important;
@@ -435,7 +435,7 @@ def _render_product(spec, key):
     ss[prevk] = mode
 
     if mode == "Sliders":
-        per = 2                                # roomy 2-up grid; each card holds the full control set
+        per = 4                                # 4-up grid; each card holds the full control set
         with st.container(key="sens_knobwrap"):
             for r0 in range(0, n, per):
                 cols = st.columns(per)
