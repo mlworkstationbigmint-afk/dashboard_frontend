@@ -97,20 +97,28 @@ CALC_CSS = """
     background: transparent !important; border: none !important; box-shadow: none !important;
     color: #94a3b8 !important; }
 .st-key-sens_knobwrap div[class*="st-key-rst_"] button:hover { color: var(--bm-accent) !important; }
-/* value + −/+ stepper -> ONE uniform rounded box. Only the OUTER shell carries the orange
-   border + radius + clip; every inner piece (input wrapper, stepper group, buttons) is
-   flattened flush (no own bg / border / radius / margin) so there's no inner notch or seam. */
-.st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"] {
-    background: #fff !important; border: 1px solid var(--bm-accent) !important;
-    border-radius: 8px !important; box-shadow: none !important; overflow: hidden !important; }
+/* value + −/+ box -> ONE uniform rounded box, SOLID WHITE throughout. Force white on every
+   layer (container, baseweb shell + base-input, input, stepper group & buttons) — the earlier
+   grey was Streamlit's base-input/container fill bleeding through. Only the shell keeps the
+   orange border + radius + clip, so there's no seam or tint. */
+.st-key-sens_knobwrap [data-testid="stNumberInput"] > div,
+.st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"],
+.st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="base-input"],
 .st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"] * {
-    background: #fff !important; border: none !important; border-radius: 0 !important;
-    margin: 0 !important; box-shadow: none !important; }
+    background: #fff !important; background-color: #fff !important; box-shadow: none !important; }
+.st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"] {
+    border: 1px solid var(--bm-accent) !important; border-radius: 8px !important; overflow: hidden !important; }
+.st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"] * {
+    border: none !important; border-radius: 0 !important; margin: 0 !important; }
 .st-key-sens_knobwrap [data-testid="stNumberInput"] input {
     padding: 4px 6px !important; text-align: center !important;
     font-weight: 700 !important; color: var(--bm-primary-dark) !important; }
-.st-key-sens_knobwrap [data-testid="stNumberInput"] button {
-    color: var(--bm-accent) !important; }
+/* steppers: orange glyph on white; on HOVER -> orange fill + WHITE glyph (so they never vanish) */
+.st-key-sens_knobwrap [data-testid="stNumberInput"] button { color: var(--bm-accent) !important; }
+.st-key-sens_knobwrap [data-testid="stNumberInput"] button svg { fill: var(--bm-accent) !important; }
+.st-key-sens_knobwrap [data-testid="stNumberInput"] button:hover {
+    background: var(--bm-accent) !important; background-color: var(--bm-accent) !important; color: #fff !important; }
+.st-key-sens_knobwrap [data-testid="stNumberInput"] button:hover svg { fill: #fff !important; }
 </style>
 """
 
@@ -401,6 +409,10 @@ def _model_note(spec):
 # -----------------------------------------------------------------------------
 # One product view
 # -----------------------------------------------------------------------------
+# @st.fragment: a shock change (slider / number ±, preset, reset) reruns ONLY this
+# product view — not the whole Calculators page — so the +/- steppers stay responsive
+# instead of freezing / dropping rapid clicks on a full-page rerun.
+@st.fragment
 def _render_product(spec, key):
     drivers = spec["drivers"]
     n = len(drivers)
