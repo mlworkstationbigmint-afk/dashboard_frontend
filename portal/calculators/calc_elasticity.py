@@ -97,16 +97,20 @@ CALC_CSS = """
     background: transparent !important; border: none !important; box-shadow: none !important;
     color: #94a3b8 !important; }
 .st-key-sens_knobwrap div[class*="st-key-rst_"] button:hover { color: var(--bm-accent) !important; }
-/* value + −/+ stepper -> ONE clean white box, dropdown-style rounded orange border, uniform
-   width (overflow clips any inner square corner so all four corners read as rounded) */
+/* value + −/+ stepper -> ONE uniform rounded box. Only the OUTER shell carries the orange
+   border + radius + clip; every inner piece (input wrapper, stepper group, buttons) is
+   flattened flush (no own bg / border / radius / margin) so there's no inner notch or seam. */
 .st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"] {
     background: #fff !important; border: 1px solid var(--bm-accent) !important;
     border-radius: 8px !important; box-shadow: none !important; overflow: hidden !important; }
+.st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"] * {
+    background: transparent !important; border: none !important; border-radius: 0 !important;
+    margin: 0 !important; box-shadow: none !important; }
 .st-key-sens_knobwrap [data-testid="stNumberInput"] input {
-    background: #fff !important; padding: 4px 6px !important; text-align: center !important;
+    padding: 4px 6px !important; text-align: center !important;
     font-weight: 700 !important; color: var(--bm-primary-dark) !important; }
 .st-key-sens_knobwrap [data-testid="stNumberInput"] button {
-    background: #fff !important; color: var(--bm-accent) !important; border: none !important; }
+    color: var(--bm-accent) !important; }
 </style>
 """
 
