@@ -62,7 +62,8 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 | `data_loader.py` | Cached readers for forecast_forward + accuracy tables |
 | `calculators/calc_import_price.py` | tab **"Landed Cost"** (import vs landed-cost parity, HRC) |
 | `calculators/calc_cost.py` | tab **"Cost Head"** (production cost & margin) |
-| `calculators/calc_elasticity.py` | tab **"Price Sensitivity"** (price elasticity, HRC, Ridge model) |
+| `calculators/calc_elasticity.py` | tab **"Price Sensitivity"** — product tab-strip (HRC / HR Plate / Rebar), editable driver table, contribution chart, methodology. HRC = live Ridge fit; HR Plate/Rebar = fixed-β (see `engine_sensitivity.py`) |
+| `calculators/engine_sensitivity.py` | Pure-Python sensitivity engine: `compute()` (price = current × e^Σ(eff%×β)), `effective_frac()`, and the fixed-β `HR_PLATE`/`REBAR` specs from the backtested `REBAR__3.XLS`/`HRPLAT_2.XLS` sheets |
 | `calculators/HRC - Copy.csv` | Calculators' own dataset (last date 25-Jan-26) |
 | `assets/bigmint_logo.png` | Top-bar BigMint logo (wordmark fallback if absent) |
 | `assets/adani_logo.png` | Co-brand Adani logo, white chip in topbar (auto-trimmed from `_orig`, 1020×364; fallback chain: this → `adani_logo_orig.png` → gradient-text 'adani') |
@@ -129,6 +130,28 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-16 (latest+++++++++) — Price Sensitivity rebuilt from scratch: HRC / HR Plate / Rebar product tab-strip + new backend engine
+- **New page (UI from scratch), engines preserved.** `calc_elasticity.render()` fully rewritten to match the
+  Landed Cost / Cost Head calculators: prominent `.bm-calc-head` header, **product tab-strip** via
+  `st.segmented_control` (HRC / HR Plate / Rebar — same widget as the forecast page's product selector),
+  an **editable driver table** (`st.data_editor`), a **horizontal contribution chart** (Plotly, green = up /
+  red = down), a **predicted-price banner** + 3 `st.metric` KPIs, then a shared landed-cost-style
+  **methodology** (engine infographic + 6-step equation pipeline) + **glossary**.
+- **Removed** the old sliders-with-`"Price impact: Rs. +0"`-captions UI (per request) and the old
+  `Driver Contribution` dataframe. No PDF here (already removed 2026-07-15).
+- **New backend engine `calculators/engine_sensitivity.py`** (pure Python, no Streamlit):
+  `compute(current, drivers, eff_fracs)` → `price = current × e^Σ(eff%×β)`, `effective_frac(Δ%, Δ₹, base)`
+  (= `Δ%/100 + Δ₹/base`, matching the sheet's *"enter EITHER % or ₹"* columns), and fixed-β **`HR_PLATE`**
+  (LassoCV, OOS R²=0.83, RMSE 1.85%/₹807, 7 drivers) + **`REBAR`** (RidgeCV, OOS R²=0.51, RMSE 3.8%/₹1,993,
+  9 drivers) specs transcribed from `REBAR__3.XLS` / `HRPLAT_2.XLS`. **Verified**: Rebar reference scenario
+  (Scrap +₹1000, Pellet +₹500, Pig Iron +₹500) reproduces the sheet exactly (impact 0.010647, price ₹53,428).
+- **HRC engine unchanged** — still the live `Ridge(alpha=10)` fit on the calculators CSV (`load_model`);
+  `_hrc_spec()` just adapts its coefficients (β) + short driver names into the shared renderer. HRC takes
+  **% shocks only** (no per-driver base prices ship with the model); HR Plate / Rebar expose editable
+  **Base price** + **Δ (₹ / unit)** columns so shocks can be entered in either % or absolute units.
+- Files: `portal/calculators/calc_elasticity.py` (rewritten), `portal/calculators/engine_sensitivity.py`
+  (new). ⚠ Visual-only rebuild — verify in-app.
+
 ### 2026-07-15 (latest++++++++) — Cost Head: BF / IF route tabs, each with a product dropdown
 - **Restructured from HRC/Rebar tabs to two route tabs — "BF route" and "IF route" — each with a Product
   dropdown.** `PRODUCT_PLANTS` → `ROUTE_PRODUCTS`: BF = HRC (`JSW Vijaynagar [Southern region]`,
