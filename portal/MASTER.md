@@ -197,6 +197,13 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - Files: `portal/calculators/calc_elasticity.py` (rewritten), `portal/calculators/engine_sensitivity.py`
   (new). ⚠ Visual-only rebuild — verify in-app.
 
+### 2026-07-16 (latest+++++++++) — Cost Head: rename region labels, "Price x Norm" column, per-table total/margin
+- Plant labels renamed to region names in `ROUTE_PRODUCTS`: BF HRC = `Southern region`, `Eastern region`;
+  BF Rebar = `Southern region`, `Chhattisgarh` (was `JSW Vijaynagar […]`, `SAIL […]`, `JSW`, `CG`).
+- `_editor` **Basis** column header → **"Price x Norm"** (dict key unchanged).
+- New `_totals_line(total, margin)` renders **Total cost + Margin** (margin colored by sign) directly below
+  each plant's table; per-plant cost/margin now computed inside the table loop instead of a separate pass.
+
 ### 2026-07-15 (latest++++++++) — Cost Head: BF / IF route tabs, each with a product dropdown
 - **Restructured from HRC/Rebar tabs to two route tabs — "BF route" and "IF route" — each with a Product
   dropdown.** `PRODUCT_PLANTS` → `ROUTE_PRODUCTS`: BF = HRC (`Southern region`,

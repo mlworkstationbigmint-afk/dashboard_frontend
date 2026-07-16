@@ -105,7 +105,7 @@ def _editor(prefix, product, ver, key):
         num_rows="fixed", width="stretch",
         column_config={
             "Cost element": st.column_config.TextColumn("Cost element", disabled=True, width="medium"),
-            "Basis": st.column_config.TextColumn("Basis", disabled=True, width="small",
+            "Basis": st.column_config.TextColumn("Price x Norm", disabled=True, width="small",
                         help="Unit the price is quoted in x its consumption norm."),
             "Currency": st.column_config.SelectboxColumn("Cur.", options=CURRENCY_OPTS, required=True,
                         width="small", help="Set to USD ($) to enter a dollar price — converted at the USD->INR rate."),
@@ -114,6 +114,16 @@ def _editor(prefix, product, ver, key):
                         help="Consumption per tonne of finished steel (OpEx rows use 1)."),
         },
     )
+
+
+def _totals_line(total, margin):
+    """Total cost + mill margin shown just below a plant's table (margin colored by sign)."""
+    col = theme.SUCCESS if margin >= 0 else theme.DANGER
+    st.markdown(
+        f"<div style='margin:6px 0 2px;font-size:14px;font-weight:600;color:#334155;'>"
+        f"Total cost: <b>Rs.{total:,.0f}</b>/MT &middot; "
+        f"Margin: <b style='color:{col};'>Rs.{margin:,.0f}</b>/MT</div>",
+        unsafe_allow_html=True)
 
 
 def _cost_margin_figure(names, totals, margins, mkt_price):
@@ -282,7 +292,7 @@ def _render_product(product, plants, key):
     # --- editable per-plant cost build-up (two tables per row) ---
     _sec("Editable cost build-up by plant", theme.icon("factory"))
     ver = st.session_state.get(verkey, 0)
-    edited = {}
+    edited, plant_costs, totals, margins = {}, {}, {}, {}
     for i in range(0, len(plants), 2):
         chunk = plants[i:i + 2]
         cols = st.columns(len(chunk), gap="large")
@@ -290,14 +300,12 @@ def _render_product(product, plants, key):
             with col:
                 st.markdown(f"**{name}**")
                 edited[name] = _editor(f"p{i + j}", product, ver, key)
-    st.caption("Price basis is shown per row. **Norm** = consumption per tonne of steel. Switch a row's "
-               "**Cur.** to USD ($) to enter a dollar price (converted at the USD→INR rate). Edits update "
-               "the chart live; **Reset** restores the product defaults.")
-
-    plant_costs, totals, margins = {}, {}, {}
-    for name in plants:
-        plant_costs[name], totals[name] = _plant_costs(edited[name], ex_rate)
-        margins[name] = mkt_price - totals[name]
+                plant_costs[name], totals[name] = _plant_costs(edited[name], ex_rate)
+                margins[name] = mkt_price - totals[name]
+                _totals_line(totals[name], margins[name])
+    st.caption("**Price x Norm** shows how each row's cost is built. **Norm** = consumption per tonne of steel. "
+               "Switch a row's **Cur.** to USD ($) to enter a dollar price (converted at the USD→INR rate). Edits "
+               "update the chart live; **Reset** restores the product defaults.")
 
     # --- fill the chart ---
     with chart_ph.container():
