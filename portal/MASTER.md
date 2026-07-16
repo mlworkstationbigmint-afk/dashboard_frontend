@@ -132,7 +132,7 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 ## Changelog
 ### 2026-07-16 (latest+++++++++++++++++++++++++) — Price Sensitivity: tidy value box + tighter slider↔labels gap
 - [calc_elasticity.py](portal/calculators/calc_elasticity.py): value box cleaned up — dropped the drop-shadow, added `overflow:hidden` so all four corners read rounded, and **centred** the value so it no longer strands to the far left of the −/+ steppers (one uniform white/orange-border box). Stepper `border:none`.
-- Follow-up: killed the inner **notch/seam** (Streamlit's stepper group carried its own bg + radius + margin inside the box). Now only the OUTER `[data-baseweb="input"]` shell carries border/radius/clip; every inner element (`[data-baseweb="input"] *`) is flattened to transparent-bg / no-border / no-radius / no-margin → one uniform rounded box.
+- Follow-up: killed the inner **notch/seam** (Streamlit's stepper group carried its own bg + radius + margin inside the box). Now only the OUTER `[data-baseweb="input"]` shell carries border/radius/clip; every inner element (`[data-baseweb="input"] *`) is flattened to no-border / no-radius / no-margin → one uniform rounded box. Inner elements painted **solid `#fff`** (not transparent) so the whole box is explicitly white (no card-gradient tint bleeding through).
 - Slider tick labels (−20…+20) pulled up close to the slider: `.knob-ticks` margin-top −6px → −16px (kills the fat gap from the card's 0.9rem vertical block gap).
 
 ### 2026-07-16 (latest++++++++++++++++++++++++) — Price Sensitivity: driver value box → white, orange-bordered (like the dropdowns)

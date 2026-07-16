@@ -104,7 +104,7 @@ CALC_CSS = """
     background: #fff !important; border: 1px solid var(--bm-accent) !important;
     border-radius: 8px !important; box-shadow: none !important; overflow: hidden !important; }
 .st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"] * {
-    background: transparent !important; border: none !important; border-radius: 0 !important;
+    background: #fff !important; border: none !important; border-radius: 0 !important;
     margin: 0 !important; box-shadow: none !important; }
 .st-key-sens_knobwrap [data-testid="stNumberInput"] input {
     padding: 4px 6px !important; text-align: center !important;
