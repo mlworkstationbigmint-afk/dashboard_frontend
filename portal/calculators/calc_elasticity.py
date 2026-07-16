@@ -97,7 +97,16 @@ CALC_CSS = """
     background: transparent !important; border: none !important; box-shadow: none !important;
     color: #94a3b8 !important; }
 .st-key-sens_knobwrap div[class*="st-key-rst_"] button:hover { color: var(--bm-accent) !important; }
-.st-key-sens_knobwrap [data-testid="stNumberInput"] input { padding: 4px 6px !important; }
+/* value + −/+ stepper -> a clear WHITE box with the app dropdown's rounded orange border,
+   sitting right beside the slider (more visible than the flat default on the card gradient) */
+.st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"] {
+    background: #fff !important; border: 1px solid var(--bm-accent) !important;
+    border-radius: 8px !important; box-shadow: 0 1px 3px rgba(15,23,42,.07) !important; }
+.st-key-sens_knobwrap [data-testid="stNumberInput"] input {
+    background: #fff !important; padding: 4px 6px !important;
+    font-weight: 700 !important; color: var(--bm-primary-dark) !important; }
+.st-key-sens_knobwrap [data-testid="stNumberInput"] button {
+    background: #fff !important; color: var(--bm-accent) !important; }
 </style>
 """
 
