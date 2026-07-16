@@ -79,7 +79,7 @@ CALC_CSS = """
 /* hide the widget's own -20/+20 ticks; we render our own aligned scale under the slider */
 .st-key-sens_knobwrap [data-testid="stSliderTickBar"] { display: none !important; }
 .knob-ticks { display: flex; justify-content: space-between; font-size: 9.5px; color: #a3adbb;
-    letter-spacing: .2px; margin: -6px 3px 2px; }
+    letter-spacing: .2px; margin: -16px 3px 2px; }
 /* baseline -> shocked result line (coloured delta) */
 .knob-res { text-align: center; font-size: 12px; color: #334155; line-height: 1.45; margin: 8px 0 3px; }
 .knob-res b { color: var(--bm-primary-dark); }
@@ -97,16 +97,16 @@ CALC_CSS = """
     background: transparent !important; border: none !important; box-shadow: none !important;
     color: #94a3b8 !important; }
 .st-key-sens_knobwrap div[class*="st-key-rst_"] button:hover { color: var(--bm-accent) !important; }
-/* value + −/+ stepper -> a clear WHITE box with the app dropdown's rounded orange border,
-   sitting right beside the slider (more visible than the flat default on the card gradient) */
+/* value + −/+ stepper -> ONE clean white box, dropdown-style rounded orange border, uniform
+   width (overflow clips any inner square corner so all four corners read as rounded) */
 .st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"] {
     background: #fff !important; border: 1px solid var(--bm-accent) !important;
-    border-radius: 8px !important; box-shadow: 0 1px 3px rgba(15,23,42,.07) !important; }
+    border-radius: 8px !important; box-shadow: none !important; overflow: hidden !important; }
 .st-key-sens_knobwrap [data-testid="stNumberInput"] input {
-    background: #fff !important; padding: 4px 6px !important;
+    background: #fff !important; padding: 4px 6px !important; text-align: center !important;
     font-weight: 700 !important; color: var(--bm-primary-dark) !important; }
 .st-key-sens_knobwrap [data-testid="stNumberInput"] button {
-    background: #fff !important; color: var(--bm-accent) !important; }
+    background: #fff !important; color: var(--bm-accent) !important; border: none !important; }
 </style>
 """
 
