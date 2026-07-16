@@ -30,7 +30,7 @@ BF_ELEMENTS = [
 # Non coking coal, power and OpEx. Metallic norms are plant-specific (see IF_MIX); the norms
 # below are only fallbacks for a plant not listed in IF_MIX.
 IF_ELEMENTS = [
-    ("Sponge Iron",                      9500.0, 0.976,  "Rs./MT"),
+    ("Sponge Iron",                     23250.0, 0.976,  "Rs./MT"),
     ("Scrap HMS 80:20",                 38000.0, 0.1575, "Rs./MT"),
     ("Pig Iron",                        42000.0, 0.052,  "Rs./MT"),
     ("Ferroalloys (SiMn)",              85000.0, 0.012,  "Rs./MT"),
@@ -172,8 +172,8 @@ SEG_COLORS = ["#024CA1", "#2E7CD6", "#5BA3E0", "#8FC1EA", "#EE4E24",
 
 def _cost_margin_figure(names, edited, mkt_prices):
     """Stacked bars — one segment per cost element (its cost = consumption norm x unit price) — with
-    the per-plant market price drawn as a line on top; grand total labelled above each bar. Single
-    y-axis (Rs./MT)."""
+    two scatter overlays: market price (circles, left axis) and mill margin (diamonds coloured by
+    sign, secondary right axis). Grand total labelled above each bar. Legend sits on top, outside."""
     import plotly.graph_objects as go
     fig = go.Figure()
     labels = list(edited[names[0]]["Cost element"])
@@ -190,21 +190,33 @@ def _cost_margin_figure(names, edited, mkt_prices):
             marker=dict(color=SEG_COLORS[k % len(SEG_COLORS)], line=dict(color="white", width=0.5)),
             hovertemplate="<b>%{x}</b><br>" + label + ": Rs.%{y:,.0f}/MT<extra></extra>",
         )
+    margins = {n: mkt_prices[n] - totals[n] for n in names}
     fig.add_scatter(
-        x=names, y=[mkt_prices[n] for n in names], name="Market price", mode="lines+markers",
+        x=names, y=[mkt_prices[n] for n in names], name="Market price", yaxis="y", mode="lines+markers",
         line=dict(color=theme.ACCENT, width=2.5),
-        marker=dict(size=11, symbol="circle", color=theme.ACCENT, line=dict(color="white", width=2)),
+        marker=dict(size=12, symbol="circle", color=theme.ACCENT, line=dict(color="white", width=2)),
         hovertemplate="<b>%{x}</b><br>Market price: Rs.%{y:,.0f}/MT<extra></extra>",
+    )
+    mcolors = [theme.SUCCESS if margins[n] >= 0 else theme.DANGER for n in names]
+    fig.add_scatter(
+        x=names, y=[margins[n] for n in names], name="Mill margin", yaxis="y2", mode="lines+markers",
+        line=dict(color=theme.NEUTRAL, width=2, dash="dot"),
+        marker=dict(size=14, symbol="diamond", color=mcolors, line=dict(color="white", width=2)),
+        hovertemplate="<b>%{x}</b><br>Mill margin: Rs.%{y:,.0f}/MT<extra></extra>",
     )
     ymax = max(max(totals.values()), max(mkt_prices.values())) * 1.16
     fig.update_layout(
-        barmode="stack", height=470, margin=dict(l=10, r=10, t=54, b=10), plot_bgcolor="white",
+        barmode="stack", height=520, margin=dict(l=10, r=55, t=92, b=10), plot_bgcolor="white",
         paper_bgcolor="rgba(0,0,0,0)", font=dict(family="sans-serif", size=12, color="#334155"),
-        bargap=0.45, legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, font=dict(size=11)),
-        yaxis=dict(title="Rs./MT", tickprefix="Rs.", tickformat=",.0f",
+        bargap=0.45,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0.5, xanchor="center", font=dict(size=10.5)),
+        yaxis=dict(title="Cost / market (Rs./MT)", tickprefix="Rs.", tickformat=",.0f",
                    gridcolor="#f1f5f9", zeroline=False, range=[0, ymax]),
-        annotations=[dict(x=n, y=totals[n], text=f"Rs.{totals[n]:,.0f}", showarrow=False,
-                          yshift=12, font=dict(size=12, color="#0f172a")) for n in names],
+        yaxis2=dict(title="Mill margin (Rs./MT)", overlaying="y", side="right", tickprefix="Rs.",
+                    tickformat=",.0f", showgrid=False, zeroline=True, zerolinecolor="#e2e8f0"),
+        annotations=[dict(x=n, y=totals[n], xref="x", yref="y", text=f"Rs.{totals[n]:,.0f}",
+                          showarrow=False, yshift=12, font=dict(size=12, color="#0f172a"))
+                     for n in names],
     )
     fig.update_xaxes(tickfont=dict(size=13.5, color="#0f172a"))
     return fig
@@ -360,7 +372,8 @@ def _render_product(product, plants, key, is_if=False):
         except Exception:
             st.bar_chart(pd.DataFrame({"Total cost": {n: totals[n] for n in plants}}))
         st.caption("Stacked bars = each cost element's contribution to the ex-works cost per plant "
-                   "(total labelled above each bar). Orange line = market price per plant.")
+                   "(total labelled above each bar). Orange circles = market price (left axis); "
+                   "diamonds = mill margin on the right axis (green = profit, red = loss).")
 
     # --- headline + verdict ---
     lower = min(plants, key=lambda n: totals[n])
