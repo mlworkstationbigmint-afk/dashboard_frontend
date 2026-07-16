@@ -131,7 +131,7 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 
 ## Changelog
 ### 2026-07-16 (latest++++++++++++++++++++++) — Forecast rationales: real per-product commentary replaces the placeholder
-- `RATIONALES` in [app.py](portal/app.py) (~L789) now has real **Momentum / Call / Rationale** entries (with a bold `₹price → descriptor` lead line) for the six Mumbai/Raipur products: **Rebar BF Mumbai, Rebar IF Mumbai, Rebar IF Raipur, Structure (IF Raipur), HRC, HR Plate**. Keyed by the `dl.STEEL_PRODUCTS` name.
+- `RATIONALES` in [app.py](portal/app.py) (~L789) now has real **Pulling down / Holding up / Net** entries (with a bold `₹price → descriptor` lead line) for the six Mumbai/Raipur products: **Rebar BF Mumbai, Rebar IF Mumbai, Rebar IF Raipur, Structure (IF Raipur), HRC, HR Plate**. Keyed by the `dl.STEEL_PRODUCTS` name. Framing is demand/cost-driver narrative (monsoon lull, cost floor, pre-festive restocking, import parity), not model-ensemble mechanics.
 - The Mundra products + anything unlisted still fall back to `_default` (still the old Demand/Supply/Trade/Net-view placeholder). Rendered as-is in the rationale card/section (`render_rationale` / `_rationale_card_html`).
 
 ### 2026-07-16 (latest+++++++++++++++++++++) — Cost Head BF: element rename + per-plant Southern/Eastern defaults
