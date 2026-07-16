@@ -784,8 +784,8 @@ def page_home():
     theme.footer()
 
 
-# Placeholder forecast rationales. Real per-product analyst commentary to be supplied later;
-# add an entry keyed by the product name (as in dl.STEEL_PRODUCTS) to override "_default".
+# Per-product forecast rationales (Momentum / Call / Rationale), keyed by the product name as in
+# dl.STEEL_PRODUCTS. Products without an entry fall back to "_default".
 RATIONALES = {
     "_default": (
         "<b>Demand</b> &mdash; <i>placeholder.</i> End-use demand drivers (construction, auto, infra "
@@ -795,6 +795,65 @@ RATIONALES = {
         "<b>Trade &amp; sentiment</b> &mdash; <i>placeholder.</i> Imports/exports, landed-cost parity and "
         "market sentiment.<br>"
         "<b>Net view</b> &mdash; <i>placeholder.</i> How the above nets out into the 12-week direction shown above."
+    ),
+    "Rebar BF Mumbai": (
+        "<b>₹52,000 &rarr; down then rebound.</b><br>"
+        "<b>Momentum</b> &mdash; Steepest faller in the set. Down ₹4,950 (4wk), ₹7,850 (8wk), ₹8,000 (12wk); "
+        "collapsed from ₹60,550 to ₹52,000 in a straight line.<br>"
+        "<b>Call</b> &mdash; Next-wk ₹51,095 (Down, −905), keeps falling to a trough ~₹48,200 around wk6–7, "
+        "then recovers to ₹53,122 by +12wk (Up).<br>"
+        "<b>Rationale</b> &mdash; The model extrapolates the strong down-leg for another few weeks, then "
+        "mean-reverts. Confidence is high near-term, low on the rebound — the models split hard late "
+        "(NLinear stuck at ~₹48k vs NHITS ~₹54k, a ₹5k spread at wk12). Treat the recovery as directional, "
+        "not a level."
+    ),
+    "Rebar IF Mumbai": (
+        "<b>₹45,896 &rarr; basing, mild recovery.</b><br>"
+        "<b>Momentum</b> &mdash; Downtrend losing steam. Down ₹5,316 (8wk) but only ₹1,550 (4wk); last three "
+        "weeks essentially flat (46,129 → 45,979 → 45,896).<br>"
+        "<b>Call</b> &mdash; Next-wk flat (+8), drifts up to ₹47,262 by +12wk (+1,366, ~+3%).<br>"
+        "<b>Rationale</b> &mdash; The fall has flattened into a base, so the model calls near-term flat then a "
+        "gentle rebound. Caveat: the late-horizon lift is driven mostly by the NBEATS outlier (spikes to ₹51.7k "
+        "while PatchTST/NHITS hold ₹46–47k). Strip NBEATS and it reads closer to flat. Near-term flat is solid; "
+        "the size of the rebound is soft."
+    ),
+    "Rebar IF Raipur": (
+        "<b>₹42,175 &rarr; floor, range-bound.</b><br>"
+        "<b>Momentum</b> &mdash; Bottoming. Down ₹4,617 (8wk) but only ₹483 (4wk); last three weeks "
+        "42,175 → 41,892 → 42,175.<br>"
+        "<b>Call</b> &mdash; Next-wk ₹42,614 (Up, +439), then a tight ₹42,000–42,900 band all 12 weeks, "
+        "ending ₹42,418 (Flat, +243).<br>"
+        "<b>Rationale</b> &mdash; Series has found a floor ~₹42k; the model sees consolidation, no trend — "
+        "slight up-bias early that fades to flat. NHITS and NBEATSx agree on the flat band; NLinear is the "
+        "noise source (dips to ₹39k). Highest-confidence &quot;nothing happens&quot; call."
+    ),
+    "Structure (IF Raipur)": (
+        "<b>₹47,767 &rarr; bottoming, slow climb.</b><br>"
+        "<b>Momentum</b> &mdash; Downtrend decelerating. Down ₹4,200 (8wk), ₹1,193 (4wk), still easing "
+        "gently.<br>"
+        "<b>Call</b> &mdash; Next-wk flat (+453), then a steady climb to ₹49,680 by +12wk (+1,913, ~+4%).<br>"
+        "<b>Rationale</b> &mdash; Fall is flattening → model calls a bottom and a slow recovery. This is one of "
+        "the more confident up-calls: the two lead models NBEATSx and NHITS track each other tightly into "
+        "~₹49.7k. NBEATS overshoots (~₹52k) but doesn't dominate the ensemble."
+    ),
+    "HRC": (
+        "<b>₹58,250 &rarr; stable, gentle grind up.</b><br>"
+        "<b>Momentum</b> &mdash; Most stable series — 12wk range just ₹1,900, near-flat with a soft −450 "
+        "(4wk).<br>"
+        "<b>Call</b> &mdash; Next-wk flat (+88), then a steady rise to ₹60,324 by +12wk (+2,074, ~+3.6%).<br>"
+        "<b>Rationale</b> &mdash; Off a very low-volatility base the model extrapolates a slow grind higher. "
+        "Moderate conviction: the uptrend is carried by NLinear (→₹62k), NBEATSx leans mildly up (→₹59k), but "
+        "NHITS disagrees and stays flat (~₹58.4k). Direction up is reasonable; magnitude is the NLinear view."
+    ),
+    "HR Plate": (
+        "<b>₹57,600 &rarr; sideways, net flat.</b><br>"
+        "<b>Momentum</b> &mdash; Range-bound and choppy. Down ₹500 (4wk), ₹1,700 (8wk); held flat at 57,600 "
+        "the last two weeks. Band only ₹1,900.<br>"
+        "<b>Call</b> &mdash; Next-wk flat (+65), oscillates ₹55,900–58,200, ends ₹57,567 by +12wk "
+        "(Flat, −33) — net zero.<br>"
+        "<b>Rationale</b> &mdash; Mature, low-volatility series; the model projects continuation of the "
+        "sideways band with no trend. NBEATS is the lone bull (~₹59k); DLinear and PatchTST hold ~₹57–58k. "
+        "The wk5/wk10 dips are noise within the band, not a directional signal."
     ),
 }
 
