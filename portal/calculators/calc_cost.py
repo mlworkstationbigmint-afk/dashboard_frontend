@@ -11,62 +11,58 @@ import pandas as pd
 import theme        # shared brand palette + infographic CSS/helpers
 
 # --- Engine inputs ------------------------------------------------------------
-CURRENCY_OPTS = ["INR (Rs.)", "USD ($)"]
-USD = "USD ($)"
-
-# key, label, group, default price, default norm (None => product-based, see _seed),
-# price/norm basis (documentation shown in the editor).
-ELEMENTS = [
-    ("ore",   "Iron Ore (Sinter/Lumps/Pellets)", "Raw Material",    9500.0, 1.650, "Rs./MT x MT/MT"),
-    ("coal",  "Coking Coal / Met Coke / PCI",   "Raw Material",    22000.0, 0.800, "Rs./MT x MT/MT"),
-    ("scrap", "Scrap HMS 80:20",                "Raw Material",    38000.0, 0.150, "Rs./MT x MT/MT"),
-    ("flux",  "Limestone / Dolomite",           "Fluxes & Alloys",  3500.0, 0.250, "Rs./MT x MT/MT"),
-    ("alloy", "Ferroalloys (SiMn)",             "Fluxes & Alloys", 85000.0, 0.012, "Rs./MT x MT/MT"),
-    ("elec",  "Electricity",                    "Power",               7.50, None, "Rs./kWh x kWh/MT"),
-    ("proc",  "Processing Cost",                "OpEx",             4500.0,   1.0, "Rs./MT"),
-    ("misc",  "Miscellaneous Expenses",         "OpEx",             1200.0,   1.0, "Rs./MT"),
-    ("fin",   "Finance Cost (Avg)",             "OpEx",             1500.0,   1.0, "Rs./MT"),
-    ("dep",   "Depreciation & Amortization",    "OpEx",             2000.0,   1.0, "Rs./MT"),
+# Each element: (label, default unit price ₹, default consumption norm, unit).
+# norm=None => product-based electricity norm (450 kWh/MT for HRC, 400 for Rebar).
+# The BF (blast-furnace) and IF (induction-furnace) routes have different build-ups.
+BF_ELEMENTS = [
+    ("Iron Ore (Sinter/Lumps/Pellets)", 9500.0, 1.650, "Rs./MT"),
+    ("Coking Coal / Met Coke / PCI",    22000.0, 0.800, "Rs./MT"),
+    ("Scrap HMS 80:20",                 38000.0, 0.150, "Rs./MT"),
+    ("Limestone / Dolomite",             3500.0, 0.250, "Rs./MT"),
+    ("Ferroalloys (SiMn)",              85000.0, 0.012, "Rs./MT"),
+    ("Electricity",                         7.50, None,  "Rs./kWh"),
+    ("Processing Cost",                  4500.0,   1.0,  "Rs./MT"),
+    ("Miscellaneous Expenses",           1200.0,   1.0,  "Rs./MT"),
+    ("Finance Cost (Avg)",               1500.0,   1.0,  "Rs./MT"),
+    ("Depreciation & Amortization",      2000.0,   1.0,  "Rs./MT"),
 ]
-ELEM_KEYS = [e[0] for e in ELEMENTS]
+# IF route: metallic-mix feedstock (Sponge Iron / Scrap / Pig Iron / Ferroalloys) then
+# Non coking coal, power and OpEx. Norms are the final metallic-mix values (see _METALLIC_MIX).
+IF_ELEMENTS = [
+    ("Sponge Iron",                      9500.0, 0.976,  "Rs./MT"),
+    ("Scrap HMS 80:20",                 38000.0, 0.1575, "Rs./MT"),
+    ("Pig Iron",                        42000.0, 0.052,  "Rs./MT"),
+    ("Ferroalloys (SiMn)",              85000.0, 0.012,  "Rs./MT"),
+    ("Non coking coal RB2",             22000.0, 0.800,  "Rs./MT"),
+    ("Electricity",                         7.50, None,  "Rs./kWh"),
+    ("Processing Cost",                  4500.0,   1.0,  "Rs./MT"),
+    ("Miscellaneous Expenses",           1200.0,   1.0,  "Rs./MT"),
+    ("Finance Cost (Avg)",               1500.0,   1.0,  "Rs./MT"),
+    ("Depreciation & Amortization",      2000.0,   1.0,  "Rs./MT"),
+]
+# Footnote spelling out how the IF metallic-mix norms are derived (norm = yield x mix share).
+_METALLIC_MIX = ("Sponge Iron 1.22 × 80% = 0.976, Scrap 1.05 × 15% = 0.1575, "
+                 "Pig Iron 1.04 × 5% = 0.052, Ferroalloys 1 × 1.2% = 0.012 (MT/MT)")
 
 
-def _elem_cost(price, currency, norm, ex_rate):
-    """UNCHANGED ENGINE: USD prices convert at the FX rate, then × consumption norm."""
-    base = price * ex_rate if currency == USD else price
-    return base * norm
-
-
-# IF route uses a different feedstock, so some cost elements are relabelled (display only —
-# the engine keys/order are unchanged).
-IF_LABELS = {
-    "ore":  "Sponge Iron",
-    "coal": "Non coking coal RB2",
-    "flux": "Dolomite",
-}
+def _elem_cost(price, norm):
+    """ENGINE: unit price × consumption norm (all prices in ₹)."""
+    return price * norm
 
 
 def _seed_df(product, is_if=False):
-    """Default editable cost build-up for one plant. Electricity's norm depends on
-    the product (450 kWh/MT for HRC, 400 for Rebar) — matches the original logic.
-    In the IF route a few elements are relabelled via IF_LABELS (display only)."""
+    """Default editable cost build-up for one plant, from the BF or IF element list.
+    Electricity's norm is product-based (450 kWh/MT for HRC, 400 for Rebar)."""
     rows = []
-    for key, label, group, price, norm, basis in ELEMENTS:
-        n = (450.0 if product == "HRC" else 400.0) if key == "elec" else float(norm)
-        label = IF_LABELS.get(key, label) if is_if else label
-        rows.append({"Cost element": label, "Norm": n, "Price": float(price),
-                     "Currency": CURRENCY_OPTS[0]})
-    return pd.DataFrame(rows, columns=["Cost element", "Norm", "Price", "Currency"])
+    for label, price, norm, unit in (IF_ELEMENTS if is_if else BF_ELEMENTS):
+        n = (450.0 if product == "HRC" else 400.0) if norm is None else float(norm)
+        rows.append({"Cost element": label, "Unit": unit, "Price": float(price), "Norm": n})
+    return pd.DataFrame(rows, columns=["Cost element", "Unit", "Price", "Norm"])
 
 
-def _plant_costs(edited, ex_rate):
-    """Per-element cost dict + ex-works total from an edited plant table (row order
-    matches ELEMENTS; the editor is num_rows='fixed' so positions are stable)."""
-    costs = {}
-    for i, key in enumerate(ELEM_KEYS):
-        row = edited.iloc[i]
-        costs[key] = _elem_cost(float(row["Price"]), row["Currency"], float(row["Norm"]), ex_rate)
-    return costs, sum(costs.values())
+def _plant_costs(edited):
+    """Ex-works total from an edited plant table (sum of unit price × norm over every row)."""
+    return sum(_elem_cost(float(r["Price"]), float(r["Norm"])) for _, r in edited.iterrows())
 
 
 CALC_CSS = """
@@ -107,11 +103,11 @@ def _sec(text, icon=""):
     st.markdown(f"<div class='bm-sec'>{ic}{text}</div>", unsafe_allow_html=True)
 
 
-def _editor(prefix, product, ver, key, ex_rate, is_if=False):
+def _editor(prefix, product, ver, key, is_if=False):
     """One plant's editable cost table. Keyed by route+product (`key`) + reset-version so switching
     product re-seeds fresh values and Reset clears edits (fresh widget key). `product` ('HRC'/'Rebar')
-    only drives the seeded defaults; `is_if` relabels a few elements for the IF route. Columns:
-    Cost element · Unit · Unit price · Consumption norm · Total cost (norm x unit price, FX-converted)."""
+    only drives the seeded defaults; `is_if` picks the IF element list. Columns:
+    Cost element · Unit · Unit price · Consumption norm · Total cost (norm x unit price)."""
     wkey = f"cost_{prefix}_{key}_{ver}"
     df = _seed_df(product, is_if)
     # Fold any stored edits back in so the read-only Total cost reflects the latest inputs.
@@ -120,20 +116,19 @@ def _editor(prefix, product, ver, key, ex_rate, is_if=False):
         for ridx, chg in state["edited_rows"].items():
             for c, v in chg.items():
                 df.at[int(ridx), c] = v
-    df["Total"] = [_elem_cost(float(r["Price"]), r["Currency"], float(r["Norm"]), ex_rate)
-                   for _, r in df.iterrows()]
+    df["Total"] = [_elem_cost(float(r["Price"]), float(r["Norm"])) for _, r in df.iterrows()]
     return st.data_editor(
         df, key=wkey, hide_index=True, num_rows="fixed", width="stretch",
-        column_order=["Cost element", "Currency", "Price", "Norm", "Total"],
+        column_order=["Cost element", "Unit", "Price", "Norm", "Total"],
         column_config={
             "Cost element": st.column_config.TextColumn("Cost element", disabled=True, width="medium"),
-            "Currency": st.column_config.SelectboxColumn("Unit", options=CURRENCY_OPTS, required=True,
-                        width="small", help="Set to USD ($) to enter a dollar price — converted at the USD->INR rate."),
+            "Unit": st.column_config.TextColumn("Unit", disabled=True, width="small",
+                        help="Unit the price is quoted in (Rs./MT, or Rs./kWh for electricity)."),
             "Price": st.column_config.NumberColumn("Unit price", format="%.2f", step=1.0, min_value=0.0),
             "Norm": st.column_config.NumberColumn("Consumption norm", format="%.3f", step=0.05, min_value=0.0,
                         help="Consumption per tonne of finished steel (OpEx rows use 1)."),
             "Total": st.column_config.NumberColumn("Total cost", format="%.0f", disabled=True,
-                        help="Consumption norm x unit price (USD converted at the USD->INR rate)."),
+                        help="Consumption norm x unit price."),
         },
     )
 
@@ -192,9 +187,9 @@ def _cost_margin_figure(names, totals, margins, mkt_price):
 def _methodology_infographic():
     _sec("How the cost & margin are built", theme.icon("notes"))
     st.markdown(
-        "Each plant is priced through the **same build-up** — every input's price (in ₹ or converted "
-        "from USD) is multiplied by its **consumption norm** per tonne, summed into an ex-works cost, "
-        "then compared to the market price to give the mill margin. Edit any cell and the chart re-solves."
+        "Each plant is priced through the **same build-up** — every input's **unit price** (Rs./MT, or "
+        "Rs./kWh for electricity) is multiplied by its **consumption norm** per tonne, summed into an ex-works "
+        "cost, then compared to the market price to give the mill margin. Edit any cell and the chart re-solves."
     )
 
     def _chips(items):
@@ -205,15 +200,15 @@ def _methodology_infographic():
     engine = (
         "<div class='bm-engine'>"
         "<div class='bm-engine-col bm-engine-in'><div class='bm-engine-h'>Inputs</div>"
-        + _chips([("factory", "Material prices &amp; currency"),
+        + _chips([("factory", "Material unit prices"),
                   ("rupee",   "Consumption norm per tonne"),
-                  ("gauge",   "Market price &amp; USD&rarr;INR")]) +
+                  ("gauge",   "Market price")]) +
         "</div>"
         "<div class='bm-engine-arrow'>&rarr;</div>"
         "<div class='bm-engine-core'>"
         f"<span class='ic'>{theme.icon('calculator', 26)}</span>"
         "<div style='margin:0 0 6px;font-size:16px;font-weight:700;color:#fff;'>Cost &amp; Margin Engine</div>"
-        "<p>price &rarr; convert &rarr; &times; norm &rarr; sum &rarr; margin, applied identically to every plant.</p></div>"
+        "<p>unit price &rarr; &times; norm &rarr; sum &rarr; margin, applied identically to every plant.</p></div>"
         "<div class='bm-engine-arrow'>&rarr;</div>"
         "<div class='bm-engine-col bm-engine-out'><div class='bm-engine-h'>Outputs</div>"
         + _chips([("rupee",    "Ex-works cost per plant"),
@@ -226,10 +221,8 @@ def _methodology_infographic():
     st.write("")
     _sec("The equation pipeline", theme.icon("notes"))
     steps = [
-        ("gauge",      "Currency",     "USD prices convert at FX.",
-         "Rs. = Price &times; <b>FX</b>"),
-        ("factory",    "Element cost", "Converted price &times; its norm.",
-         "Cost = Rs.Price &times; <b>Norm</b>"),
+        ("factory",    "Element cost", "Unit price &times; its norm.",
+         "Cost = <b>Unit price</b> &times; <b>Norm</b>"),
         ("calculator", "Ex-works cost", "Sum every element.",
          "Total = &Sigma; Cost"),
         ("rupee",      "Mill margin",  "Market minus total cost.",
@@ -261,8 +254,7 @@ def _glossary():
         ("Norm", "Consumption norm", "Input consumed per tonne of finished steel (MT/MT, kg/MT, kWh/MT)."),
         ("Margin", "Mill margin", "Market price minus ex-works cost &mdash; the profit per tonne."),
         ("OpEx", "Operating expenses", "Processing, miscellaneous, finance and depreciation per tonne."),
-        ("FX", "USD&rarr;INR rate", "Rate used to convert any USD-quoted input into rupees."),
-        ("Basis", "Price basis", "The unit a price is quoted in (Rs./MT, Rs./kg, Rs./kWh) &times; its norm."),
+        ("Unit", "Price unit", "The unit a price is quoted in — Rs./MT (Rs./kWh for electricity)."),
     ]
     html = "<div class='bm-factor-grid'>" + "".join(
         f"<div class='bm-factor'><div class='ic' style='font-weight:800;font-size:12px;'>{abbr}</div>"
@@ -280,7 +272,7 @@ ROUTE_PRODUCTS = {
         "Rebar": ["Southern region", "Chhattisgarh"],
     },
     "IF route": {
-        "Rebar": ["Durgapur", "Jalna"],
+        "Rebar": ["Durgapur"],
     },
 }
 
@@ -289,7 +281,7 @@ def _render_product(product, plants, key, is_if=False):
     """One product view: dual-axis chart + controls, an editable cost table per plant, and the
     headline/verdict. `key` (route+product, e.g. 'bf_rebar') namespaces every widget so the same
     product in two routes never collides; `product` drives labels + seeded defaults. `is_if`
-    relabels IF-route cost elements. Engine unchanged."""
+    selects the IF element list and shows the metallic-mix footnote. Engine unchanged."""
     verkey = f"cost_ver_{key}"
     st.session_state.setdefault(verkey, 0)
 
@@ -306,7 +298,6 @@ def _render_product(product, plants, key, is_if=False):
         chart_ph = st.empty()
     with col_ctrl:
         theme.section_title("Scenario controls", theme.icon("gauge"))
-        ex_rate = st.number_input("USD → INR rate", value=93.0, step=0.5, key=f"cost_fx_{key}")
         mkt_price = st.number_input(f"Market price — {product} (Rs./MT)", value=55000.0, step=500.0,
                                     key=f"cost_mkt_{key}", min_value=0.0)
         st.button("↺ Reset tables", key=f"cost_reset_{key}", on_click=_reset_tables, width="stretch",
@@ -315,20 +306,22 @@ def _render_product(product, plants, key, is_if=False):
     # --- editable per-plant cost build-up (two tables per row) ---
     _sec("Editable cost build-up by plant", theme.icon("factory"))
     ver = st.session_state.get(verkey, 0)
-    edited, plant_costs, totals, margins = {}, {}, {}, {}
+    edited, totals, margins = {}, {}, {}
     for i in range(0, len(plants), 2):
         chunk = plants[i:i + 2]
         cols = st.columns(len(chunk), gap="large")
         for j, (col, name) in enumerate(zip(cols, chunk)):
             with col:
                 st.markdown(f"**{name}**")
-                edited[name] = _editor(f"p{i + j}", product, ver, key, ex_rate, is_if)
-                plant_costs[name], totals[name] = _plant_costs(edited[name], ex_rate)
+                edited[name] = _editor(f"p{i + j}", product, ver, key, is_if)
+                totals[name] = _plant_costs(edited[name])
                 margins[name] = mkt_price - totals[name]
                 _totals_line(totals[name], margins[name])
+    if is_if:
+        st.caption(f"† **Metallic mix** — consumption norms shown are the final values: {_METALLIC_MIX}.")
     st.caption("**Total cost = consumption norm × unit price** (auto-computed per row). **Consumption norm** = "
-               "input consumed per tonne of steel. Switch a row's **Unit** to USD ($) to enter a dollar price "
-               "(converted at the USD→INR rate). Edits update the chart live; **Reset** restores the product defaults.")
+               "input consumed per tonne of steel; **Unit** is Rs./MT (Rs./kWh for electricity). Edits update the "
+               "chart live; **Reset** restores the product defaults.")
 
     # --- fill the chart ---
     with chart_ph.container():

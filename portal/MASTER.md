@@ -197,6 +197,24 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - Files: `portal/calculators/calc_elasticity.py` (rewritten), `portal/calculators/engine_sensitivity.py`
   (new). ⚠ Visual-only rebuild — verify in-app.
 
+### 2026-07-16 (latest++++++++++++++) — Cost Head: IF route rebuilt (metallic-mix series, Durgapur only)
+- Replaced the single shared `ELEMENTS` list with route-specific **`BF_ELEMENTS`** / **`IF_ELEMENTS`**
+  (`(label, price, norm, unit)` tuples; the per-element key/`ELEM_KEYS`/`IF_LABELS` machinery is gone since
+  only the summed total is used downstream). `_seed_df(product, is_if)` picks the list; `_plant_costs` now just
+  sums `price×norm` over the rows.
+- **IF series** = Sponge Iron · Scrap HMS 80:20 · **Pig Iron (new)** · Ferroalloys (SiMn) · Non coking coal RB2 ·
+  Electricity · OpEx. **Dolomite removed.** Norms are the final metallic-mix values: Sponge Iron 0.976, Scrap
+  0.1575, Pig Iron 0.052, Ferroalloys 0.012 (`_METALLIC_MIX` footnote shows `yield × mix%` below the IF section).
+- **IF route → Durgapur only** (`ROUTE_PRODUCTS["IF route"]["Rebar"] = ["Durgapur"]`, dropped Jalna).
+
+### 2026-07-16 (latest+++++++++++++) — Cost Head: Unit column = measurement unit, USD/FX removed
+- **Unit** column is now a read-only measurement unit (`Rs./kWh` for electricity, `Rs./MT` for everything else),
+  no longer the INR/USD selectbox. `_seed_df` emits it; dropped `CURRENCY_OPTS`/`USD` constants.
+- **USD conversion fully removed** (was incoherent with no currency choice): `_elem_cost(price, norm)` = price×norm;
+  `_plant_costs(edited)` lost its `ex_rate` arg; `_editor` lost `ex_rate`; the **USD→INR rate** scenario input is gone.
+- Methodology infographic, equation pipeline (dropped the "Currency" step), and glossary (FX→Unit term) updated to
+  match. All prices are ₹.
+
 ### 2026-07-16 (latest++++++++++++) — Cost Head: column reorder + kg→ton + Sinter
 - Column order now **Cost element · Unit · Unit price · Consumption norm · Total cost** (`Cur.` header renamed
   **Unit**; still the INR/USD selectbox). `column_order` updated in `_editor`.
