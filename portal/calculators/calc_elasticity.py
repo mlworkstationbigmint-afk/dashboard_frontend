@@ -56,6 +56,29 @@ CALC_CSS = """
     background: var(--bm-primary-soft); border: 1px solid #dbe7f7; border-radius: 8px;
     padding: 7px 9px; line-height: 1.45; width: 100%; box-sizing: border-box; }
 .bm-eq b { color: var(--bm-accent); }
+
+/* ---- knob cards (Sliders mode) — soft neumorphic panels, all identical size ---- */
+.st-key-sens_knobwrap [data-testid="stHorizontalBlock"] { gap: 0.85rem !important; align-items: stretch; }
+.st-key-sens_knobwrap [data-testid="stVerticalBlockBorderWrapper"] {
+    border: 1px solid #edf1f7 !important; border-radius: 16px !important;
+    background: linear-gradient(158deg, #ffffff 0%, #f4f7fb 100%) !important;
+    box-shadow: 0 6px 16px rgba(15,23,42,.06), inset 0 1px 0 #ffffff !important;
+    padding: 13px 15px 15px !important; min-height: 132px; height: 100%;
+    display: flex; flex-direction: column; justify-content: space-between;
+    transition: box-shadow .2s ease, transform .2s ease; }
+.st-key-sens_knobwrap [data-testid="stVerticalBlockBorderWrapper"]:hover {
+    box-shadow: 0 12px 26px rgba(2,76,161,.13), inset 0 1px 0 #ffffff !important;
+    transform: translateY(-2px); }
+/* driver name = clean centred caption (like LEVEL / WIDTH on the reference) */
+.st-key-sens_knobwrap [data-testid="stSlider"] [data-testid="stWidgetLabel"] { min-height: 34px; }
+.st-key-sens_knobwrap [data-testid="stSlider"] [data-testid="stWidgetLabel"] p {
+    font-size: 11.5px !important; font-weight: 700 !important; color: var(--bm-primary-dark) !important;
+    text-align: center; line-height: 1.25; letter-spacing: .3px; text-transform: uppercase; }
+/* the current-value bubble above the thumb — make it a crisp accent pill */
+.st-key-sens_knobwrap [data-testid="stSliderThumbValue"] {
+    font-size: 12px !important; font-weight: 700 !important; color: var(--bm-primary-dark) !important; }
+/* de-clutter: hide the -20 / +20 end ticks (a caption explains the range instead) */
+.st-key-sens_knobwrap [data-testid="stSliderTickBar"] { display: none !important; }
 </style>
 """
 
@@ -150,7 +173,12 @@ def _hrc_spec():
 # -----------------------------------------------------------------------------
 # Charts / tables
 # -----------------------------------------------------------------------------
-def _contrib_figure(names, contrib_rs):
+def _view_height(n):
+    """Shared pixel height so the Graph and the Table-of-changes fill the same box."""
+    return int(min(560, max(300, 44 + 34 * n)))            # header + one row per driver
+
+
+def _contrib_figure(names, contrib_rs, height):
     """Horizontal diverging bars — each driver's ₹/t contribution to the move.
     Persistent: renders (flat, centred on zero) even when no shocks are entered."""
     import plotly.graph_objects as go
@@ -167,7 +195,7 @@ def _contrib_figure(names, contrib_rs):
         hovertemplate="<b>%{y}</b><br>Contribution: Rs.%{x:+,.0f}/t<extra></extra>",
     ))
     fig.add_vline(x=0, line=dict(color="#cbd5e1", width=1.5))
-    fig.update_layout(height=max(260, 40 * len(order)), margin=dict(l=10, r=40, t=8, b=8),
+    fig.update_layout(height=height, margin=dict(l=10, r=40, t=8, b=8),
                       plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
                       font=dict(family="sans-serif", size=12, color="#334155"), showlegend=False)
     fig.update_xaxes(title_text="Contribution to price (Rs./t)", tickprefix="Rs.",
@@ -176,7 +204,7 @@ def _contrib_figure(names, contrib_rs):
     return fig
 
 
-def _changes_table(drivers, dpct, dunit, base, contrib_rs, has_base):
+def _changes_table(drivers, dpct, dunit, base, contrib_rs, has_base, height):
     """Driver-by-driver 'table of changes': the shock applied and its ₹ effect."""
     rows = []
     for i, (nm, _b0, _beta, unit) in enumerate(drivers):
@@ -189,7 +217,7 @@ def _changes_table(drivers, dpct, dunit, base, contrib_rs, has_base):
                      "Contribution (Rs./t)": round(contrib_rs[nm], 0)})
     df = (pd.DataFrame(rows)
           .sort_values("Contribution (Rs./t)", key=lambda s: s.abs(), ascending=False))
-    st.dataframe(df, width="stretch", hide_index=True, column_config={
+    st.dataframe(df, width="stretch", hide_index=True, height=height, column_config={
         "Contribution (Rs./t)": st.column_config.NumberColumn("Contribution (Rs./t)", format="Rs.%+.0f"),
     })
 
@@ -264,16 +292,20 @@ def _render_product(spec, key):
     tok = f"{ss[f'sens_ver_{key}']}_{ss[f'sens_sync_{key}']}"
 
     if mode == "Sliders":
-        per = 3
-        for r0 in range(0, n, per):
-            idxs = list(range(r0, min(r0 + per, n)))
-            for c, i in zip(st.columns(len(idxs)), idxs):
-                with c, st.container(border=True):
-                    seed = max(-20.0, min(20.0, round(_eff_pct(i), 2)))   # knobs cap at ±20%
-                    v = st.slider(names[i], -20.0, 20.0, value=seed, step=0.5,
-                                  key=f"sl_{key}_{i}_{tok}")
-                dpct[i] = v      # a knob expresses the whole shock as a %, so the ₹ part folds in
-                dunit[i] = 0.0
+        per = 4                                    # fixed grid -> every knob card is the same width
+        with st.container(key="sens_knobwrap"):
+            for r0 in range(0, n, per):
+                cols = st.columns(per)
+                for j in range(per):
+                    i = r0 + j
+                    if i >= n:
+                        continue                   # leave the trailing cells empty (keeps widths equal)
+                    with cols[j], st.container(border=True):
+                        seed = max(-20.0, min(20.0, round(_eff_pct(i), 2)))   # knobs cap at ±20%
+                        v = st.slider(names[i], -20.0, 20.0, value=seed, step=0.5,
+                                      key=f"sl_{key}_{i}_{tok}")
+                    dpct[i] = v      # a knob expresses the whole shock as a %, so the ₹ part folds in
+                    dunit[i] = 0.0
         st.caption("Drag a knob to shock a driver by ±20%. Switch to **Table** to type exact values "
                    "or enter absolute ₹ / unit changes — your shocks carry across both modes.")
     else:
@@ -314,16 +346,17 @@ def _render_product(spec, key):
     impact, final, _cpct, crs = eng.compute(current, drivers, eff)
     change = final - current
 
-    # --- fill the persistent chart / table-of-changes ---
+    # --- fill the persistent chart / table-of-changes (matched heights) ---
+    vh = _view_height(n)
     with graph_ph.container():
         try:
-            st.plotly_chart(_contrib_figure(names, crs), width="stretch",
+            st.plotly_chart(_contrib_figure(names, crs, vh), width="stretch",
                             config={"displayModeBar": False})
         except Exception:
             st.bar_chart(pd.DataFrame({"Rs./t": crs}))
         st.caption("Each bar = current price × driver shock. Green pushes the price up, red pulls it down.")
     with tbl_ph.container():
-        _changes_table(drivers, dpct, dunit, base, crs, has_base)
+        _changes_table(drivers, dpct, dunit, base, crs, has_base, vh)
 
     # --- KPI cards (modular, forecast-page style) under the current price ---
     cards = [
