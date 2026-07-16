@@ -130,6 +130,26 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ The `data-baseweb="tab*"` selectors are DEAD on the deployed app — it runs Streamlit 1.59 (2026-07-07)** — the deployment runs **streamlit 1.59.0** (identified by its `components.v1.html` deprecation warning) despite the 1.58.0 pin; 1.59 swapped baseweb for **react-aria** widgets. Its `st.tabs` markup (captured live from a 1.59 sandbox): container `[data-testid="stTabs"]` → `div[role="tablist"]` (no `data-baseweb`) → tabs are `div[data-testid="stTab"][role="tab"]` with `aria-selected` (+`data-selected` on active), and the moving underline is a `div.react-aria-SelectionIndicator` **inside the active tab**. ~~So the sliding-pill tab styling and the calculators' tabs are **unstyled (default underline) on the deployment**~~ **FIXED 2026-07-08:** the tab CSS in `theme.py` now carries BOTH generations — every baseweb rule gained a react-aria twin (`[data-testid="stTabs"] div[role="tablist"]` = grey track, `div[data-testid="stTab"][role="tab"]` + `[aria-selected="true"]` = tab buttons / orange active, and `.react-aria-SelectionIndicator` is pinned to the active tab's box (`inset:0`, inline transform/size overridden) as the full-height white pill — on 1.59 it moves with the selection rather than gliding across the track). The `streamlit==1.59.0` pin now matches the deployment (root + portal `requirements.txt`, conda env bumped too). Segmented controls changed the same way (active option = `aria-checked="true"` on a `data-variant="segmented_control"` button — both the global accent rule and the fc_view pill switch now cover both generations). Rule of thumb: anything that MUST look right in production should key on **Streamlit-owned markup** (testids, `st-key-*` classes, `role=`/`aria-*` attributes), and ideally be verified on both versions via the sandbox-probe workflow (scratch `.claude/launch.json` entry running a mini app with `theme.inject_css()` on a spare port; a throwaway 1.59 venv may still exist at `C:\st_probe`).
 
 ## Changelog
+### 2026-07-16 (latest++++++++++) — Price Sensitivity: dual input modes, view tabs, KPI cards, sensitivities hidden
+- **Two interchangeable input modes tied to one shock state.** An `st.segmented_control` ("Sliders" / "Table")
+  switches between per-driver **knobs** (±20% sliders, 3-up) and the **editable Table** (Base / Δ% / Δ₹).
+  Canonical shock lives in session state (`sens_dpct_/sens_dunit_/sens_base_{key}` dicts); both editors seed
+  from it and write back, so shocks carry across modes. Sync trick: widget-key suffix `tok = ver_sync` —
+  `ver` bumps on Reset, `sync` bumps when the mode changes (remounts the editor to reseed from canonical). A
+  knob expresses the whole shock as a %, folding any ₹ part into Δ% (dunit→0).
+- **Contribution area is now a Graph / Table-of-changes tab pair.** Graph is **persistent even at 0 shocks**
+  (symmetric x-range centred on zero, no more "enter a shock" info box). "Table of changes" lists each driver's
+  applied shock (% and ₹) + its ₹/t contribution, sorted by magnitude.
+- **Predicted change / Forecasted price / Absolute change moved to the right rail as modular KPI cards**
+  (`theme.kpi_card` inside `.bm-vcards bm-vcards-sm`, forecast-page style) directly under the Current-price
+  input. **Removed** the blue predicted-price banner (`.kpi-banner`), the old 3-across `st.metric` row, and the
+  "Pick a product…" caption.
+- **No sensitivity (β) values are shown anywhere** — the driver table's β column is gone and methodology/glossary
+  say "sensitivity" (never a number) so the model can't be reverse-engineered. `_hrc_spec()`/specs still hold
+  the coefficients internally; only inputs + outputs are surfaced.
+- Files: `portal/calculators/calc_elasticity.py`. ⚠ Visual-only — verify in-app (esp. mode-switch state carry
+  + data_editor stability).
+
 ### 2026-07-16 (latest+++++++++) — Price Sensitivity rebuilt from scratch: HRC / HR Plate / Rebar product tab-strip + new backend engine
 - **New page (UI from scratch), engines preserved.** `calc_elasticity.render()` fully rewritten to match the
   Landed Cost / Cost Head calculators: prominent `.bm-calc-head` header, **product tab-strip** via
