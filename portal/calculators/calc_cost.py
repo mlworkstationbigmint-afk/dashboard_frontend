@@ -54,9 +54,9 @@ def _seed_df(product, is_if=False):
     for key, label, group, price, norm, basis in ELEMENTS:
         n = (450.0 if product == "HRC" else 400.0) if key == "elec" else float(norm)
         label = IF_LABELS.get(key, label) if is_if else label
-        rows.append({"Cost element": label, "Basis": basis, "Currency": CURRENCY_OPTS[0],
-                     "Price": float(price), "Norm": n})
-    return pd.DataFrame(rows, columns=["Cost element", "Basis", "Currency", "Price", "Norm"])
+        rows.append({"Cost element": label, "Norm": n, "Price": float(price),
+                     "Currency": CURRENCY_OPTS[0]})
+    return pd.DataFrame(rows, columns=["Cost element", "Norm", "Price", "Currency"])
 
 
 def _plant_costs(edited, ex_rate):
@@ -107,22 +107,33 @@ def _sec(text, icon=""):
     st.markdown(f"<div class='bm-sec'>{ic}{text}</div>", unsafe_allow_html=True)
 
 
-def _editor(prefix, product, ver, key, is_if=False):
+def _editor(prefix, product, ver, key, ex_rate, is_if=False):
     """One plant's editable cost table. Keyed by route+product (`key`) + reset-version so switching
     product re-seeds fresh values and Reset clears edits (fresh widget key). `product` ('HRC'/'Rebar')
-    only drives the seeded defaults; `is_if` relabels a few elements for the IF route."""
+    only drives the seeded defaults; `is_if` relabels a few elements for the IF route. Columns:
+    Cost element · Consumption norm · Unit price · Cur. · Total cost (norm x unit price, FX-converted)."""
+    wkey = f"cost_{prefix}_{key}_{ver}"
+    df = _seed_df(product, is_if)
+    # Fold any stored edits back in so the read-only Total cost reflects the latest inputs.
+    state = st.session_state.get(wkey)
+    if state and state.get("edited_rows"):
+        for ridx, chg in state["edited_rows"].items():
+            for c, v in chg.items():
+                df.at[int(ridx), c] = v
+    df["Total"] = [_elem_cost(float(r["Price"]), r["Currency"], float(r["Norm"]), ex_rate)
+                   for _, r in df.iterrows()]
     return st.data_editor(
-        _seed_df(product, is_if), key=f"cost_{prefix}_{key}_{ver}", hide_index=True,
-        num_rows="fixed", width="stretch",
+        df, key=wkey, hide_index=True, num_rows="fixed", width="stretch",
+        column_order=["Cost element", "Norm", "Price", "Currency", "Total"],
         column_config={
             "Cost element": st.column_config.TextColumn("Cost element", disabled=True, width="medium"),
-            "Basis": st.column_config.TextColumn("Price x Norm", disabled=True, width="small",
-                        help="Unit the price is quoted in x its consumption norm."),
+            "Norm": st.column_config.NumberColumn("Consumption norm", format="%.3f", step=0.05, min_value=0.0,
+                        help="Consumption per tonne of finished steel (OpEx rows use 1)."),
+            "Price": st.column_config.NumberColumn("Unit price", format="%.2f", step=1.0, min_value=0.0),
             "Currency": st.column_config.SelectboxColumn("Cur.", options=CURRENCY_OPTS, required=True,
                         width="small", help="Set to USD ($) to enter a dollar price — converted at the USD->INR rate."),
-            "Price": st.column_config.NumberColumn("Price", format="%.2f", step=1.0, min_value=0.0),
-            "Norm": st.column_config.NumberColumn("Norm", format="%.3f", step=0.05, min_value=0.0,
-                        help="Consumption per tonne of finished steel (OpEx rows use 1)."),
+            "Total": st.column_config.NumberColumn("Total cost", format="%.0f", disabled=True,
+                        help="Consumption norm x unit price (USD converted at the USD->INR rate)."),
         },
     )
 
@@ -311,13 +322,13 @@ def _render_product(product, plants, key, is_if=False):
         for j, (col, name) in enumerate(zip(cols, chunk)):
             with col:
                 st.markdown(f"**{name}**")
-                edited[name] = _editor(f"p{i + j}", product, ver, key, is_if)
+                edited[name] = _editor(f"p{i + j}", product, ver, key, ex_rate, is_if)
                 plant_costs[name], totals[name] = _plant_costs(edited[name], ex_rate)
                 margins[name] = mkt_price - totals[name]
                 _totals_line(totals[name], margins[name])
-    st.caption("**Price x Norm** shows how each row's cost is built. **Norm** = consumption per tonne of steel. "
-               "Switch a row's **Cur.** to USD ($) to enter a dollar price (converted at the USD→INR rate). Edits "
-               "update the chart live; **Reset** restores the product defaults.")
+    st.caption("**Total cost = consumption norm × unit price** (auto-computed per row). **Consumption norm** = "
+               "input consumed per tonne of steel. Switch a row's **Cur.** to USD ($) to enter a dollar price "
+               "(converted at the USD→INR rate). Edits update the chart live; **Reset** restores the product defaults.")
 
     # --- fill the chart ---
     with chart_ph.container():

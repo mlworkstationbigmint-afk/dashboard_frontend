@@ -197,6 +197,14 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - Files: `portal/calculators/calc_elasticity.py` (rewritten), `portal/calculators/engine_sensitivity.py`
   (new). ⚠ Visual-only rebuild — verify in-app.
 
+### 2026-07-16 (latest+++++++++++) — Cost Head: table reformatted (norm · unit price · cur. · total cost)
+- Every plant table is now **Cost element · Consumption norm · Unit price · Cur. · Total cost**. Dropped the
+  old `Basis`/`Price x Norm` column; renamed `Norm`→"Consumption norm", `Price`→"Unit price".
+- **Total cost** is a new read-only computed column = `norm × unit price` (USD rows FX-converted via `_elem_cost`).
+  `_editor` folds stored `st.session_state[wkey]["edited_rows"]` back onto the seed each rerun so Total stays live;
+  gained an `ex_rate` param. `_seed_df` column order/keys updated; `column_order` pins the display order.
+- Engine (`_elem_cost`/`_plant_costs`, read by name) unchanged; grand total + margin still shown by `_totals_line`.
+
 ### 2026-07-16 (latest++++++++++) — Cost Head: IF-route cost-element relabels + Ferroalloys everywhere
 - **Everywhere:** `ELEMENTS` alloy label `Ferroalloys (SiMn, FeMn, FeSi)` → `Ferroalloys (SiMn)`.
 - **IF route only:** new `IF_LABELS` map relabels (display only, engine keys/order unchanged) `ore`→`Sponge Iron`,
