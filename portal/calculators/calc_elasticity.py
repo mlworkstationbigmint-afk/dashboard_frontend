@@ -56,6 +56,16 @@ CALC_CSS = """
     background: var(--bm-primary-soft); border: 1px solid #dbe7f7; border-radius: 8px;
     padding: 7px 9px; line-height: 1.45; width: 100%; box-sizing: border-box; }
 .bm-eq b { color: var(--bm-accent); }
+/* general estimation equation block (one row per product) */
+.bm-eqset { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 6px; }
+.bm-eqrow { display: flex; align-items: center; gap: 12px; background: var(--bm-primary-soft);
+    border: 1px solid #dbe7f7; border-left: 4px solid var(--bm-accent); border-radius: 10px;
+    padding: 10px 14px; }
+.bm-eqtag { flex: 0 0 auto; min-width: 72px; font-size: 11px; font-weight: 800; letter-spacing: .3px;
+    text-transform: uppercase; color: var(--bm-accent); }
+.bm-eqbody { font-family: ui-serif, Georgia, "Times New Roman", serif; font-size: 15px;
+    color: var(--bm-primary-dark); line-height: 1.5; }
+.bm-eqbody sub { font-size: 11px; }
 
 /* ---- knob cards (Sliders mode) — soft neumorphic panels, all identical size ---- */
 .st-key-sens_knobwrap [data-testid="stHorizontalBlock"] { gap: 0.5rem !important; align-items: stretch; }
@@ -560,6 +570,29 @@ def _methodology_infographic():
         "on years of month-on-month price changes. Your shocks are weighted by that sensitivity, summed, "
         "and applied to the current price."
     )
+
+    st.write("")
+    _sec("The estimation equation", theme.icon("notes"))
+    st.markdown(
+        "The fixed per-driver sensitivities (β) are the coefficients of a **log-log OLS regression** "
+        "estimated once per product on month-on-month data — so each β reads directly as an elasticity "
+        "(% move in the product per 1% move in the driver). The general form, one fit per product:"
+    )
+    eqs = [
+        ("HRC",      "log(HRC<sub>t</sub>)"),
+        ("HR Plate", "log(HRPlate<sub>t</sub>)"),
+        ("Rebar",    "log(Rebar<sub>t</sub>)"),
+    ]
+    rows = "".join(
+        f"<div class='bm-eqrow'><span class='bm-eqtag'>{tag}</span>"
+        f"<span class='bm-eqbody'>{lhs} = &alpha; + &beta;<sub>1</sub>log(IO<sub>t</sub>) "
+        "+ &beta;<sub>2</sub>log(Coal<sub>t</sub>) + &beta;<sub>3</sub>log(Prod<sub>t</sub>) "
+        "+ &beta;<sub>4</sub>log(EXIM<sub>t</sub>) + &epsilon;<sub>t</sub></span></div>"
+        for tag, lhs in eqs
+    )
+    st.markdown("<div class='bm-eqset'>" + rows + "</div>", unsafe_allow_html=True)
+    st.caption("IO = iron ore · Coal = coking coal · Prod = production/supply · EXIM = export–import parity. "
+               "Actual products use an expanded driver set; this is the shared functional form.")
 
     def _chips(items):
         return "".join(

@@ -715,12 +715,11 @@ def directional_accuracy_bar(view):
 # PAGE: HOME
 # ---------------------------------------------------------------------------
 def _week_of_month_label(d) -> str:
-    """Format a date as 'Week N, Mon YYYY' (N = 1-5, the week within its month)."""
+    """Format a date as a long date, e.g. '17 July 2026'."""
     if d is None or pd.isna(d):
         return "-"
     d = pd.Timestamp(d)
-    week = (d.day - 1) // 7 + 1
-    return f"Week {week}, {d:%b %Y}"
+    return f"{d.day} {d:%B %Y}"
 
 
 def page_home():
@@ -871,6 +870,11 @@ def _grouped_forecasting(role):
     return (role or "").strip().lower() in GROUPED_FORECASTING_ROLES
 
 
+def _group_label(g):
+    """Display label for a forecast group tab (internal key kept intact for lookups)."""
+    return "Structural section" if g == "Structure" else g
+
+
 def _product_group(name):
     """Map a STEEL_PRODUCTS key to its top-level group; unknown products form their own group."""
     n = (name or "").strip().lower()
@@ -948,7 +952,8 @@ def page_forecasting():
         groups = _grouped_products(products)
         gkeys = list(groups.keys())
         group = st.segmented_control("Commodity group", gkeys, default=gkeys[0],
-                                     key="fc_group", label_visibility="collapsed")
+                                     key="fc_group", label_visibility="collapsed",
+                                     format_func=_group_label)
         group = group if group in groups else gkeys[0]
         loc_map = {_loc_label(group, n): n for n in groups[group]}   # full label -> product key
         loc_labels = sorted(loc_map)
@@ -1544,7 +1549,8 @@ def page_performance():
         gcol, lcol = st.columns([1, 1.2], vertical_alignment="center")
         with gcol:
             group = st.segmented_control("Commodity group", gkeys, default=gkeys[0],
-                                         key="perf_group", label_visibility="collapsed")
+                                         key="perf_group", label_visibility="collapsed",
+                                         format_func=_group_label)
         group = group if group in groups else gkeys[0]
         loc_map = {_loc_label(group, n): n for n in groups[group]}   # full label -> product key
         loc_labels = sorted(loc_map)
@@ -1582,7 +1588,7 @@ def page_performance():
     st.write("")
     theme.section_title("Actual vs forecast", theme.icon("trending"))
     perf_chart(view)
-    theme.section_title("Actual vs Forecast deviation", theme.icon("gauge"))
+    theme.section_title("Actual price vs Forecast price", theme.icon("gauge"))
     delta_bar(view)
     theme.section_title("Weekly forecast absolute accuracy", theme.icon("target"))
     accuracy_chart(view)
