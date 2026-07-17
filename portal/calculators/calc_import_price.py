@@ -496,9 +496,12 @@ def render(is_admin=False):
         for r in regions:
             st.session_state[f"{p}_fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
             st.session_state[f"{p}_freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
-            st.session_state[f"{p}_fta_{r}"] = bool(loc_edit.loc[r, "FTA"])
+            is_fta = bool(loc_edit.loc[r, "FTA"])
+            st.session_state[f"{p}_fta_{r}"] = is_fta
             for f, col in DUTY_COLS.items():
-                st.session_state[f"{p}_{f}_{r}"] = float(loc_edit.loc[r, col])
+                # FTA waives BCD + its cess -> force those rates to 0 so the table mirrors the math.
+                st.session_state[f"{p}_{f}_{r}"] = 0.0 if (is_fta and f in ("bcd_pct", "cess_pct")) \
+                    else float(loc_edit.loc[r, col])
 
     # --- Admin: persist the current values as the org-wide defaults for every user ---
     if is_admin:
