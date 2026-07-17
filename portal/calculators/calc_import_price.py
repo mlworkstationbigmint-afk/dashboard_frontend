@@ -24,35 +24,46 @@ DEFAULT_SG_CESS_PCT = 10.0    # Cess on safeguard duty
 SETTINGS_KEY = "landed_cost_defaults"
 
 # g-dict key -> the human label used in the globals editor (order preserved).
+# Only the truly org-wide knobs stay here; port + duties are now per-location (see LOC_DEFAULTS).
 GMAP = {
     "domestic":      "Domestic benchmark (Rs./t)",
     "fx":            "FX (USD→INR)",
     "threshold_cif": "Threshold CIF ($/t)",
-    "port_inr":      "Port handling & misc (Rs./t)",
-    "bcd_pct":       "BCD %",
-    "cess_pct":      "Cess on BCD %",
-    "sg_pct":        "Safeguard duty %",
-    "sg_cess_pct":   "Cess on safeguard %",
 }
 
 GVAR_DEFAULTS = {
     "Domestic benchmark (Rs./t)":   52450.0,
     "FX (USD→INR)":                 93.0,
     "Threshold CIF ($/t)":          675.0,
-    "Port handling & misc (Rs./t)": 2000.0,
-    "BCD %":                        DEFAULT_BCD_PCT,
-    "Cess on BCD %":                DEFAULT_CESS_PCT,
-    "Safeguard duty %":             DEFAULT_SG_PCT,
-    "Cess on safeguard %":          DEFAULT_SG_CESS_PCT,
+}
+
+# Per-location duty/port defaults (moved out of the globals). Each location carries its own
+# port handling + duty rates, all seeded from the old org-wide defaults but now editable per row.
+_LOC_DUTY = {
+    "port_inr":    2000.0,
+    "bcd_pct":     DEFAULT_BCD_PCT,
+    "cess_pct":    DEFAULT_CESS_PCT,
+    "sg_pct":      DEFAULT_SG_PCT,
+    "sg_cess_pct": DEFAULT_SG_CESS_PCT,
 }
 
 LOC_DEFAULTS = {
-    "China":       {"fob": 470.0, "freight": 25.0, "fta": False},
-    "Russia":      {"fob": 460.0, "freight": 30.0, "fta": False},
-    "EU":          {"fob": 742.0, "freight": 35.0, "fta": False},
-    "Middle East": {"fob": 520.0, "freight": 15.0, "fta": True},
-    "Custom 1":    {"fob": 535.0, "freight": 20.0, "fta": False},
-    "Custom 2":    {"fob": 535.0, "freight": 20.0, "fta": False},
+    "China":       {"fob": 470.0, "freight": 25.0, "fta": False, **_LOC_DUTY},
+    "Russia":      {"fob": 460.0, "freight": 30.0, "fta": False, **_LOC_DUTY},
+    "EU":          {"fob": 742.0, "freight": 35.0, "fta": False, **_LOC_DUTY},
+    "Middle East": {"fob": 520.0, "freight": 15.0, "fta": True,  **_LOC_DUTY},
+    "Custom 1":    {"fob": 535.0, "freight": 20.0, "fta": False, **_LOC_DUTY},
+    "Custom 2":    {"fob": 535.0, "freight": 20.0, "fta": False, **_LOC_DUTY},
+}
+
+# Per-location duty/port fields -> the column header shown in the scenario table (order preserved).
+# Session state is keyed `{p}_{field}_{region}`; these feed compute_landed as a per-row `g` override.
+DUTY_COLS = {
+    "port_inr":    "Port Rs./t",
+    "bcd_pct":     "BCD %",
+    "cess_pct":    "Cess on BCD %",
+    "sg_pct":      "Safeguard %",
+    "sg_cess_pct": "Cess on SG %",
 }
 
 
@@ -76,9 +87,11 @@ def _effective_defaults():
                     pass
         for r, v in (saved.get("locations") or {}).items():
             if r in locs and isinstance(v, dict):
-                locs[r] = {"fob": float(v.get("fob", locs[r]["fob"])),
-                           "freight": float(v.get("freight", locs[r]["freight"])),
-                           "fta": bool(v.get("fta", locs[r]["fta"]))}
+                out = dict(locs[r])
+                for f in out:
+                    if f in v:
+                        out[f] = bool(v[f]) if f == "fta" else float(v[f])
+                locs[r] = out
     return gvars, locs
 
 CALC_CSS = """
@@ -203,11 +216,6 @@ GVAR_ORDER = [
     "Domestic benchmark (Rs./t)",
     "FX (USD→INR)",
     "Threshold CIF ($/t)",
-    "Port handling & misc (Rs./t)",
-    "BCD %",
-    "Cess on BCD %",
-    "Safeguard duty %",
-    "Cess on safeguard %",
 ]
 
 
@@ -226,9 +234,7 @@ def _read_globals(seed, p):
     v = {k: float(edited.loc[k, "Value"]) for k in GVAR_ORDER}
     return {
         "domestic": v["Domestic benchmark (Rs./t)"], "fx": v["FX (USD→INR)"],
-        "threshold_cif": v["Threshold CIF ($/t)"], "port_inr": v["Port handling & misc (Rs./t)"],
-        "bcd_pct": v["BCD %"], "cess_pct": v["Cess on BCD %"],
-        "sg_pct": v["Safeguard duty %"], "sg_cess_pct": v["Cess on safeguard %"],
+        "threshold_cif": v["Threshold CIF ($/t)"],
     }
 
 
@@ -368,6 +374,8 @@ def render(is_admin=False):
         st.session_state.setdefault(f"{p}_fob_{r}", locs_def[r]["fob"])
         st.session_state.setdefault(f"{p}_freight_{r}", locs_def[r]["freight"])
         st.session_state.setdefault(f"{p}_fta_{r}", locs_def[r]["fta"])
+        for f in DUTY_COLS:
+            st.session_state.setdefault(f"{p}_{f}_{r}", locs_def[r][f])
 
     # Reset callbacks run BEFORE widgets re-instantiate (on_click). Bumping the editor's key version
     # gives it a brand-new key, so the widget re-initialises from the fresh (default) DataFrame —
@@ -377,6 +385,8 @@ def render(is_admin=False):
             st.session_state[f"{p}_fob_{r}"] = locs_def[r]["fob"]
             st.session_state[f"{p}_freight_{r}"] = locs_def[r]["freight"]
             st.session_state[f"{p}_fta_{r}"] = locs_def[r]["fta"]
+            for f in DUTY_COLS:
+                st.session_state[f"{p}_{f}_{r}"] = locs_def[r][f]
         st.session_state[f"{p}_locs_ver"] += 1
 
     def _reset_gvars():
@@ -424,12 +434,15 @@ def render(is_admin=False):
     # Spot Rs./t is derived from the COMMITTED FOB (× FX), not the live edit buffer. Rebuilding the
     # editor's source frame from in-progress edits made Streamlit treat the data as changed and drop
     # the edit (the "FOB snaps back" bug); keeping the frame stable lets edits persist until Calculate.
-    loc_df = pd.DataFrame({
+    loc_cols = {
         "Spot Rs./t": [float(st.session_state[f"{p}_fob_{r}"]) * g["fx"] for r in regions],
         "FTA": [bool(st.session_state[f"{p}_fta_{r}"]) for r in regions],
         "FOB $/t": [float(st.session_state[f"{p}_fob_{r}"]) for r in regions],
         "Freight $/t": [float(st.session_state[f"{p}_freight_{r}"]) for r in regions],
-    }, index=regions)
+    }
+    for f, col in DUTY_COLS.items():                    # per-location port + duty columns
+        loc_cols[col] = [float(st.session_state[f"{p}_{f}_{r}"]) for r in regions]
+    loc_df = pd.DataFrame(loc_cols, index=regions)
     loc_df.index.name = "Location"
     loc_edit = st.data_editor(
         loc_df, key=ekey, width="stretch", hide_index=False,
@@ -440,6 +453,16 @@ def render(is_admin=False):
             "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0,
                         help="Origin reference price — editable; press Calculate to apply."),
             "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
+            "Port Rs./t": st.column_config.NumberColumn("Port Rs./t", format="Rs.%.0f", step=100.0,
+                        help="Port handling & misc for this origin."),
+            "BCD %": st.column_config.NumberColumn("BCD %", format="%.1f", step=0.5,
+                        help="Basic customs duty (FTA waives it)."),
+            "Cess on BCD %": st.column_config.NumberColumn("Cess on BCD %", format="%.1f", step=0.5,
+                        help="Social welfare surcharge on BCD (FTA waives it)."),
+            "Safeguard %": st.column_config.NumberColumn("Safeguard %", format="%.1f", step=0.5,
+                        help="Safeguard duty, applied only if TVD < threshold."),
+            "Cess on SG %": st.column_config.NumberColumn("Cess on SG %", format="%.1f", step=0.5,
+                        help="Cess on the safeguard duty."),
         },
     )
     # pending = the editor buffer differs from the applied (committed) values -> lights Calculate
@@ -448,6 +471,8 @@ def render(is_admin=False):
         float(loc_edit.loc[r, "FOB $/t"]) != float(st.session_state[f"{p}_fob_{r}"])
         or float(loc_edit.loc[r, "Freight $/t"]) != float(st.session_state[f"{p}_freight_{r}"])
         or bool(loc_edit.loc[r, "FTA"]) != bool(st.session_state[f"{p}_fta_{r}"])
+        or any(float(loc_edit.loc[r, col]) != float(st.session_state[f"{p}_{f}_{r}"])
+               for f, col in DUTY_COLS.items())
         for r in regions
     )
     # reset enabled whenever anything (buffer or committed) differs from the effective defaults
@@ -455,6 +480,8 @@ def render(is_admin=False):
         float(st.session_state[f"{p}_fob_{r}"]) != float(locs_def[r]["fob"])
         or float(st.session_state[f"{p}_freight_{r}"]) != float(locs_def[r]["freight"])
         or bool(st.session_state[f"{p}_fta_{r}"]) != bool(locs_def[r]["fta"])
+        or any(float(st.session_state[f"{p}_{f}_{r}"]) != float(locs_def[r][f])
+               for f in DUTY_COLS)
         for r in regions
     )
     with st.container(key="imp_btnrow"):           # scoped tight gap so Reset hugs Calculate
@@ -463,13 +490,15 @@ def render(is_admin=False):
                             width="stretch")
         bcol2.button("↺ Reset", key=f"{p}_reset", on_click=_reset_locs, disabled=not dirty,
                      width="stretch", help="Reset FOB / Freight / FTA back to the default values.")
-        bcol3.caption("Edit FOB, freight or FTA, then press **Calculate** to apply. "
-                      "Spot Rs./t = FOB × FX (read-only); **Reset** restores the default values.")
+        bcol3.caption("Edit FOB, freight, FTA, port or the per-origin duty rates, then press "
+                      "**Calculate** to apply. Spot Rs./t = FOB × FX (read-only); **Reset** restores defaults.")
     if calc:                                       # commit the buffer -> everything recomputes below
         for r in regions:
             st.session_state[f"{p}_fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
             st.session_state[f"{p}_freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
             st.session_state[f"{p}_fta_{r}"] = bool(loc_edit.loc[r, "FTA"])
+            for f, col in DUTY_COLS.items():
+                st.session_state[f"{p}_{f}_{r}"] = float(loc_edit.loc[r, col])
 
     # --- Admin: persist the current values as the org-wide defaults for every user ---
     if is_admin:
@@ -482,15 +511,21 @@ def render(is_admin=False):
                     "globals": {lbl: float(g[k]) for k, lbl in GMAP.items()},
                     "locations": {r: {"fob": float(st.session_state[f"{p}_fob_{r}"]),
                                       "freight": float(st.session_state[f"{p}_freight_{r}"]),
-                                      "fta": bool(st.session_state[f"{p}_fta_{r}"])} for r in regions},
+                                      "fta": bool(st.session_state[f"{p}_fta_{r}"]),
+                                      **{f: float(st.session_state[f"{p}_{f}_{r}"]) for f in DUTY_COLS}}
+                                  for r in regions},
                 })
                 st.success("Saved — these are now the defaults for all users.")
             except Exception as e:
                 st.error(f"Save failed: {e}")
 
     # --- compute with the committed inputs ---
+    # Each origin gets its own effective g: the 3 global knobs (domestic/fx/threshold) merged with
+    # that location's committed port + duty rates.
+    def _gL(r):
+        return {**g, **{f: float(st.session_state[f"{p}_{f}_{r}"]) for f in DUTY_COLS}}
     results = {
-        r: compute_landed(st.session_state[f"{p}_fob_{r}"], st.session_state[f"{p}_freight_{r}"], st.session_state[f"{p}_fta_{r}"], g)
+        r: compute_landed(st.session_state[f"{p}_fob_{r}"], st.session_state[f"{p}_freight_{r}"], st.session_state[f"{p}_fta_{r}"], _gL(r))
         for r in regions
     }
     cheapest = min(regions, key=lambda r: results[r]["landed"])
@@ -535,7 +570,7 @@ def render(is_admin=False):
         row = {"Location": r}
         for fxs in [91.0, 93.0, 95.0]:
             res_fx = compute_landed(st.session_state[f"{p}_fob_{r}"], st.session_state[f"{p}_freight_{r}"],
-                                    st.session_state[f"{p}_fta_{r}"], {**g, "fx": fxs})
+                                    st.session_state[f"{p}_fta_{r}"], {**_gL(r), "fx": fxs})
             row[f"FX {fxs:.0f}"] = res_fx["landed"]
         fx_rows.append(row)
 
