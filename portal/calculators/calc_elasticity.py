@@ -79,6 +79,11 @@ CALC_CSS = """
 .st-key-sens_knobwrap [data-testid="stVerticalBlockBorderWrapper"]:hover {
     box-shadow: 0 12px 26px rgba(2,76,161,.13), inset 0 1px 0 #ffffff !important;
     transform: translateY(-2px); }
+/* kill any inner fill (Streamlit paints the bordered container's inner block with the theme's
+   grey secondaryBackground on 1.59) so the whole card reads pure white. */
+.st-key-sens_knobwrap [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stVerticalBlock"],
+.st-key-sens_knobwrap [data-testid="stVerticalBlockBorderWrapper"] [data-testid="stHorizontalBlock"] {
+    background: transparent !important; background-color: transparent !important; }
 /* driver name = clean centred uppercase caption (like LEVEL / WIDTH on the reference) */
 .knob-label { text-align: center; font-size: 11.5px; font-weight: 700; letter-spacing: .4px;
     text-transform: uppercase; color: var(--bm-primary-dark); min-height: 30px; line-height: 1.2;
