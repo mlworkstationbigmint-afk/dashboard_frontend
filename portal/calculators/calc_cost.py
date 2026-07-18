@@ -344,6 +344,9 @@ ROUTE_PRODUCTS = {
 }
 
 
+# @st.fragment: an edit (cell, control, reset) reruns ONLY this product view — not the whole app
+# script — so the editable cost tables stay responsive with no full-page reload on every change.
+@st.fragment
 def _render_product(product, plants, key, is_if=False):
     """One product view: dual-axis chart + controls, an editable cost table per plant, and the
     headline/verdict. `key` (route+product, e.g. 'bf_rebar') namespaces every widget so the same

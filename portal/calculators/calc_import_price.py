@@ -357,6 +357,10 @@ def _glossary():
     st.markdown(grid, unsafe_allow_html=True)
 
 
+# @st.fragment: any edit (cell, checkbox, Calculate, Reset) reruns ONLY this view — not the whole
+# app script (sidebar, auth, other tabs, footer) — so the table stays responsive with no full-page
+# reload on every change.
+@st.fragment
 def render(is_admin=False):
     st.markdown(CALC_CSS, unsafe_allow_html=True)
 
