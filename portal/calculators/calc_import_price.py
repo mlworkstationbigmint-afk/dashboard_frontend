@@ -439,99 +439,114 @@ def _render_body(is_admin=False):
     domestic = g["domestic"]
     view = view or VIEW_OPTS[0]                    # deselection falls back to the graph
 
-    # --- customisable per-location table; edits stay pending until Calculate ---
-    _sec("Scenario inputs by location", theme.icon("factory"))
-    ekey = f"{p}_locs_{st.session_state.get(f'{p}_locs_ver', 0)}"
-    # Spot Rs./t is derived from the COMMITTED FOB (× FX), not the live edit buffer. Rebuilding the
-    # editor's source frame from in-progress edits made Streamlit treat the data as changed and drop
-    # the edit (the "FOB snaps back" bug); keeping the frame stable lets edits persist until Calculate.
-    loc_cols = {
-        "Spot Rs./t": [float(st.session_state[f"{p}_fob_{r}"]) * g["fx"] for r in regions],
-        "FTA": [bool(st.session_state[f"{p}_fta_{r}"]) for r in regions],
-        "FOB $/t": [float(st.session_state[f"{p}_fob_{r}"]) for r in regions],
-        "Freight $/t": [float(st.session_state[f"{p}_freight_{r}"]) for r in regions],
-    }
-    for f, col in DUTY_COLS.items():                    # per-location port + duty columns
-        loc_cols[col] = [float(st.session_state[f"{p}_{f}_{r}"]) for r in regions]
-    loc_df = pd.DataFrame(loc_cols, index=regions)
-    loc_df.index.name = "Location"
-    loc_edit = st.data_editor(
-        loc_df, key=ekey, width="stretch", hide_index=False,
-        column_config={
-            "Spot Rs./t": st.column_config.NumberColumn("Spot Rs./t", format="Rs.%.0f", disabled=True,
-                        help="Derived: FOB × FX (read-only). Refreshes on Calculate."),
-            "FTA": st.column_config.CheckboxColumn("FTA?", help="Waives BCD + its cess for this origin."),
-            "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0,
-                        help="Origin reference price — editable; press Calculate to apply."),
-            "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
-            "Port Rs./t": st.column_config.NumberColumn("Port Rs./t", format="Rs.%.0f", step=100.0,
-                        help="Port handling & misc for this origin."),
-            "BCD %": st.column_config.NumberColumn("BCD %", format="%.1f", step=0.5,
-                        help="Basic customs duty (FTA waives it)."),
-            "Cess on BCD %": st.column_config.NumberColumn("Cess on BCD %", format="%.1f", step=0.5,
-                        help="Social welfare surcharge on BCD (FTA waives it)."),
-            "Safeguard %": st.column_config.NumberColumn("Safeguard %", format="%.1f", step=0.5,
-                        help="Safeguard duty, applied only if TVD < threshold."),
-            "Cess on SG %": st.column_config.NumberColumn("Cess on SG %", format="%.1f", step=0.5,
-                        help="Cess on the safeguard duty."),
-        },
-    )
-    # pending = the editor buffer differs from the applied (committed) values -> lights Calculate
-    # (Spot is derived/read-only, so it isn't part of the diff.)
-    pending = any(
-        float(loc_edit.loc[r, "FOB $/t"]) != float(st.session_state[f"{p}_fob_{r}"])
-        or float(loc_edit.loc[r, "Freight $/t"]) != float(st.session_state[f"{p}_freight_{r}"])
-        or bool(loc_edit.loc[r, "FTA"]) != bool(st.session_state[f"{p}_fta_{r}"])
-        or any(float(loc_edit.loc[r, col]) != float(st.session_state[f"{p}_{f}_{r}"])
-               for f, col in DUTY_COLS.items())
-        for r in regions
-    )
-    # reset enabled whenever anything (buffer or committed) differs from the effective defaults
-    dirty = pending or any(
-        float(st.session_state[f"{p}_fob_{r}"]) != float(locs_def[r]["fob"])
-        or float(st.session_state[f"{p}_freight_{r}"]) != float(locs_def[r]["freight"])
-        or bool(st.session_state[f"{p}_fta_{r}"]) != bool(locs_def[r]["fta"])
-        or any(float(st.session_state[f"{p}_{f}_{r}"]) != float(locs_def[r][f])
-               for f in DUTY_COLS)
-        for r in regions
-    )
-    with st.container(key="imp_btnrow"):           # scoped tight gap so Reset hugs Calculate
-        bcol1, bcol2, bcol3 = st.columns([1, 1, 6], vertical_alignment="center")
-        calc = bcol1.button("Calculate", key=f"{p}_calc", type="primary", disabled=not pending,
-                            width="stretch")
-        bcol2.button("↺ Reset", key=f"{p}_reset", on_click=_reset_locs, disabled=not dirty,
-                     width="stretch", help="Reset FOB / Freight / FTA back to the default values.")
-        bcol3.caption("Edit FOB, freight, FTA, port or the per-origin duty rates, then press "
-                      "**Calculate** to apply. Spot Rs./t = FOB × FX (read-only); **Reset** restores defaults.")
-    if calc:                                       # commit the buffer -> everything recomputes below
-        for r in regions:
-            st.session_state[f"{p}_fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
-            st.session_state[f"{p}_freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
-            is_fta = bool(loc_edit.loc[r, "FTA"])
-            st.session_state[f"{p}_fta_{r}"] = is_fta
-            for f, col in DUTY_COLS.items():
-                # FTA waives BCD + its cess -> force those rates to 0 so the table mirrors the math.
-                st.session_state[f"{p}_{f}_{r}"] = 0.0 if (is_fta and f in ("bcd_pct", "cess_pct")) \
-                    else float(loc_edit.loc[r, col])
+    # --- per-location scenario table lives in its OWN fragment -----------------------------------
+    # Buffered edits (cell numbers, FTA ticks) rerun ONLY this fragment, so the outputs below —
+    # verdict banner, chart, FX-sensitivity grid, methodology — are never re-rendered while you type.
+    # The heavy Plotly + AgGrid components stay mounted instead of re-mounting on every keystroke
+    # (that re-mount was the "everything jumps then settles" flicker). Outputs redraw once, all
+    # together, only when Calculate / Reset commits and fires a single full rerun.
+    @st.fragment
+    def _editor():
+        _sec("Scenario inputs by location", theme.icon("factory"))
+        ekey = f"{p}_locs_{st.session_state.get(f'{p}_locs_ver', 0)}"
+        # Spot Rs./t is derived from the COMMITTED FOB (× FX), not the live edit buffer. Rebuilding
+        # the editor's source frame from in-progress edits made Streamlit treat the data as changed
+        # and drop the edit (the "FOB snaps back" bug); a stable frame lets edits persist to Calculate.
+        loc_cols = {
+            "Spot Rs./t": [float(st.session_state[f"{p}_fob_{r}"]) * g["fx"] for r in regions],
+            "FTA": [bool(st.session_state[f"{p}_fta_{r}"]) for r in regions],
+            "FOB $/t": [float(st.session_state[f"{p}_fob_{r}"]) for r in regions],
+            "Freight $/t": [float(st.session_state[f"{p}_freight_{r}"]) for r in regions],
+        }
+        for f, col in DUTY_COLS.items():                # per-location port + duty columns
+            loc_cols[col] = [float(st.session_state[f"{p}_{f}_{r}"]) for r in regions]
+        loc_df = pd.DataFrame(loc_cols, index=regions)
+        loc_df.index.name = "Location"
+        loc_edit = st.data_editor(
+            loc_df, key=ekey, width="stretch", hide_index=False,
+            column_config={
+                "Spot Rs./t": st.column_config.NumberColumn("Spot Rs./t", format="Rs.%.0f", disabled=True,
+                            help="Derived: FOB × FX (read-only). Refreshes on Calculate."),
+                "FTA": st.column_config.CheckboxColumn("FTA?", help="Waives BCD + its cess for this origin."),
+                "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0,
+                            help="Origin reference price — editable; press Calculate to apply."),
+                "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
+                "Port Rs./t": st.column_config.NumberColumn("Port Rs./t", format="Rs.%.0f", step=100.0,
+                            help="Port handling & misc for this origin."),
+                "BCD %": st.column_config.NumberColumn("BCD %", format="%.1f", step=0.5,
+                            help="Basic customs duty (FTA waives it)."),
+                "Cess on BCD %": st.column_config.NumberColumn("Cess on BCD %", format="%.1f", step=0.5,
+                            help="Social welfare surcharge on BCD (FTA waives it)."),
+                "Safeguard %": st.column_config.NumberColumn("Safeguard %", format="%.1f", step=0.5,
+                            help="Safeguard duty, applied only if TVD < threshold."),
+                "Cess on SG %": st.column_config.NumberColumn("Cess on SG %", format="%.1f", step=0.5,
+                            help="Cess on the safeguard duty."),
+            },
+        )
+        # pending = the editor buffer differs from the applied (committed) values -> lights Calculate
+        # (Spot is derived/read-only, so it isn't part of the diff.)
+        pending = any(
+            float(loc_edit.loc[r, "FOB $/t"]) != float(st.session_state[f"{p}_fob_{r}"])
+            or float(loc_edit.loc[r, "Freight $/t"]) != float(st.session_state[f"{p}_freight_{r}"])
+            or bool(loc_edit.loc[r, "FTA"]) != bool(st.session_state[f"{p}_fta_{r}"])
+            or any(float(loc_edit.loc[r, col]) != float(st.session_state[f"{p}_{f}_{r}"])
+                   for f, col in DUTY_COLS.items())
+            for r in regions
+        )
+        # reset enabled whenever anything (buffer or committed) differs from the effective defaults
+        dirty = pending or any(
+            float(st.session_state[f"{p}_fob_{r}"]) != float(locs_def[r]["fob"])
+            or float(st.session_state[f"{p}_freight_{r}"]) != float(locs_def[r]["freight"])
+            or bool(st.session_state[f"{p}_fta_{r}"]) != bool(locs_def[r]["fta"])
+            or any(float(st.session_state[f"{p}_{f}_{r}"]) != float(locs_def[r][f])
+                   for f in DUTY_COLS)
+            for r in regions
+        )
+        with st.container(key="imp_btnrow"):           # scoped tight gap so Reset hugs Calculate
+            bcol1, bcol2, bcol3 = st.columns([1, 1, 6], vertical_alignment="center")
+            calc = bcol1.button("Calculate", key=f"{p}_calc", type="primary", disabled=not pending,
+                                width="stretch")
+            reset = bcol2.button("↺ Reset", key=f"{p}_reset", disabled=not dirty,
+                                 width="stretch", help="Reset FOB / Freight / FTA back to the default values.")
+            bcol3.caption("Edit FOB, freight, FTA, port or the per-origin duty rates, then press "
+                          "**Calculate** to apply. Spot Rs./t = FOB × FX (read-only); **Reset** restores defaults.")
+        # Both commit COMMITTED state that the outputs depend on, so both fire a single full rerun
+        # (scope="app") to redraw the chart + tables together — the only time anything below re-renders.
+        if reset:
+            _reset_locs()
+            st.rerun(scope="app")
+        if calc:                                       # commit the buffer -> full rerun recomputes below
+            for r in regions:
+                st.session_state[f"{p}_fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
+                st.session_state[f"{p}_freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
+                is_fta = bool(loc_edit.loc[r, "FTA"])
+                st.session_state[f"{p}_fta_{r}"] = is_fta
+                for f, col in DUTY_COLS.items():
+                    # FTA waives BCD + its cess -> force those rates to 0 so the table mirrors the math.
+                    st.session_state[f"{p}_{f}_{r}"] = 0.0 if (is_fta and f in ("bcd_pct", "cess_pct")) \
+                        else float(loc_edit.loc[r, col])
+            st.rerun(scope="app")
 
-    # --- Admin: persist the current values as the org-wide defaults for every user ---
-    if is_admin:
-        if st.button("💾 Save as default for all users", key=f"{p}_save", type="primary",
-                     help="Press Calculate first to apply any pending edits, then save. These "
-                          "values become the starting point in every user's sandbox."):
-            try:
-                import db
-                db.set_setting(SETTINGS_KEY, {
-                    "globals": {lbl: float(g[k]) for k, lbl in GMAP.items()},
-                    "locations": {r: {"fob": float(st.session_state[f"{p}_fob_{r}"]),
-                                      "freight": float(st.session_state[f"{p}_freight_{r}"]),
-                                      "fta": bool(st.session_state[f"{p}_fta_{r}"]),
-                                      **{f: float(st.session_state[f"{p}_{f}_{r}"]) for f in DUTY_COLS}}
-                                  for r in regions},
-                })
-                st.success("Saved — these are now the defaults for all users.")
-            except Exception as e:
-                st.error(f"Save failed: {e}")
+        # --- Admin: persist the current values as the org-wide defaults for every user ---
+        if is_admin:
+            if st.button("💾 Save as default for all users", key=f"{p}_save", type="primary",
+                         help="Press Calculate first to apply any pending edits, then save. These "
+                              "values become the starting point in every user's sandbox."):
+                try:
+                    import db
+                    db.set_setting(SETTINGS_KEY, {
+                        "globals": {lbl: float(g[k]) for k, lbl in GMAP.items()},
+                        "locations": {r: {"fob": float(st.session_state[f"{p}_fob_{r}"]),
+                                          "freight": float(st.session_state[f"{p}_freight_{r}"]),
+                                          "fta": bool(st.session_state[f"{p}_fta_{r}"]),
+                                          **{f: float(st.session_state[f"{p}_{f}_{r}"]) for f in DUTY_COLS}}
+                                      for r in regions},
+                    })
+                    st.success("Saved — these are now the defaults for all users.")
+                except Exception as e:
+                    st.error(f"Save failed: {e}")
+
+    _editor()
 
     # --- compute with the committed inputs ---
     # Each origin gets its own effective g: the 3 global knobs (domestic/fx/threshold) merged with
