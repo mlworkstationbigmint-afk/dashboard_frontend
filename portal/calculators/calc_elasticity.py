@@ -71,7 +71,7 @@ CALC_CSS = """
 .st-key-sens_knobwrap [data-testid="stHorizontalBlock"] { gap: 0.5rem !important; align-items: stretch; }
 .st-key-sens_knobwrap [data-testid="stVerticalBlockBorderWrapper"] {
     border: 1px solid #edf1f7 !important; border-radius: 16px !important;
-    background: linear-gradient(158deg, #ffffff 0%, #f4f7fb 100%) !important;
+    background: #ffffff !important;
     box-shadow: 0 6px 16px rgba(15,23,42,.06), inset 0 1px 0 #ffffff !important;
     padding: 13px 15px 15px !important; min-height: 132px; height: 100%;
     display: flex; flex-direction: column; justify-content: space-between;
@@ -99,17 +99,9 @@ CALC_CSS = """
 .knob-res.down .dl { color: #D8382B; }
 .knob-res.muted { color: #94a3b8; }
 /* compact preset chips + quiet per-driver reset inside the knob cards */
-/* white box, orange border, accent-dark glyph (mirrors the −/+ stepper) so they read clearly on
-   the pale card; hover inverts to an orange fill with white text. */
 .st-key-sens_knobwrap div[class*="st-key-pre_"] button {
     padding: 2px 0 !important; min-height: 23px !important; font-size: 9.5px !important;
-    font-weight: 700 !important; border-radius: 7px !important; white-space: nowrap !important;
-    background: #fff !important; background-color: #fff !important;
-    border: 1px solid var(--bm-accent) !important; color: var(--bm-primary-dark) !important;
-    box-shadow: none !important; }
-.st-key-sens_knobwrap div[class*="st-key-pre_"] button:hover {
-    background: var(--bm-accent) !important; background-color: var(--bm-accent) !important;
-    color: #fff !important; }
+    font-weight: 700 !important; border-radius: 7px !important; white-space: nowrap !important; }
 .st-key-sens_knobwrap div[class*="st-key-rst_"] button {
     padding: 1px 0 !important; min-height: 22px !important; font-size: 11px !important;
     background: transparent !important; border: none !important; box-shadow: none !important;
