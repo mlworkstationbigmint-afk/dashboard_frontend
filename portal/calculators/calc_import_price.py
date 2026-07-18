@@ -357,13 +357,20 @@ def _glossary():
     st.markdown(grid, unsafe_allow_html=True)
 
 
-# @st.fragment: any edit (cell, checkbox, Calculate, Reset) reruns ONLY this view — not the whole
-# app script (sidebar, auth, other tabs, footer) — so the table stays responsive with no full-page
-# reload on every change.
-@st.fragment
 def render(is_admin=False):
+    # CSS is injected OUTSIDE the fragment (once per full run) so a fragment rerun never re-emits
+    # this <style> block. It carries global !important layout rules (block/column gaps); re-emitting
+    # it on every edit tore the old style down for a frame — the whole page visibly reshuffled then
+    # settled. Keeping it in the non-fragment wrapper (like the other calculators) holds it stable.
     st.markdown(CALC_CSS, unsafe_allow_html=True)
+    _render_body(is_admin)
 
+
+# @st.fragment: any edit (cell, checkbox, Calculate, Reset, global var) reruns ONLY this body — not
+# the whole app script (sidebar, auth, other tabs, footer) — so the table stays responsive with no
+# full-page reload. The page CSS lives in render() above, so it isn't re-injected on these reruns.
+@st.fragment
+def _render_body(is_admin=False):
     # Key namespace: the Admin editor ("adm") edits the org-wide defaults; every
     # other view ("imp") is a private per-session sandbox. Only one of the two
     # ever renders in a single script run (different pages), but the session-state
