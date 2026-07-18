@@ -112,18 +112,9 @@ CALC_CSS = """
     background: transparent !important; border: none !important; box-shadow: none !important;
     color: #94a3b8 !important; }
 .st-key-sens_knobwrap div[class*="st-key-rst_"] button:hover { color: var(--bm-accent) !important; }
-/* value + −/+ box -> ONE uniform rounded box, SOLID WHITE throughout. Force white on the
-   number-input wrapper AND every descendant so Streamlit 1.59's grey secondaryBackground never
-   bleeds through; only the shell keeps the orange border + radius + clip, so there's no seam or
-   tint. (The app-wide input rule in theme.py gives the same box; this scoped copy adds the
-   centred value + the orange-fill stepper hover.) */
-.st-key-sens_knobwrap [data-testid="stNumberInput"],
-.st-key-sens_knobwrap [data-testid="stNumberInput"] * {
-    background: #fff !important; background-color: #fff !important; box-shadow: none !important; }
-.st-key-sens_knobwrap [data-testid="stNumberInput"] > div {
-    border: 1px solid var(--bm-accent) !important; border-radius: 8px !important; overflow: hidden !important; }
-.st-key-sens_knobwrap [data-testid="stNumberInput"] > div * {
-    border: none !important; border-radius: 0 !important; margin: 0 !important; }
+/* The value + −/+ box (white fill + ONE rounded orange border, no inner seam) comes from the
+   app-wide stNumberInput rule in theme.py — the same clean recipe as the dropdowns. Here we only
+   add the centred, bold value; the stepper glyph colours + hover are below. */
 .st-key-sens_knobwrap [data-testid="stNumberInput"] input {
     padding: 4px 6px !important; text-align: center !important;
     font-weight: 700 !important; color: var(--bm-primary-dark) !important; }

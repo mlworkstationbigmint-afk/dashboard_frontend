@@ -498,7 +498,7 @@ ul[role="listbox"] li {{
    recipe: whiten every inner wrapper + zero its reset border-colour, then paint one rounded orange
    border on the control (the input's last-child wrapper). Colour-only border, never width (see the
    ⚠ note above). More-specific component overrides (e.g. the knob cards) still win. */
-[data-testid="stNumberInput"] div, [data-testid="stNumberInput"] input,
+[data-testid="stNumberInput"] div, [data-testid="stNumberInput"] input, [data-testid="stNumberInput"] button,
 [data-testid="stTextInput"] div, [data-testid="stTextInput"] input,
 [data-testid="stTextArea"] div, [data-testid="stTextArea"] textarea,
 [data-testid="stDateInput"] div, [data-testid="stDateInput"] input {{
