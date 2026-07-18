@@ -192,6 +192,17 @@ def inject_css():
 /* login / password-reset cards: readable fixed width now the page is full-bleed, plus a
    responsive top gap so the card sits lower than the topbar (breathing room, not hugging it). */
 .st-key-login_card, .st-key-reset_card {{ max-width: 460px; margin: clamp(48px, 9vh, 120px) auto 0; }}
+/* Login / reset text inputs: the app-wide colour-only border lands on a wrapper whose default
+   border differs between the plain Username field and the eye-icon Password field (Username showed
+   only a stray corner). Fix here: clear that outer wrapper's border and paint ONE rounded orange
+   border on the ACTUAL control — the div directly wrapping the <input> — so both fields get an
+   identical clean box. */
+.st-key-login_card [data-testid="stTextInput"] > div:last-child,
+.st-key-reset_card [data-testid="stTextInput"] > div:last-child {{ border-color:transparent !important; }}
+.st-key-login_card [data-testid="stTextInput"] div:has(> input),
+.st-key-reset_card [data-testid="stTextInput"] div:has(> input) {{
+    border:1px solid var(--bm-accent) !important; border-radius:8px !important;
+    background:#fff !important; box-shadow:none !important; }}
 /* kill the app header entirely (it painted its Share/toolbar icons over the top of the page
    even at height:0). display:none keeps stStatusWidget in the DOM, so the :has() loading
    overlay below still works. Selectors deliberately element-agnostic (header OR div). */
