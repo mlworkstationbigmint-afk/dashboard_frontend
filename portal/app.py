@@ -221,19 +221,24 @@ LOGIN_CSS = """
     color: #94a3b8 !important; background: transparent !important; border: none !important; }
 .st-key-login_card [data-testid="stTextInput"] button:hover,
 .st-key-reset_card [data-testid="stTextInput"] button:hover { color: var(--bm-accent) !important; }
-/* submit button: full-width, a touch taller/bolder */
+/* submit button: full-width, a touch taller/bolder; invert on hover (fill -> white, text -> accent) */
 .st-key-login_card [data-testid="stButton"] button,
 .st-key-reset_card [data-testid="stButton"] button {
     margin-top: 8px; padding: 11px 0 !important; font-size: 15px !important;
-    font-weight: 700 !important; border-radius: 10px !important; }
+    font-weight: 700 !important; border-radius: 10px !important;
+    border: 1.5px solid var(--bm-accent) !important; transition: background-color .15s ease, color .15s ease; }
+.st-key-login_card [data-testid="stButton"] button:hover,
+.st-key-reset_card [data-testid="stButton"] button:hover {
+    background: #fff !important; background-color: #fff !important; color: var(--bm-accent) !important; }
+.st-key-login_card [data-testid="stButton"] button:hover p,
+.st-key-reset_card [data-testid="stButton"] button:hover p { color: var(--bm-accent) !important; }
 </style>
 """
 
 
 def _login_brand(title: str, sub: str) -> str:
-    """Brand header for the sign-in / reset card: BigMint logo + product title + subtitle."""
+    """Card header: product title + subtitle (the BigMint logo lives in the topbar above)."""
     return ("<div class='bm-login-brand'>"
-            f"<div class='bm-login-logo'>{theme._logo_html(32)}</div>"
             f"<div class='bm-login-title'>{html.escape(title)}</div>"
             f"<div class='bm-login-sub'>{html.escape(sub)}</div>"
             "</div>")
@@ -241,6 +246,7 @@ def _login_brand(title: str, sub: str) -> str:
 
 def login_screen():
     st.markdown(LOGIN_CSS, unsafe_allow_html=True)
+    theme.render_topbar(None)
     with st.columns([1, 1.4, 1])[1]:
         with st.container(border=True, key="login_card"):
             st.markdown(_login_brand("Steel Price Forecasting", "AI Labs · sign in to your dashboard"),
@@ -265,6 +271,7 @@ def login_screen():
 
 def force_password_change():
     st.markdown(LOGIN_CSS, unsafe_allow_html=True)
+    theme.render_topbar(st.session_state.user)
     with st.columns([1, 1.4, 1])[1]:
         with st.container(border=True, key="reset_card"):
             st.markdown(_login_brand("Set a new password",
