@@ -165,16 +165,88 @@ def _resolve_new_role(custom, picked):
     return custom
 
 
+# Self-contained branded sign-in / reset card. Scoped to the two container keys so it never
+# touches the rest of the app. Keeps the core brand (BigMint logo, blue+orange scheme) and the
+# auth engine unchanged — this only restyles the shell. Colours come from the --bm-* CSS vars
+# seeded on :root by theme.inject_css().
+LOGIN_CSS = """
+<style>
+/* card shell */
+.st-key-login_card, .st-key-reset_card {
+    max-width: 430px; margin: clamp(40px,8vh,110px) auto 0;
+    background: #fff !important; border: 1px solid #e6ebf3 !important; border-radius: 18px !important;
+    box-shadow: 0 18px 50px rgba(2,76,161,.12) !important; padding: 0 !important; overflow: hidden;
+}
+/* thin brand gradient strip across the top of the card */
+.st-key-login_card::before, .st-key-reset_card::before {
+    content: ""; display: block; height: 5px;
+    background: linear-gradient(90deg, var(--bm-primary), var(--bm-accent));
+}
+/* inner padding (the bordered container's content wrapper) */
+.st-key-login_card > div, .st-key-reset_card > div { padding: 30px 34px 28px; }
+/* brand header */
+.bm-login-brand { text-align: center; margin-bottom: 20px; }
+.bm-login-logo { display: flex; justify-content: center; margin-bottom: 14px; }
+.bm-login-title { font-size: 22px; font-weight: 800; color: var(--bm-primary-dark);
+    letter-spacing: .2px; line-height: 1.2; }
+.bm-login-sub { margin-top: 5px; font-size: 13px; color: #6b7686; font-weight: 500; }
+/* field labels */
+.st-key-login_card [data-testid="stTextInput"] label,
+.st-key-reset_card [data-testid="stTextInput"] label {
+    font-size: 12px !important; font-weight: 700 !important; text-transform: uppercase;
+    letter-spacing: .4px; color: var(--bm-primary-dark) !important; }
+/* field box: ONE clean grey border -> orange on focus (overrides the app-wide input rule cleanly,
+   no notch). Border the div that directly wraps the <input>, and clear the outer wrapper's border. */
+.st-key-login_card [data-testid="stTextInput"] > div:last-child,
+.st-key-reset_card [data-testid="stTextInput"] > div:last-child { border-color: transparent !important; }
+.st-key-login_card [data-testid="stTextInput"] div:has(> input),
+.st-key-reset_card [data-testid="stTextInput"] div:has(> input) {
+    border: 1.5px solid #d7dee9 !important; border-radius: 10px !important; background: #fff !important;
+    box-shadow: none !important; transition: border-color .15s ease, box-shadow .15s ease; }
+.st-key-login_card [data-testid="stTextInput"] div:has(> input):focus-within,
+.st-key-reset_card [data-testid="stTextInput"] div:has(> input):focus-within {
+    border-color: var(--bm-accent) !important; box-shadow: 0 0 0 3px rgba(238,78,36,.15) !important; }
+.st-key-login_card [data-testid="stTextInput"] input,
+.st-key-reset_card [data-testid="stTextInput"] input {
+    background: transparent !important; padding: 11px 13px !important; font-size: 14.5px !important;
+    color: var(--bm-primary-dark) !important; }
+/* keep browser autofill white (it was painting a tinted fill) */
+.st-key-login_card [data-testid="stTextInput"] input:-webkit-autofill,
+.st-key-reset_card [data-testid="stTextInput"] input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0 40px #fff inset !important;
+    -webkit-text-fill-color: var(--bm-primary-dark) !important; }
+/* reveal-password eye: muted, accent on hover */
+.st-key-login_card [data-testid="stTextInput"] button,
+.st-key-reset_card [data-testid="stTextInput"] button {
+    color: #94a3b8 !important; background: transparent !important; border: none !important; }
+.st-key-login_card [data-testid="stTextInput"] button:hover,
+.st-key-reset_card [data-testid="stTextInput"] button:hover { color: var(--bm-accent) !important; }
+/* submit button: full-width, a touch taller/bolder */
+.st-key-login_card [data-testid="stButton"] button,
+.st-key-reset_card [data-testid="stButton"] button {
+    margin-top: 8px; padding: 11px 0 !important; font-size: 15px !important;
+    font-weight: 700 !important; border-radius: 10px !important; }
+</style>
+"""
+
+
+def _login_brand(title: str, sub: str) -> str:
+    """Brand header for the sign-in / reset card: BigMint logo + product title + subtitle."""
+    return ("<div class='bm-login-brand'>"
+            f"<div class='bm-login-logo'>{theme._logo_html(32)}</div>"
+            f"<div class='bm-login-title'>{html.escape(title)}</div>"
+            f"<div class='bm-login-sub'>{html.escape(sub)}</div>"
+            "</div>")
+
+
 def login_screen():
-    theme.render_topbar(None)
-    cols = st.columns([1, 1.5, 1])
-    with cols[1]:
-        # key -> theme.py caps the card width now the page is full-bleed
+    st.markdown(LOGIN_CSS, unsafe_allow_html=True)
+    with st.columns([1, 1.4, 1])[1]:
         with st.container(border=True, key="login_card"):
-            st.markdown("### Sign in")
-            st.caption("Price Forecasting: Steel")
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
+            st.markdown(_login_brand("Steel Price Forecasting", "AI Labs · sign in to your dashboard"),
+                        unsafe_allow_html=True)
+            username = st.text_input("Username", placeholder="Enter your username")
+            password = st.text_input("Password", type="password", placeholder="Enter your password")
             if st.button("Sign in", width="stretch", type="primary"):
                 profile, status = auth.authenticate(username, password)
                 if status == "ok":
@@ -192,12 +264,12 @@ def login_screen():
 
 
 def force_password_change():
-    theme.render_topbar(st.session_state.user)
-    cols = st.columns([1, 1.5, 1])
-    with cols[1]:
+    st.markdown(LOGIN_CSS, unsafe_allow_html=True)
+    with st.columns([1, 1.4, 1])[1]:
         with st.container(border=True, key="reset_card"):
-            st.markdown("### Set a new password")
-            st.caption("Your account requires a new password before you continue.")
+            st.markdown(_login_brand("Set a new password",
+                                     "Your account needs a new password before you continue."),
+                        unsafe_allow_html=True)
             p1 = st.text_input("New password", type="password", key="reset_p1")
             p2 = st.text_input("Confirm new password", type="password", key="reset_p2")
             if st.button("Set password", width="stretch", type="primary"):
