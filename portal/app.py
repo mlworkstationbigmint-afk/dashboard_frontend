@@ -539,12 +539,45 @@ def _render_with_highlighter(fig, height=430, dom_id="chart", range_buttons=None
     st.iframe(doc_path, height=height + 12 + extra_h)
 
 
-def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=False):
+# --- China import-parity landed cost (HRC only) -----------------------------------------------
+# A third chart line: for each historical week, take the Mumbai HRC spot (Rs./t), read it back to
+# an implied China FOB in USD at that YEAR's fixed average FX, then run the China lane of the
+# Landed-Cost calculator (freight + BCD/cess/safeguard + port) to get the landed Rs./t. FX is one
+# flat value per calendar year (below), not a per-week rate — edit these to retune the line.
+CHINA_LANDED_LINE = "#7C3AED"                 # violet — distinct from blue spot / red forecast
+CHINA_FX_BY_YEAR = {2024: 83.6, 2025: 87.4, 2026: 93.0}   # avg USD→INR per year
+CHINA_FX_DEFAULT = 93.0                        # used for any year not listed above
+
+
+def _china_landed_series(acc):
+    """(dates, vals) of the China import-parity landed cost per historical week, derived from each
+    week's Mumbai HRC spot. Returns None on any failure so the chart just drops the extra line."""
+    try:
+        from calculators import calc_import_price as cip
+        gvars, locs = cip._effective_defaults()
+        china = locs["China"]
+        hist = acc.dropna(subset=["Actual"])
+        dates, vals = [], []
+        for d, spot in zip(hist["Date"], hist["Actual"]):
+            fx = CHINA_FX_BY_YEAR.get(pd.Timestamp(d).year, CHINA_FX_DEFAULT)
+            g = {"fx": fx, "domestic": gvars["Domestic benchmark (Rs./t)"],
+                 "threshold_cif": gvars["Threshold CIF ($/t)"],
+                 **{k: china[k] for k in cip.DUTY_COLS}}
+            fob = float(spot) / fx                       # implied China FOB ($/t) from the spot
+            dates.append(d)
+            vals.append(cip.compute_landed(fob, china["freight"], china["fta"], g)["landed"])
+        return (dates, vals) if dates else None
+    except Exception:
+        return None
+
+
+def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=False, landed=None):
     """Light-blue actual spot (soft area fill) + bold red dashed forecast, with a dotted
     divider and a faint shaded band marking the 12-week-ahead region.
     legend_inside places the legend inside the plot (white region); year_labels adds the
     short year to the x-axis date ticks; compact grows the plot + slims the top margin so the
-    zoom buttons sit just above the graph (all used by the grouped forecasting layout)."""
+    zoom buttons sit just above the graph (all used by the grouped forecasting layout).
+    landed (optional): (dates, vals) of the China import-parity landed cost to overlay."""
     hist = acc.dropna(subset=["Actual"]).copy()
     if hist.empty:
         st.info("No historical spot series available for this product.")
@@ -555,6 +588,14 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
         fc_vals = [_round50(v) for v in (list(hist["Forecast"]) + list(fwd["Forecast"]))]
         fig = go.Figure()
         fig.add_trace(_spot_trace(hist["Date"], hist["Actual"], fill=True))
+        if landed:
+            l_dates, l_vals = landed
+            fig.add_trace(go.Scatter(
+                x=[_dt(d) for d in l_dates], y=list(l_vals), name="China landed", mode="lines",
+                line=dict(color=CHINA_LANDED_LINE, width=2.4, shape="spline", smoothing=0.4),
+                cliponaxis=False,
+                hovertemplate="%{x|%d-%b-%y}<br><b>China landed: Rs.%{y:,.0f}</b><extra></extra>",
+                hoverlabel=dict(bgcolor="white", bordercolor="#ddd0f0", font=dict(color=CHINA_LANDED_LINE))))
         fig.add_trace(go.Scatter(
             x=[_dt(d) for d in fc_dates], y=fc_vals, name="Forecast", mode="lines+markers",
             line=dict(color=theme.FORECAST_LINE, width=2.8, dash="dash", shape="spline", smoothing=0.4),
@@ -574,7 +615,8 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
         fig.add_vline(x=split_x, line=dict(color="#94a3b8", width=1.3, dash="dot"))
 
         # pad the y-range so the area fill reads as a band rather than a block down to zero
-        yvals = [v for v in list(hist["Actual"]) + fc_vals if pd.notna(v)]
+        landed_vals = list(landed[1]) if landed else []
+        yvals = [v for v in list(hist["Actual"]) + fc_vals + landed_vals if pd.notna(v)]
         if yvals:
             lo, hi = min(yvals), max(yvals)
             pad = (hi - lo) * 0.14 or hi * 0.03
@@ -1051,6 +1093,8 @@ def page_forecasting():
     row = dl.summary_row(summary, meta["ff"])
     fwd = dl.load_forward(meta["ff"])
     acc_hist = dl.load_accuracy("11-week", meta["acc"])   # Accuracy_Table_11 (6/16 retired)
+    # HRC (Exy-Mumbai) also gets a China import-parity landed-cost overlay on the chart.
+    china_landed = _china_landed_series(acc_hist) if product == "HRC" else None
 
     def _forecast_at(n):
         """(forecast value, direction-vs-last-actual) at forward week n (the 1/4/8/12 horizon
@@ -1122,12 +1166,14 @@ def page_forecasting():
             # The 1W/4W/8W/12W horizon tab limits how far FORWARD the forecast is drawn: show only
             # the first `horizon` weeks of the 12-week path (None => all).
             fwd_view = fwd.head(int(horizon)) if horizon else fwd
-            forecast_chart(acc_hist, fwd_view, legend_inside=True, year_labels=True, compact=True)
+            forecast_chart(acc_hist, fwd_view, legend_inside=True, year_labels=True, compact=True,
+                           landed=china_landed)
         else:
             theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
-            forecast_chart(acc_hist, fwd)
+            forecast_chart(acc_hist, fwd, landed=china_landed)
+            _cl = (" Violet = China import-parity landed cost." if china_landed else "")
             st.markdown("<div class='bm-footnote'>Light blue = actual spot. Red dashed = model forecast "
-                        "(historical fit + 12-week ahead). Hover any point for its price.</div>",
+                        f"(historical fit + 12-week ahead).{_cl} Hover any point for its price.</div>",
                         unsafe_allow_html=True)
 
     def render_table_view():
