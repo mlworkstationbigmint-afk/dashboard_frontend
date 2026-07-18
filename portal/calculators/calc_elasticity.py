@@ -99,9 +99,17 @@ CALC_CSS = """
 .knob-res.down .dl { color: #D8382B; }
 .knob-res.muted { color: #94a3b8; }
 /* compact preset chips + quiet per-driver reset inside the knob cards */
+/* white box, orange border, accent-dark glyph (mirrors the −/+ stepper) so they read clearly on
+   the pale card; hover inverts to an orange fill with white text. */
 .st-key-sens_knobwrap div[class*="st-key-pre_"] button {
     padding: 2px 0 !important; min-height: 23px !important; font-size: 9.5px !important;
-    font-weight: 700 !important; border-radius: 7px !important; white-space: nowrap !important; }
+    font-weight: 700 !important; border-radius: 7px !important; white-space: nowrap !important;
+    background: #fff !important; background-color: #fff !important;
+    border: 1px solid var(--bm-accent) !important; color: var(--bm-primary-dark) !important;
+    box-shadow: none !important; }
+.st-key-sens_knobwrap div[class*="st-key-pre_"] button:hover {
+    background: var(--bm-accent) !important; background-color: var(--bm-accent) !important;
+    color: #fff !important; }
 .st-key-sens_knobwrap div[class*="st-key-rst_"] button {
     padding: 1px 0 !important; min-height: 22px !important; font-size: 11px !important;
     background: transparent !important; border: none !important; box-shadow: none !important;
@@ -561,7 +569,7 @@ def _render_product(spec, key):
 # -----------------------------------------------------------------------------
 # Methodology (landed-cost style) + glossary — shared across products
 # -----------------------------------------------------------------------------
-def _methodology_infographic():
+def _methodology_infographic(product_label=None):
     _sec("How the sensitivity prediction is built", theme.icon("notes"))
     st.markdown(
         "Each product is a **stateless single-row model**: the predicted move depends only on the "
@@ -583,6 +591,8 @@ def _methodology_infographic():
         ("HR Plate", "log(HRPlate<sub>t</sub>)"),
         ("Rebar",    "log(Rebar<sub>t</sub>)"),
     ]
+    if product_label:                          # show only the selected product's equation
+        eqs = [e for e in eqs if e[0] == product_label] or eqs
     rows = "".join(
         f"<div class='bm-eqrow'><span class='bm-eqtag'>{tag}</span>"
         f"<span class='bm-eqbody'>{lhs} = &alpha; + &beta;<sub>1</sub>log(IO<sub>t</sub>) "
@@ -690,5 +700,5 @@ def render():
     _render_product(spec, key=spec["label"].lower().replace(" ", "_"))
 
     st.divider()
-    _methodology_infographic()
+    _methodology_infographic(spec["label"])
     _glossary()
