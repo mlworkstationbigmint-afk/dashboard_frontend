@@ -116,14 +116,14 @@ CALC_CSS = """
    layer (container, baseweb shell + base-input, input, stepper group & buttons) — the earlier
    grey was Streamlit's base-input/container fill bleeding through. Only the shell keeps the
    orange border + radius + clip, so there's no seam or tint. */
-.st-key-sens_knobwrap [data-testid="stNumberInput"] > div,
-.st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"],
-.st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="base-input"],
-.st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"] * {
+/* Cover BOTH generations: force white on the number-input wrapper AND every descendant, so the
+   grey secondaryBackground never shows on 1.59 (react-aria, where [data-baseweb="input"] is gone). */
+.st-key-sens_knobwrap [data-testid="stNumberInput"],
+.st-key-sens_knobwrap [data-testid="stNumberInput"] * {
     background: #fff !important; background-color: #fff !important; box-shadow: none !important; }
-.st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"] {
+.st-key-sens_knobwrap [data-testid="stNumberInput"] > div {
     border: 1px solid var(--bm-accent) !important; border-radius: 8px !important; overflow: hidden !important; }
-.st-key-sens_knobwrap [data-testid="stNumberInput"] [data-baseweb="input"] * {
+.st-key-sens_knobwrap [data-testid="stNumberInput"] > div * {
     border: none !important; border-radius: 0 !important; margin: 0 !important; }
 .st-key-sens_knobwrap [data-testid="stNumberInput"] input {
     padding: 4px 6px !important; text-align: center !important;
