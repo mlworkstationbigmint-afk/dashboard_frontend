@@ -164,8 +164,8 @@ def inject_css():
 .stApp {{ background-color: {BG_SOFT}; }}
 /* full-bleed: fill the whole viewport width at any resolution (was capped at 1180px);
    side padding keeps content off the screen edges. layout="wide" is set in app.py.
-   `.block-container` is the 1.58 emotion class; the stMainBlockContainer testid twin
-   keeps this working if a newer build drops that class. */
+   target both the `.block-container` class and the stMainBlockContainer testid (same element)
+   so this survives either being renamed by a build. */
 .block-container, [data-testid="stMainBlockContainer"] {{
     padding-top: 0 !important; margin-top: 0 !important; padding-bottom: 1rem; max-width: 100%;
     padding-left: 1.2rem; padding-right: 1.2rem; }}
@@ -492,6 +492,27 @@ ul[role="listbox"] li {{
     border:1px solid var(--bm-accent) !important; border-radius:8px !important; box-shadow:none !important;
 }}
 [data-testid="stSelectbox"] svg {{ fill:var(--bm-accent) !important; color:var(--bm-accent) !important; }}
+
+/* ALL number / text / textarea / date inputs app-wide: the SAME clean box as the dropdowns above —
+   WHITE fill + exactly ONE curved ORANGE border, no inner notch or double-border seam. Same 1.59-safe
+   recipe: whiten every inner wrapper + zero its reset border-colour, then paint one rounded orange
+   border on the control (the input's last-child wrapper). Colour-only border, never width (see the
+   ⚠ note above). More-specific component overrides (e.g. the knob cards) still win. */
+[data-testid="stNumberInput"] div, [data-testid="stNumberInput"] input,
+[data-testid="stTextInput"] div, [data-testid="stTextInput"] input,
+[data-testid="stTextArea"] div, [data-testid="stTextArea"] textarea,
+[data-testid="stDateInput"] div, [data-testid="stDateInput"] input {{
+    background:#fff !important; background-color:#fff !important;
+    border-color:transparent !important; box-shadow:none !important;
+}}
+[data-testid="stNumberInput"] > div:last-child,
+[data-testid="stTextInput"] > div:last-child,
+[data-testid="stTextArea"] > div:last-child,
+[data-testid="stDateInput"] > div:last-child {{
+    border:1px solid var(--bm-accent) !important; border-radius:8px !important; box-shadow:none !important;
+}}
+/* number-input −/+ steppers: orange glyphs to match the accent border */
+[data-testid="stNumberInput"] button svg {{ fill:var(--bm-accent) !important; color:var(--bm-accent) !important; }}
 
 /* grouped-forecasting right-side price-card stack: ONE HTML flex column (emitted whole by
    app.py price_cards(vertical=True)). Our own markup, so no dependence on how Streamlit

@@ -112,12 +112,11 @@ CALC_CSS = """
     background: transparent !important; border: none !important; box-shadow: none !important;
     color: #94a3b8 !important; }
 .st-key-sens_knobwrap div[class*="st-key-rst_"] button:hover { color: var(--bm-accent) !important; }
-/* value + −/+ box -> ONE uniform rounded box, SOLID WHITE throughout. Force white on every
-   layer (container, baseweb shell + base-input, input, stepper group & buttons) — the earlier
-   grey was Streamlit's base-input/container fill bleeding through. Only the shell keeps the
-   orange border + radius + clip, so there's no seam or tint. */
-/* Cover BOTH generations: force white on the number-input wrapper AND every descendant, so the
-   grey secondaryBackground never shows on 1.59 (react-aria, where [data-baseweb="input"] is gone). */
+/* value + −/+ box -> ONE uniform rounded box, SOLID WHITE throughout. Force white on the
+   number-input wrapper AND every descendant so Streamlit 1.59's grey secondaryBackground never
+   bleeds through; only the shell keeps the orange border + radius + clip, so there's no seam or
+   tint. (The app-wide input rule in theme.py gives the same box; this scoped copy adds the
+   centred value + the orange-fill stepper hover.) */
 .st-key-sens_knobwrap [data-testid="stNumberInput"],
 .st-key-sens_knobwrap [data-testid="stNumberInput"] * {
     background: #fff !important; background-color: #fff !important; box-shadow: none !important; }
