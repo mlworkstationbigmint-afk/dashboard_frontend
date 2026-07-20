@@ -654,6 +654,8 @@ ul[role="listbox"] li {{
     /* engine: single column, arrows point downward */
     .bm-engine {{ grid-template-columns:1fr; gap:8px 0; }}
     .bm-engine-arrow {{ transform:rotate(90deg); margin:2px 0; }}
+    /* stat strip: 6-up gets cramped on tablet -> 3-up before the 2-up phone step below */
+    .bm-stat-row {{ grid-template-columns:repeat(3,1fr); }}
 }}
 @media (max-width:760px) {{
     .bm-stat-row, .bm-factor-grid, .bm-horizon-grid {{ grid-template-columns:1fr 1fr; }}

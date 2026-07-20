@@ -1476,3 +1476,7 @@ surfaces follow the role. Acceptable for the current build.
 - **2026-07-10:** Scenario Simulation tabs renamed + reordered (`app.py` `page_calculators()`) to
   **Price Sensitivity** (elasticity) → **Landed Cost** (import parity) → **Cost Head** (production
   cost & margin). Labels/order only; calculator bodies unchanged. Full detail in the Changelog above.
+- **2026-07-20:** Layout pass (impeccable). Assessed the whole portal — layout already systematic
+  (consistent block gap, tuned hierarchy, correct grid/flex split, 1024/760 breakpoints); no rewrite.
+  One fix applied: **Methodology stat strip** (`theme.py` `.bm-stat-row`) now steps **6→3→2** — added a
+  `repeat(3,1fr)` at the 1024px breakpoint so the six tiles no longer cram on tablet (was 6→2 only at 760px).
