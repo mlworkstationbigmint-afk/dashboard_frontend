@@ -48,13 +48,15 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       + ".driver-popover.bm-pop{border-radius:14px;box-shadow:0 18px 48px rgba(2,18,43,.34);max-width:360px}"
       + ".driver-popover.bm-pop .driver-popover-title{font-size:16px;color:#024CA1;font-weight:800;line-height:1.25}"
       + ".driver-popover.bm-pop .driver-popover-description{font-size:13.5px;color:#1A1A1A;line-height:1.5}"
-      + ".driver-popover.bm-pop .driver-popover-footer button{background:#EE4E24;color:#fff;border:1px solid #EE4E24;"
-      + "text-shadow:none;border-radius:8px;font-weight:700;padding:5px 12px}"
-      + ".driver-popover.bm-pop .driver-popover-footer button:hover{background:#fff;color:#EE4E24}"
-      + ".driver-popover.bm-pop .driver-popover-prev-btn{background:#eef2f7;color:#334155;border-color:#cbd5e1}"
-      + ".driver-popover.bm-pop .driver-popover-prev-btn:hover{background:#fff;color:#024CA1}"
-      + ".driver-popover.bm-pop .driver-popover-progress-text{color:#64748B;font-weight:600}"
       + ".driver-popover.bm-pop .driver-popover-close-btn{color:#94a3b8}"
+      // custom nav buttons (driver.js renders no next/prev in single-highlight mode, so we draw our own)
+      + ".driver-popover.bm-pop .bm-nav{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}"
+      + ".driver-popover.bm-pop .bm-b{background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;"
+      + "font-weight:700;padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit}"
+      + ".driver-popover.bm-pop .bm-b:hover{background:#fff;color:#024CA1}"
+      + ".driver-popover.bm-pop .bm-next{background:#EE4E24;color:#fff;border-color:#EE4E24}"
+      + ".driver-popover.bm-pop .bm-next:hover{background:#fff;color:#EE4E24}"
+      + ".driver-popover.bm-pop .bm-meta{margin-top:10px;font-size:11px;color:#94a3b8}"
       + ".driver-popover,.driver-overlay,svg.driver-overlay{z-index:2147483000 !important}"
       + "#bm-tour-launch{position:fixed;right:18px;bottom:18px;z-index:2147482000;background:#024CA1;color:#fff;"
       + "border:none;border-radius:999px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;"
@@ -158,12 +160,14 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
 
     function show(s, el, i){
       var last = i === STEPS.length - 1;
+      var back = i > 0 ? '<button type="button" class="bm-b" onclick="window.__bmTourPrev()">&larr; Back</button>' : '';
+      var nav = '<div class="bm-nav">' + back
+              + '<button type="button" class="bm-b bm-next" onclick="window.__bmTourNext()">'
+              + (last ? "Finish ✓" : "Next →") + '</button></div>';
       var pop = {
         title: s.title,
-        description: s.desc + '<div style="margin-top:8px;font-size:11px;color:#94a3b8">Step '+(i+1)+' of '+STEPS.length+'</div>',
-        popoverClass: "bm-pop", align: "start",
-        showButtons: i === 0 ? ["next","close"] : ["previous","next","close"],
-        nextBtnText: last ? "Finish ✓" : "Next →", prevBtnText: "← Back"
+        description: s.desc + '<div class="bm-meta">Step ' + (i+1) + ' of ' + STEPS.length + '</div>' + nav,
+        popoverClass: "bm-pop", align: "start", showButtons: ["close"]   // × only; next/prev are our own
       };
       if (el) pop.side = s.side || "bottom";     // side only matters when there's an element to anchor to
       d.highlight({ element: (el || undefined), popover: pop });
@@ -173,10 +177,8 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       if (!d){
         d = D({
           animate:true, stagePadding:6, stageRadius:10, allowClose:true, overlayColor:"rgba(3,20,46,.72)",
-          onNextClick: function(){ step(idx + 1, 1); },   // we drive progression ourselves (single-highlight mode)
-          onPrevClick: function(){ step(idx - 1, -1); },
-          onCloseClick: function(){ d.destroy(); },
-          onDestroyed: function(){ seen(); d = null; }   // fresh instance on replay
+          onCloseClick: function(){ d.destroy(); },       // the × (only native button we keep)
+          onDestroyed: function(){ seen(); d = null; }    // fresh instance on replay
         });
       }
       curPage = null; idx = 0; step(0, 1);
@@ -189,6 +191,10 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       b.addEventListener("click", start);
       document.body.appendChild(b);
     }
+
+    // custom-button handlers (called from the popover HTML; controller runs in the parent realm)
+    window.__bmTourNext = function(){ step(idx + 1, 1); };
+    window.__bmTourPrev = function(){ step(idx - 1, -1); };
 
     launcher();
     if (AUTO){ try { if (!localStorage.getItem("bm_tour_seen")) setTimeout(start, 650); } catch(e){} }
