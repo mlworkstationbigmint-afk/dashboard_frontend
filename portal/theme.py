@@ -738,28 +738,12 @@ def direction_chip(direction: str) -> str:
     return "<span class='dir-chip dir-flat'>&rarr; Flat</span>"
 
 
-def arrow(direction: str) -> str:
-    d = str(direction).strip().lower()
-    if d == "up":
-        return f"<span style='color:{SUCCESS};font-weight:700;'>&#9650;</span>"
-    if d == "down":
-        return f"<span style='color:{DANGER};font-weight:700;'>&#9660;</span>"
-    return f"<span style='color:{NEUTRAL};font-weight:700;'>&rarr;</span>"
-
-
 def kpi_card(label: str, value: str, sub: str = "", icon: str = "") -> str:
     icon_html = f"<span class='bm-kpi-icon'>{icon}</span>" if icon else ""
     sub_html = f"<div class='bm-kpi-sub'>{sub}</div>" if sub else ""
     return (f"<div class='bm-card'><div class='bm-kpi-top'>{icon_html}"
             f"<span class='bm-kpi-label'>{label}</span></div>"
             f"<div class='bm-kpi-value'>{value}</div>{sub_html}</div>")
-
-
-def module_card(title: str, desc: str, icon: str = "") -> str:
-    icon_html = f"<span class='bm-kpi-icon' style='width:34px;height:34px;font-size:19px;'>{icon}</span>" if icon else ""
-    return (f"<div class='bm-card'><div class='bm-kpi-top'>{icon_html}"
-            f"<h4 style='margin:0;'>{title}</h4></div>"
-            f"<div class='bm-desc'>{desc}</div></div>")
 
 
 def section_title(text: str, icon: str = ""):

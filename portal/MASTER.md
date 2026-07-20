@@ -1504,3 +1504,10 @@ surfaces follow the role. Acceptable for the current build.
   key, the chart rendered into an `st.empty()` placeholder was unmounted + full-re-plotted every edit;
   with a stable key Streamlit reuses the widget and updates in place. NOT the CDN (that's cache-hit).
   If flash persists, next step is dropping the `st.empty()` chart placeholder (render in normal flow).
+- **2026-07-20 (ponytail-audit cuts):** Deleted dead code found by whole-repo over-engineering scan.
+  Removed orphaned `portal/report_pdf.py` (230 lines, no importers since the PDF-report feature was
+  dropped) and its sole dependency `fpdf2` from BOTH requirements.txt files. Deleted zero-caller
+  functions: `theme.arrow()`, `theme.module_card()`, `db.purge_expired_sessions()` (resolve_session
+  already purges expired rows lazily), `engine_sensitivity.effective_frac()` (%↔frac done inline).
+  Inlined `data_loader.calculators_csv()`'s never-overridden `name` param. Net ~-254 lines, -1 dep.
+  Rest of the tree confirmed lean. (calc_import_price.py:4 still has a stale "fpdf-safe" comment — harmless.)

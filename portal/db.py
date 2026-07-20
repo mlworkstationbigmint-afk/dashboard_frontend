@@ -354,12 +354,6 @@ def delete_sessions_for_user(username: str) -> None:
                      {"u": username})
 
 
-def purge_expired_sessions() -> None:
-    with get_engine().begin() as conn:
-        conn.execute(text("DELETE FROM sessions WHERE expires_at <= :now"),
-                     {"now": utcnow()})
-
-
 # ---------------------------------------------------------------------------
 # Audit
 # ---------------------------------------------------------------------------

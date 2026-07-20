@@ -37,15 +37,6 @@ def compute(current_price, drivers, eff_fracs):
     return impact, final_price, contrib_pct, contrib_rs
 
 
-def effective_frac(delta_pct, delta_unit, base_price):
-    """Combine a % input and a ₹/unit input into one effective fractional change.
-    ₹/unit is converted to % via the (editable) base price. Either may be zero."""
-    frac = (delta_pct or 0.0) / 100.0
-    if base_price:
-        frac += (delta_unit or 0.0) / base_price
-    return frac
-
-
 # --- Rebar — Exy-Mumbai, BF route, Fe 500D -----------------------------------
 # RidgeCV on 149 MoM observations (Jan-2014 → Jun-2026). OOS R²=0.51,
 # RMSE 3.8% / ₹1,993 per t. Source: BF_Rebar_Mumbai.csv (BigMint series).

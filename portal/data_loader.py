@@ -92,12 +92,12 @@ def acc_dir() -> str:
     return os.path.join(_data_root(), "accuracy_tables")
 
 
-def calculators_csv(name: str = "HRC - Copy.csv") -> str:
-    """Path to a calculators dataset CSV."""
+def calculators_csv() -> str:
+    """Path to the calculators dataset CSV."""
     root = _data_root()
     # in-repo sample keeps the CSV under portal/calculators; the private repo puts it at calculators/
     base = PORTAL_DIR if root == BASE else root
-    return os.path.join(base, "calculators", name)
+    return os.path.join(base, "calculators", "HRC - Copy.csv")
 
 
 def ff_path() -> str:
