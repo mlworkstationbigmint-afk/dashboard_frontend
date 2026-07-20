@@ -1494,3 +1494,6 @@ surfaces follow the role. Acceptable for the current build.
   calc_import_price, calc_cost) given `role=heading`/`aria-level=4` — real heading semantics for the
   numbered pipeline steps, kept as divs to avoid Streamlit's markdown anchor icon (same trick as
   `section_title`). Note: the methodology page itself no longer uses `.bm-flow` (it's on `.bm-engine`).
+- **2026-07-20 (polish):** Added a brand-accent `:focus-visible` ring (2px outline + soft glow) for
+  `.stButton`/`.stDownloadButton`/`.stLinkButton` in `theme.py` — keyboard focus was previously the
+  browser default only. Closes the last `/impeccable audit` residual. App-wide audit now clean.

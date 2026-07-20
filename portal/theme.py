@@ -261,6 +261,14 @@ div[data-testid="stHorizontalBlock"] {{ align-items: stretch; }}
     border-color:var(--bm-primary); color:var(--bm-primary); background:var(--bm-primary-soft);
 }}
 .stButton > button[kind="primary"] {{ box-shadow:0 2px 8px rgba(2,76,161,.25); }}
+/* keyboard focus ring — brand accent, on every st.button / download / link (was relying on the
+   browser default outline only). :focus-visible so mouse clicks don't show the ring, keyboard does. */
+.stButton > button:focus-visible,
+.stDownloadButton > button:focus-visible,
+.stLinkButton > a:focus-visible {{
+    outline:2px solid var(--bm-accent) !important; outline-offset:2px !important;
+    box-shadow:0 0 0 4px rgba(238,78,36,.18) !important;
+}}
 
 /* ---------- Log out button: invert (orange) on hover ---------- */
 div[class*="st-key-logout_top"] button:hover {{
