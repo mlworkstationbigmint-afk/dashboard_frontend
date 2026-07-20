@@ -1490,3 +1490,7 @@ surfaces follow the role. Acceptable for the current build.
   `_cobrand_logo_html`) → solid `PRIMARY`; login `::placeholder` set to `#6b7686` (was failing-contrast
   browser default). **optimize + adapt:** assessed, no change — Plotly CDN is HTTP-cached across iframes
   with a working fallback (not worth vendoring); the 270px view-switch pill fits all real viewports (≥320px).
+- **2026-07-20 (harden):** `.bm-flow-t` step-flow titles in the three calculators (calc_elasticity,
+  calc_import_price, calc_cost) given `role=heading`/`aria-level=4` — real heading semantics for the
+  numbered pipeline steps, kept as divs to avoid Streamlit's markdown anchor icon (same trick as
+  `section_title`). Note: the methodology page itself no longer uses `.bm-flow` (it's on `.bm-engine`).

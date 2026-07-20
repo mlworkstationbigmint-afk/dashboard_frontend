@@ -330,7 +330,7 @@ def _methodology_infographic():
             "<div class='bm-flow-step'>"
             f"<div class='num'>{i}</div>"
             f"<div class='ic'>{theme.icon(ic, 20)}</div>"
-            f"<div class='bm-flow-t'>{title}</div>"
+            f"<div class='bm-flow-t' role='heading' aria-level='4'>{title}</div>"
             f"<p>{desc}</p>"
             f"<div class='bm-eq'>{eq}</div></div>"
         )
