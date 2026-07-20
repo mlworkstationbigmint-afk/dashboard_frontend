@@ -561,6 +561,9 @@ ul[role="listbox"] li {{
    option is Active; the transform transition makes it glide. Geometry: track 270px, 4px inset,
    two equal halves -> pill w=131 (=(270-8)/2), parks at x=4 / x=135 — recompute both if the track
    width changes. Fallback: without :has() the pill stays left (active label still orange/bold). */
+/* the keyed container stretches full-width by default (flex child) — hug the 270px pill instead,
+   so the switch (and its tour highlight) only spans its own width, not the whole row. */
+.st-key-fc_view_box {{ width:fit-content !important; }}
 .st-key-fc_view_box div[role="radiogroup"] {{
     position:relative !important; display:flex !important; width:270px !important;
     min-width:270px !important; max-width:270px !important;
