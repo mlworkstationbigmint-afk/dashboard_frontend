@@ -129,7 +129,7 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
      desc:"You’re on <b>Price Forecasting</b>. Start here — switch between commodity groups: HRC, HR Plate, Rebar and Structural section."},
     {nav:"Forecasting", el:function(){return document.querySelector(".st-key-fc_view_box");}, title:"Graphical / Tabular",
      desc:"Slide this switch to flip between the chart and the week-by-week Actual-vs-Forecast table."},
-    {nav:"Forecasting", el:function(){return document.querySelector(".st-key-fc_loc_box");}, title:"Location", side:"left",
+    {nav:"Forecasting", el:function(){return document.querySelector(".st-key-fc_loc_box");}, title:"Location", side:"bottom",
      desc:"Pick the exact grade/location within the group — it applies to both the chart and the table."},
     {nav:"Forecasting", el:chart, title:"Forecast chart",
      desc:"Light-blue = actual spot, red dashed = the 12-week Ensemble forecast (violet = China import-parity landed cost on HRC). Hover any point for its price; use the zoom buttons just above the plot (1W…ALL)."},
