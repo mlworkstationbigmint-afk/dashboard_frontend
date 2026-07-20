@@ -1710,13 +1710,14 @@ def page_performance():
     view = df.dropna(subset=["Actual", "Forecast"]).reset_index(drop=True)   # all rows from the sheet
     kpis = dl.accuracy_kpis(view)
 
-    k1, k2, k3 = st.columns(3)
-    k1.markdown(theme.kpi_card("Absolute accuracy (MAPA)",
-                f"{kpis['mapa']:.1f}%" if kpis['mapa'] is not None else "-", f"100 - mean abs % error · {len(view)} wk", theme.icon("target")), unsafe_allow_html=True)
-    k2.markdown(theme.kpi_card("Directional accuracy",
-                f"{kpis['dir_acc']:.0f}%" if kpis['dir_acc'] is not None else "-", "correct up/down/flat calls", theme.icon("gauge")), unsafe_allow_html=True)
-    k3.markdown(theme.kpi_card("Delta accuracy",
-                f"{kpis['delta_acc']:.0f}%" if kpis['delta_acc'] is not None else "-", "avg weekly move capture", theme.icon("trending")), unsafe_allow_html=True)
+    with st.container(key="perf_kpis"):        # stable anchor for the analyst walkthrough (tour.py)
+        k1, k2, k3 = st.columns(3)
+        k1.markdown(theme.kpi_card("Absolute accuracy (MAPA)",
+                    f"{kpis['mapa']:.1f}%" if kpis['mapa'] is not None else "-", f"100 - mean abs % error · {len(view)} wk", theme.icon("target")), unsafe_allow_html=True)
+        k2.markdown(theme.kpi_card("Directional accuracy",
+                    f"{kpis['dir_acc']:.0f}%" if kpis['dir_acc'] is not None else "-", "correct up/down/flat calls", theme.icon("gauge")), unsafe_allow_html=True)
+        k3.markdown(theme.kpi_card("Delta accuracy",
+                    f"{kpis['delta_acc']:.0f}%" if kpis['delta_acc'] is not None else "-", "avg weekly move capture", theme.icon("trending")), unsafe_allow_html=True)
 
     st.write("")
     theme.section_title("Actual vs forecast", theme.icon("trending"))

@@ -86,6 +86,12 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       var t = btn.getAttribute("data-testid") || "";
       return t.indexOf("primary") >= 0 || !!btn.querySelector('[data-testid*="primary"]');
     }
+    function tabBtn(txt){   // a tab in the current page's st.tabs strip, matched by label text
+      var m = main(); if(!m) return null;
+      var bs = m.querySelectorAll('[data-testid="stTab"], button[role="tab"]'), t = txt.toLowerCase();
+      for (var i=0;i<bs.length;i++){ if((bs[i].innerText||"").toLowerCase().indexOf(t) >= 0) return bs[i]; }
+      return null;
+    }
 
     // ---- steps (nav = visible nav-button text the step lives on) ----
     var STEPS = [
@@ -113,25 +119,57 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
      desc:"Shortcut cards — click any one to jump straight into that module."},
     {nav:"Home", el:function(){return document.querySelector(".st-key-home_methodology");}, title:"Methodology banner",
      desc:"A one-click jump to the methodology explainer."},
-    // ---- cross-page ----
-    {nav:"Forecasting", el:main, title:"Price Forecasting page",
-     desc:"Pick a product group in the tabs at the top (HRC / HR Plate / Rebar / Structural). Below are the view controls, the chart, the price cards and a forecast rationale."},
+    // ---- cross-page: Price Forecasting ----
+    {nav:"Forecasting", el:function(){return document.querySelector(".st-key-fc_group");}, title:"Product groups",
+     desc:"You’re on <b>Price Forecasting</b>. Start here — switch between commodity groups: HRC, HR Plate, Rebar and Structural section."},
     {nav:"Forecasting", el:function(){return document.querySelector(".st-key-fc_view_box");}, title:"Graphical / Tabular",
      desc:"Slide this switch to flip between the chart and the week-by-week Actual-vs-Forecast table."},
     {nav:"Forecasting", el:function(){return document.querySelector(".st-key-fc_loc_box");}, title:"Location", side:"left",
-     desc:"Choose the delivery location for the selected product group."},
+     desc:"Pick the exact grade/location within the group — it applies to both the chart and the table."},
     {nav:"Forecasting", el:chart, title:"Forecast chart",
-     desc:"Light-blue = actual spot, red dashed = the 12-week Ensemble forecast. Hover any point for values, and use the zoom buttons just above the plot (1W…ALL)."},
-    {nav:"Analyst calls", el:main, title:"Analyst Calls page",
-     desc:"Each card is a monthly call — headline summary, a sectioned breakdown of price drivers, and live <b>Download PDF / PPT</b> buttons for the deck."},
-    {nav:"Performance", el:main, title:"Performance Dashboard page",
-     desc:"MAPA, directional hit-rate and average delta up top; then actual-vs-forecast, weekly delta bars, an accuracy-% line and a week-wise table."},
-    {nav:"Scenario Simulation", el:main, title:"Calculators page",
-     desc:"Three tabs of interactive what-if tools — edit the inputs and the outputs recompute live."},
-    {nav:"Methodology", el:main, title:"Methodology page",
-     desc:"The end-to-end pipeline: data → signals → ML + sentiment → ensemble → 12-week forecast → accuracy, plus the key price factors and governance."},
+     desc:"Light-blue = actual spot, red dashed = the 12-week Ensemble forecast (violet = China import-parity landed cost on HRC). Hover any point for its price; use the zoom buttons just above the plot (1W…ALL)."},
+    {nav:"Forecasting", el:function(){return document.querySelector(".st-key-fc_horizon");}, title:"Forecast horizon", side:"left",
+     desc:"Choose 1 / 4 / 8 / 12 weeks ahead — it drives both how far the forecast is drawn and the forecast card below."},
+    {nav:"Forecasting", el:function(){return q(['.bm-vcards']);}, title:"Price cards & rationale", side:"left",
+     desc:"The last actual spot, the selected-horizon forecast with an up/down/flat chip, and a short <b>forecast rationale</b> explaining the call."},
+    // ---- cross-page: Analyst Calls ----
+    {nav:"Analyst calls", el:function(){return q(['[class*="st-key-callcard_"]']);}, title:"Analyst call card",
+     desc:"You’re on <b>Analyst Calls</b>. Each card is a monthly market-outlook call — its date, title and a headline summary."},
+    {nav:"Analyst calls", el:function(){return q(['.bm-call-secs']);}, title:"Driver breakdown",
+     desc:"A one-line read per theme: Flats, Longs, Raw materials, Imports &amp; exports, and the Outlook."},
+    {nav:"Analyst calls", el:function(){return q(['[class*="st-key-pdf_"]']);}, title:"Downloads",
+     desc:"Grab the full market-summary <b>report (PDF)</b>, the analyst-call <b>pitchdeck (PPT)</b>, and a video link where available."},
+    // ---- cross-page: Performance ----
+    {nav:"Performance", el:function(){return document.querySelector(".st-key-perf_group");}, title:"Commodity group",
+     desc:"You’re on the <b>Performance Dashboard</b>. Same group tabs as Forecasting — HRC / HR Plate / Rebar / Structural."},
+    {nav:"Performance", el:function(){return document.querySelector(".st-key-perf_loc_box");}, title:"Location", side:"left",
+     desc:"Pick the grade/location whose forecast accuracy you want to score."},
+    {nav:"Performance", el:function(){return document.querySelector(".st-key-perf_kpis");}, title:"Accuracy scorecard",
+     desc:"Headline metrics: absolute accuracy (MAPA), directional hit-rate, and delta accuracy over all weeks."},
+    {nav:"Performance", el:chart, title:"Accuracy charts & table",
+     desc:"Actual vs forecast, then weekly delta, weekly absolute accuracy %, directional hits and delta accuracy — scroll for all of them, with a week-wise detail table at the bottom."},
+    // ---- cross-page: Calculators ----
+    {nav:"Scenario Simulation", el:function(){return q(['[data-testid="stTabs"] [role="tablist"]','[data-testid="stTabs"]']);}, title:"Three what-if tools",
+     desc:"You’re in the <b>Calculators</b>. Switch tools with these tabs — each recomputes live as you edit."},
+    {nav:"Scenario Simulation", el:function(){return tabBtn("Price Sensitivity");}, title:"Price Sensitivity",
+     desc:"Shock the key drivers (±%) and see the modelled price impact and each driver’s contribution."},
+    {nav:"Scenario Simulation", el:function(){return tabBtn("Landed Cost");}, title:"Landed Cost",
+     desc:"Compare the imported (landed, duty-paid) price vs the domestic benchmark — import parity per origin."},
+    {nav:"Scenario Simulation", el:function(){return tabBtn("Cost Head");}, title:"Cost Head",
+     desc:"Build production cost element-by-element and compare against market price to read the mill margin."},
+    // ---- cross-page: Methodology ----
+    {nav:"Methodology", el:function(){return q(['.bm-meth-hero']);}, title:"Methodology",
+     desc:"Last stop — <b>Methodology</b>. How the forecast is built: a hybrid ML approach on 15+ years of BigMint-assessed prices."},
+    {nav:"Methodology", el:function(){return q(['.bm-stat-row']);}, title:"Track record",
+     desc:"Headline accuracy: ~98% absolute, plus directional &amp; delta accuracy, and an IOSCO-audited method."},
+    {nav:"Methodology", el:function(){return q(['.bm-engine']);}, title:"The pipeline",
+     desc:"Inputs (prices, cost &amp; macro signals) → the forecasting model → outputs (12-week path, direction, back-checked accuracy)."},
+    {nav:"Methodology", el:function(){return q(['.bm-factor-grid']);}, title:"Key factors",
+     desc:"The drivers the model weighs — cost, value-chain, global parity, supply/demand and macro."},
+    {nav:"Methodology", el:function(){return q(['.bm-horizon']);}, title:"Horizon",
+     desc:"This dashboard runs the weekly model: a 12-week rolling forecast refreshed every week."},
     {nav:"Home", title:"You’re all set 🎉",
-     desc:"That’s the tour. Click <b>Take a tour</b> (bottom-right) any time to see it again. Happy forecasting!"}
+     desc:"That’s the full tour. Click <b>🧭 Take a tour</b> (bottom-right) any time to replay it. Happy forecasting!"}
   ];
 
     // ---- controller ----
