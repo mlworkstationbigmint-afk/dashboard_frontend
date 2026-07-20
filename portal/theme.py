@@ -759,11 +759,8 @@ def section_title(text: str, icon: str = ""):
 
 
 def footer():
-    # Co-brand follows the logged-in role (same as the topbar); the login screen (no user)
-    # and internal roles with no co-brand show BigMint only.
-    user = st.session_state.get("user")
-    label = profile_for(user.get("role") if user else None).get("cobrand_label") if user else ""
-    brand = f"BigMint - {label.title()}" if label else "BigMint"
+    # Footer is BigMint-only (co-brand lives in the topbar chip, not here).
+    brand = "BigMint"
     st.markdown(
         "<div class='bm-footer'>"
         "<span>AI-generated forecasts are indicative.</span>"
