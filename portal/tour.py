@@ -230,4 +230,4 @@ def render(user):
     # hidden container (theme.py `.st-key-bm_tour_mount` display:none) — off the flex flow so it
     # adds no gap; the iframe still loads + runs its JS (same trick as the cookie manager).
     with st.container(key="bm_tour_mount"):
-        st.iframe(doc_path, height=0)
+        st.iframe(doc_path, height=1)   # min positive height (1.59 rejects 0); container is display:none anyway
