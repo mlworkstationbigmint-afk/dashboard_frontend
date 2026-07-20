@@ -92,6 +92,11 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       for (var i=0;i<bs.length;i++){ if((bs[i].innerText||"").toLowerCase().indexOf(t) >= 0) return bs[i]; }
       return null;
     }
+    function ensureTab(txt){   // click a calculators tab if it isn't already the active one (client-side, no rerun)
+      var b = tabBtn(txt);
+      if (b && b.getAttribute("aria-selected") !== "true") b.click();
+    }
+    function visible(el){ return !!(el && el.getClientRects().length); }   // laid-out (not a hidden tab panel)
 
     // ---- steps (nav = visible nav-button text the step lives on) ----
     var STEPS = [
@@ -148,15 +153,30 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
      desc:"Headline metrics: absolute accuracy (MAPA), directional hit-rate, and delta accuracy over all weeks."},
     {nav:"Performance", el:chart, title:"Accuracy charts & table",
      desc:"Actual vs forecast, then weekly delta, weekly absolute accuracy %, directional hits and delta accuracy — scroll for all of them, with a week-wise detail table at the bottom."},
-    // ---- cross-page: Calculators ----
+    // ---- cross-page: Calculators (deep) ----
     {nav:"Scenario Simulation", el:function(){return q(['[data-testid="stTabs"] [role="tablist"]','[data-testid="stTabs"]']);}, title:"Three what-if tools",
-     desc:"You’re in the <b>Calculators</b>. Switch tools with these tabs — each recomputes live as you edit."},
-    {nav:"Scenario Simulation", el:function(){return tabBtn("Price Sensitivity");}, title:"Price Sensitivity",
-     desc:"Shock the key drivers (±%) and see the modelled price impact and each driver’s contribution."},
-    {nav:"Scenario Simulation", el:function(){return tabBtn("Landed Cost");}, title:"Landed Cost",
-     desc:"Compare the imported (landed, duty-paid) price vs the domestic benchmark — import parity per origin."},
-    {nav:"Scenario Simulation", el:function(){return tabBtn("Cost Head");}, title:"Cost Head",
-     desc:"Build production cost element-by-element and compare against market price to read the mill margin."},
+     desc:"You’re in the <b>Calculators</b> — three tools live in these tabs. We’ll open each one. Everything recomputes live as you edit."},
+    // Price Sensitivity
+    {nav:"Scenario Simulation", tab:"Price Sensitivity", el:function(){return document.querySelector(".st-key-sens_prod");}, title:"Price Sensitivity → product",
+     desc:"<b>Tool 1 — Price Sensitivity.</b> Pick the product to analyse (HRC / HR Plate / Rebar)."},
+    {nav:"Scenario Simulation", tab:"Price Sensitivity", el:function(){return q(['[class*="st-key-sens_knobwrap"]']);}, title:"Driver shocks",
+     desc:"Each card is a price driver — drag the slider or type a ±% shock (presets and a per-driver reset included). Switch to the <b>Table</b> mode to type exact values."},
+    {nav:"Scenario Simulation", tab:"Price Sensitivity", el:chart, title:"Contribution graph",
+     desc:"Shows how your shocks flow through to the predicted price move, and each driver’s contribution. A <b>Table of changes</b> tab sits beside it."},
+    {nav:"Scenario Simulation", tab:"Price Sensitivity", el:function(){return q(['[class*="st-key-sens_cur_"]']);}, title:"Current price & reset", side:"left",
+     desc:"Set the current price the shocks are applied to; the predicted-move cards sit right below, with a one-click ‘reset all shocks’."},
+    // Landed Cost
+    {nav:"Scenario Simulation", tab:"Landed Cost", el:function(){return q(['[class*="st-key-imp_results"]']);}, title:"Landed Cost → verdict",
+     desc:"<b>Tool 2 — Landed Cost.</b> Imported (landed, duty-paid) price by origin vs the domestic benchmark — tells you whether importing is viable."},
+    {nav:"Scenario Simulation", tab:"Landed Cost", el:function(){return q(['[class*="st-key-imp_btnrow"]']);}, title:"Scenario inputs",
+     desc:"Edit the per-location inputs above (FOB, freight, BCD/cess/safeguard, port), then <b>Calculate</b> — or Reset to the admin defaults."},
+    {nav:"Scenario Simulation", tab:"Landed Cost", el:function(){return q(['[class*="st-key-imp_fx"]']);}, title:"FX sensitivity",
+     desc:"Landed cost recomputed across a range of USD→INR rates, so you can see how currency swings shift import parity."},
+    // Cost Head
+    {nav:"Scenario Simulation", tab:"Cost Head", el:function(){return q(['[class*="st-key-cost_prod_"]']);}, title:"Cost Head → route & product",
+     desc:"<b>Tool 3 — Cost Head.</b> Pick a route (BF / IF) and product to build its ex-works production cost."},
+    {nav:"Scenario Simulation", tab:"Cost Head", el:chart, title:"Cost build-up vs market",
+     desc:"A stacked per-plant cost build-up (one segment per cost element) vs the market price, with the mill margin overlaid. Every input in the table below is editable."},
     // ---- cross-page: Methodology ----
     {nav:"Methodology", el:function(){return q(['.bm-meth-hero']);}, title:"Methodology",
      desc:"Last stop — <b>Methodology</b>. How the forecast is built: a hybrid ML approach on 15+ years of BigMint-assessed prices."},
@@ -191,8 +211,10 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
         // after a nav click, wait for the target page to actually become active before we read the
         // DOM — otherwise we'd grab the OLD page's element (the rerun swap is async).
         if (navigating && !isActive(navBtn(s.nav)) && (+new Date() - t0) < 5000){ setTimeout(poll, 120); return; }
+        if (s.tab) ensureTab(s.tab);   // activate the right calculators tab so its content is visible
         var el = s.el ? s.el() : null;
-        if (s.el && !el && tries++ < 45){ setTimeout(poll, 120); return; }   // then wait for the step element
+        // require the element to be VISIBLE (not a hidden st.tabs panel), else keep waiting
+        if (s.el && !visible(el) && tries++ < 45){ setTimeout(poll, 120); return; }
         show(s, el, i);
       })();
     }
