@@ -62,10 +62,12 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       // lift the spotlighted element above the overlay — some app elements (e.g. the pulled-up location
       // dropdown) set their own z-index/stacking context that would otherwise keep them dimmed
       + ".driver-active-element{position:relative !important;z-index:2147483200 !important}"
-      + "#bm-tour-launch{position:fixed;right:18px;bottom:18px;z-index:2147482000;background:#024CA1;color:#fff;"
-      + "border:none;border-radius:999px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;"
-      + "box-shadow:0 8px 22px rgba(2,18,43,.30);font-family:inherit}"
-      + "#bm-tour-launch:hover{background:#EE4E24}";
+      // launcher lives INSIDE the blue topbar (.bm-topbar-r), just left of the Log out button ->
+      // white pill on the blue bar, accent-red on hover (matches the Log out invert)
+      + "#bm-tour-launch{background:#fff;color:#024CA1;border:none;border-radius:999px;padding:7px 15px;"
+      + "font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;"
+      + "box-shadow:0 2px 8px rgba(2,18,43,.20)}"
+      + "#bm-tour-launch:hover{background:#EE4E24;color:#fff}";
     document.head.appendChild(stl);
 
     // ---- parent-DOM helpers ----
@@ -104,7 +106,7 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
     // ---- steps (nav = visible nav-button text the step lives on) ----
     var STEPS = [
     {nav:"Home", title:"Welcome 👋",
-     desc:"This is the BigMint · AI Labs steel price-forecasting portal. Here’s a quick tour of what every part does. Use <b>Next</b> to move on, or close (×) to skip — you can replay it anytime from the <b>Take a tour</b> button, bottom-right."},
+     desc:"This is the BigMint · AI Labs steel price-forecasting portal. Here’s a quick tour of what every part does. Use <b>Next</b> to move on, or close (×) to skip — you can replay it anytime from the <b>Take a tour</b> button, top-right beside <b>Log out</b>."},
     {nav:"Home", el:function(){return document.querySelector(".st-key-bm_topnav");},
      title:"Top navigation", desc:"Your main menu — every button opens a section of the portal. We’ll walk through each one."},
     {nav:"Home", el:function(){return navBtn("Home");}, title:"Home",
@@ -192,7 +194,7 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
     {nav:"Methodology", el:function(){return q(['.bm-horizon']);}, title:"Horizon",
      desc:"This dashboard runs the weekly model: a 12-week rolling forecast refreshed every week."},
     {nav:"Home", title:"You’re all set 🎉",
-     desc:"That’s the full tour. Click <b>🧭 Take a tour</b> (bottom-right) any time to replay it. Happy forecasting!"}
+     desc:"That’s the full tour. Click <b>🧭 Take a tour</b> (top-right, beside Log out) any time to replay it. Happy forecasting!"}
   ];
 
     // ---- controller ----
@@ -253,7 +255,11 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       var b = document.createElement("button");
       b.id = "bm-tour-launch"; b.type = "button"; b.textContent = "🧭 Take a tour";
       b.addEventListener("click", start);
-      document.body.appendChild(b);
+      // ponytail: append into the blue topbar's right slot; survives reruns because the topbar
+      // markdown HTML is identical each run (React skips the innerHTML re-set). Falls back to body
+      // if the bar isn't present. If it ever vanishes on rerun, upgrade to a MutationObserver.
+      var host = document.querySelector(".bm-topbar-r") || document.body;
+      host.appendChild(b);
     }
 
     // custom-button handlers via event delegation (robust to CSP / popover re-renders — no inline onclick)

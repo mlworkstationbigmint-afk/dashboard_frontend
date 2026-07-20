@@ -59,7 +59,7 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 | `auth.py` | Auth core (UI-agnostic, no users in-file): argon2id verify + lockout, JWT cookie sessions (`create_session`/`resolve_session`/`logout`), user CRUD helpers |
 | `db.py` | Neon Postgres layer (SQLAlchemy): schema (`users`/`sessions`/`audit_log`/`role_commodities`) + queries + config resolution (`database_url` / `session_signing_key`) |
 | `seed_users.py` | One-time seeder: creates the first users with random temp passwords → git-ignored `.streamlit/seed_credentials.txt` (`--force` to reset) |
-| `tour.py` | **Analyst-only guided walkthrough** (driver.js CDN). Hidden bootstrap iframe (`render(user)`, gated to role `analyst`) injects a cross-page product tour into the parent doc; auto-shows once per browser + a floating replay button. Steps in the JS `STEPS` array |
+| `tour.py` | **Analyst-only guided walkthrough** (driver.js CDN). Hidden bootstrap iframe (`render(user)`, gated to role `analyst`) injects a cross-page product tour into the parent doc; auto-shows once per browser + a replay button (🧭 Take a tour) docked in the blue topbar's right slot (`.bm-topbar-r`), just left of Log out. Steps in the JS `STEPS` array |
 | `data_loader.py` | Cached readers for forecast_forward + accuracy tables |
 | `calculators/calc_import_price.py` | tab **"Landed Cost"** (import vs landed-cost parity, HRC) |
 | `calculators/calc_cost.py` | tab **"Cost Head"** (production cost & margin) |
