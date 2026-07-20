@@ -59,6 +59,9 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       + ".driver-popover.bm-pop .bm-meta{margin-top:10px;font-size:11px;color:#94a3b8}"
       + ".driver-overlay,svg.driver-overlay{z-index:2147483000 !important}"
       + ".driver-popover{z-index:2147483600 !important}"   // MUST sit above the overlay or clicks are swallowed
+      // lift the spotlighted element above the overlay — some app elements (e.g. the pulled-up location
+      // dropdown) set their own z-index/stacking context that would otherwise keep them dimmed
+      + ".driver-active-element{position:relative !important;z-index:2147483200 !important}"
       + "#bm-tour-launch{position:fixed;right:18px;bottom:18px;z-index:2147482000;background:#024CA1;color:#fff;"
       + "border:none;border-radius:999px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;"
       + "box-shadow:0 8px 22px rgba(2,18,43,.30);font-family:inherit}"

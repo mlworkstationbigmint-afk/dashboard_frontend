@@ -21,7 +21,7 @@ import db
 import auth
 
 SEED_USERS = [
-    ("adani",   "Adani User",      "Adani"),
+    ("adani",   "User",            "Adani"),
     ("admin",   "Administrator",   "Admin"),
     ("analyst", "BigMint Analyst", "Analyst"),
 ]

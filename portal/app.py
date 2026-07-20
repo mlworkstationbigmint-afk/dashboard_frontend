@@ -1873,7 +1873,7 @@ def page_methodology():
             for tag, title, desc in horizons
         ) + "</div>"
         st.markdown(hz, unsafe_allow_html=True)
-        st.markdown("<div class='bm-footnote'>This Adani dashboard surfaces the <b>12-week</b> horizon on the "
+        st.markdown("<div class='bm-footnote'>This dashboard surfaces the <b>12-week</b> horizon on the "
                     "headline Ensemble (Weighted Mean) line.</div>", unsafe_allow_html=True)
 
     st.write("")
