@@ -856,8 +856,6 @@ def page_home():
     n_products = len(products)
     allowed_pages = set(theme.profile_for(user.get("role"))["pages"])
     st.markdown("## Price Forecasting: Steel")
-    st.markdown(f"Welcome, **{user['name']}**. {n_products} steel "
-                f"product{'s' if n_products != 1 else ''}, 12-week Ensemble forecasts and week-wise accuracy.")
     st.write("")
 
     # "Last updated on" = the newest date an ACTUAL spot exists, read from the accuracy
