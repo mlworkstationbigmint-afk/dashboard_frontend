@@ -177,6 +177,9 @@ def inject_css():
    (height:0 would still cost one block gap). Hidden iframes still load + run JS, so cookie
    reads/writes keep working. */
 .st-key-portal_cm, div[class*="st-key-portal_cm"] {{ display: none !important; }}
+/* analyst walkthrough bootstrap (tour.py, key bm_tour_mount): same trick — a hidden iframe that
+   still runs its JS (drives a driver.js tour in the parent doc), off the flex flow so no gap. */
+.st-key-bm_tour_mount, div[class*="st-key-bm_tour_mount"] {{ display: none !important; }}
 /* no residual top offset from the app chrome: view container / main section flush to the
    viewport top; stDecoration is streamlit's coloured top strip. */
 [data-testid="stAppViewContainer"], [data-testid="stMain"] {{ padding-top: 0 !important; margin-top: 0 !important; }}

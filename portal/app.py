@@ -24,6 +24,7 @@ import auth
 import db
 import data_loader as dl
 import ai_fill
+import tour
 from calculators import calc_import_price, calc_cost, calc_elasticity
 
 st.set_page_config(
@@ -405,7 +406,9 @@ def top_nav():
 
 
 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)   # drop the nav a touch below the brand bar
-top_nav()
+with st.container(key="bm_topnav"):          # stable anchor for the analyst walkthrough (tour.py)
+    top_nav()
+tour.render(user)                            # analyst-only guided tour bootstrap (no-op for other roles)
 st.write("")
 
 
@@ -871,11 +874,12 @@ def page_home():
             mapas.append(k["mapa"])
     avg_mapa = sum(mapas) / len(mapas) if mapas else None
 
-    s1, s2, s3, s4 = st.columns(4)
-    s1.markdown(theme.kpi_card("Steel products", str(n_products), "tracked weekly", theme.icon("factory")), unsafe_allow_html=True)
-    s2.markdown(theme.kpi_card("Forecast horizon", "12 wk", "Ensemble Wgt-Mean", theme.icon("trending")), unsafe_allow_html=True)
-    s3.markdown(theme.kpi_card("Avg absolute accuracy", f"{avg_mapa:.1f}%" if avg_mapa else "-", f"MAPA, {n_weeks}-wk avg", theme.icon("target")), unsafe_allow_html=True)
-    s4.markdown(theme.kpi_card("Last updated on", last_update, "latest actual spot date", theme.icon("calendar")), unsafe_allow_html=True)
+    with st.container(key="bm_home_kpis"):     # stable anchor for the analyst walkthrough (tour.py)
+        s1, s2, s3, s4 = st.columns(4)
+        s1.markdown(theme.kpi_card("Steel products", str(n_products), "tracked weekly", theme.icon("factory")), unsafe_allow_html=True)
+        s2.markdown(theme.kpi_card("Forecast horizon", "12 wk", "Ensemble Wgt-Mean", theme.icon("trending")), unsafe_allow_html=True)
+        s3.markdown(theme.kpi_card("Avg absolute accuracy", f"{avg_mapa:.1f}%" if avg_mapa else "-", f"MAPA, {n_weeks}-wk avg", theme.icon("target")), unsafe_allow_html=True)
+        s4.markdown(theme.kpi_card("Last updated on", last_update, "latest actual spot date", theme.icon("calendar")), unsafe_allow_html=True)
 
     st.write("")
     st.markdown(f"<div class='bm-h bm-modules-h' role='heading' aria-level='2'>{theme.icon('home', 22)} Modules</div>",
