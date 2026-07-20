@@ -534,8 +534,10 @@ def _render_product(spec, key):
     vh = _view_height(n)
     with graph_ph.container():
         try:
+            # stable key (namespaced by the fragment's `key`) so Streamlit updates the chart in place
+            # on each shock edit instead of unmounting/re-plotting it — kills the redraw flash.
             st.plotly_chart(_contrib_figure(names, crs, vh), width="stretch",
-                            config={"displayModeBar": False})
+                            config={"displayModeBar": False}, key=f"elasticity_chart_{key}")
         except Exception:
             st.bar_chart(pd.DataFrame({"Rs./t": crs}))
         st.caption("Each bar = current price × driver shock. Green pushes the price up, red pulls it down.")

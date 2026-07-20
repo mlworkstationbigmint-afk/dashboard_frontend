@@ -1497,3 +1497,10 @@ surfaces follow the role. Acceptable for the current build.
 - **2026-07-20 (polish):** Added a brand-accent `:focus-visible` ring (2px outline + soft glow) for
   `.stButton`/`.stDownloadButton`/`.stLinkButton` in `theme.py` — keyboard focus was previously the
   browser default only. Closes the last `/impeccable audit` residual. App-wide audit now clean.
+- **2026-07-20 (calc chart jank):** Added stable `key=` to the `st.plotly_chart` in all three
+  calculators (calc_elasticity `elasticity_chart_{key}`, calc_import_price `landed_chart_{p}`,
+  calc_cost `cost_chart_{key}` — namespaced by each fragment's existing unique scope var so no
+  key collision across product/route views). Fixes the redraw flash when editing values: without a
+  key, the chart rendered into an `st.empty()` placeholder was unmounted + full-re-plotted every edit;
+  with a stable key Streamlit reuses the widget and updates in place. NOT the CDN (that's cache-hit).
+  If flash persists, next step is dropping the `st.empty()` chart placeholder (render in normal flow).

@@ -582,8 +582,11 @@ def _render_body(is_admin=False):
     with chart_ph.container():
         if view == VIEW_OPTS[0]:                   # Graphical
             try:
+                # stable key (namespaced by the adm/imp `p`) so Streamlit updates the chart in place
+                # on each cell edit instead of unmounting/re-plotting it — kills the redraw flash.
                 st.plotly_chart(_landed_figure(regions, results, domestic),
-                                width="stretch", config={"displayModeBar": False})
+                                width="stretch", config={"displayModeBar": False},
+                                key=f"landed_chart_{p}")
             except Exception:
                 st.bar_chart(pd.DataFrame({"Landed Rs./t": {r: results[r]["landed"] for r in regions}}))
             st.caption("Sorted cheapest → priciest. Colour shows distance from domestic parity "

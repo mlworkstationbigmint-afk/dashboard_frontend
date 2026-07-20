@@ -398,9 +398,11 @@ def _render_product(product, plants, key, is_if=False):
     # --- fill the chart ---
     with chart_ph.container():
         try:
+            # stable key (namespaced by the fragment's route+product `key`) so Streamlit updates the
+            # chart in place on each cost-cell edit instead of unmounting/re-plotting it — kills the flash.
             st.plotly_chart(
                 _cost_margin_figure(plants, edited, mkt_prices),
-                width="stretch", config={"displayModeBar": False})
+                width="stretch", config={"displayModeBar": False}, key=f"cost_chart_{key}")
         except Exception:
             st.bar_chart(pd.DataFrame({"Total cost": {n: totals[n] for n in plants}}))
         st.caption("Stacked bars = each cost element's contribution to the ex-works cost per plant "
