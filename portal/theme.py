@@ -55,9 +55,7 @@ def _adani_logo_html(height: int = 26) -> str:
             except Exception:
                 continue
     return ("<span style='font-weight:800;font-size:21px;letter-spacing:.2px;"
-            "background:linear-gradient(90deg,#1196C6,#6A4DA3,#C42A6B);"
-            "-webkit-background-clip:text;background-clip:text;"
-            "color:transparent;-webkit-text-fill-color:transparent;'>adani</span>")
+            f"color:{PRIMARY};'>adani</span>")
 
 
 # ---------------------------------------------------------------------------
@@ -129,10 +127,8 @@ def _cobrand_logo_html(profile: dict, height: int = 26) -> str:
     label = profile.get("cobrand_label") or ""
     if not label:
         return ""
-    return ("<span style='font-weight:800;font-size:21px;letter-spacing:.2px;"
-            "background:linear-gradient(90deg,#1196C6,#6A4DA3,#C42A6B);"
-            "-webkit-background-clip:text;background-clip:text;"
-            "color:transparent;-webkit-text-fill-color:transparent;'>" + html.escape(label) + "</span>")
+    return (f"<span style='font-weight:800;font-size:21px;letter-spacing:.2px;color:{PRIMARY};'>"
+            + html.escape(label) + "</span>")
 
 
 def apply_role_theme(profile: dict) -> None:
@@ -160,6 +156,13 @@ def inject_css():
     --bm-primary-dark: {PRIMARY_DARK};
     --bm-primary-soft: {PRIMARY_SOFT};
     --bm-accent: {ACCENT};
+    /* neutral ramp — NOT re-themed per role (apply_role_theme only overrides the --bm-primary/-accent
+       brand tokens above). grid.py keeps literal hexes: AgGrid's shadow DOM can't read this :root. */
+    --bm-border: #e8edf3;   /* card + control borders */
+    --bm-line:   #eef2f7;   /* hairline row separators / chart gridlines */
+    --bm-ink:    #334155;   /* body text on white surfaces */
+    /* semantic z-index scale: raise < sticky < overlay < splash (was arbitrary 99990/2147483647) */
+    --z-raise: 5; --z-sticky: 100; --z-overlay: 900; --z-overlay-top: 901; --z-splash: 1000;
 }}
 .stApp {{ background-color: {BG_SOFT}; }}
 /* full-bleed: fill the whole viewport width at any resolution (was capped at 1180px);
@@ -205,7 +208,7 @@ section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display
    any slow rerun. Pure CSS via ::before/::after — no JS, no extra DOM node. */
 @keyframes bm-spin {{ to {{ transform: rotate(360deg); }} }}
 [data-testid="stApp"]::before {{
-    content: ""; position: fixed; inset: 0; z-index: 99990;
+    content: ""; position: fixed; inset: 0; z-index: var(--z-overlay);
     background: rgba(244,246,250,0.55);
     -webkit-backdrop-filter: blur(1.5px); backdrop-filter: blur(1.5px);
     opacity: 0; visibility: hidden;
@@ -213,7 +216,7 @@ section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display
 }}
 [data-testid="stApp"]::after {{
     content: ""; position: fixed; top: 50%; left: 50%;
-    width: 54px; height: 54px; margin: -27px 0 0 -27px; z-index: 99991;
+    width: 54px; height: 54px; margin: -27px 0 0 -27px; z-index: var(--z-overlay-top);
     border-radius: 50%; border: 5px solid rgba(2,76,161,0.15);
     border-top-color: var(--bm-accent); border-right-color: var(--bm-primary);
     opacity: 0; visibility: hidden;
@@ -252,7 +255,7 @@ section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display
 div[data-testid="stHorizontalBlock"] {{ align-items: stretch; }}
 .stButton > button {{ border-radius: 9px; font-weight: 600; transition: all .15s ease; }}
 .stButton > button[kind="secondary"] {{
-    background:#fff; border:1px solid #dbe3ee; color:#334155;
+    background:#fff; border:1px solid #dbe3ee; color:var(--bm-ink);
 }}
 .stButton > button[kind="secondary"]:hover {{
     border-color:var(--bm-primary); color:var(--bm-primary); background:var(--bm-primary-soft);
@@ -273,7 +276,7 @@ div[class*="st-key-homemod_"] button {{
     height:100%; min-height:230px; flex-direction:column;
     align-items:flex-start; justify-content:center; gap:0;
     text-align:left; white-space:normal; padding:26px 24px 24px; border-radius:16px;
-    border:1px solid #e8edf3 !important; background:#fff !important;
+    border:1px solid var(--bm-border) !important; background:#fff !important;
     box-shadow:0 1px 2px rgba(16,24,40,.05); font-weight:400;
     transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
 }}
@@ -302,7 +305,7 @@ div[class*="st-key-home_methodology"] {{ margin-top:16px; }}
 div[class*="st-key-home_methodology"] button {{
     width:100%; min-height:92px; flex-direction:row; align-items:center; justify-content:flex-start;
     gap:18px; text-align:left; white-space:normal; padding:24px 28px; border-radius:18px;
-    border:1px solid #e8edf3 !important; color:var(--bm-primary-dark) !important; font-weight:400;
+    border:1px solid var(--bm-border) !important; color:var(--bm-primary-dark) !important; font-weight:400;
     background:#fff !important;
     box-shadow:0 1px 2px rgba(16,24,40,.05);
     transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
@@ -338,7 +341,7 @@ div[class*="st-key-home_methodology"] button:hover em {{ filter:brightness(.97);
 .dir-flat {{ background:#eef1f5; color:{NEUTRAL}; }}
 
 /* ---------- cards / KPIs ---------- */
-.bm-card {{ background:#fff; border:1px solid #e8edf3; border-radius:14px; padding:16px 18px; height:100%;
+.bm-card {{ background:#fff; border:1px solid var(--bm-border); border-radius:14px; padding:16px 18px; height:100%;
     box-shadow:0 1px 2px rgba(16,24,40,.04); transition:transform .18s ease, box-shadow .18s ease; }}
 .bm-card:hover {{ transform:translateY(-2px); box-shadow:0 8px 22px rgba(2,76,161,.10); }}
 .bm-kpi-top {{ display:flex; align-items:center; gap:8px; margin-bottom:6px; }}
@@ -356,15 +359,15 @@ div[class*="st-key-home_methodology"] button:hover em {{ filter:brightness(.97);
 .bm-call-date {{ color:{ACCENT}; font-size:11.5px; font-weight:700; letter-spacing:.06em;
     text-transform:uppercase; margin-bottom:3px; }}
 .bm-call-title {{ font-size:18px; font-weight:700; color:var(--bm-primary-dark); line-height:1.3; }}
-.bm-call-kinds {{ text-align:right; color:#94a3b8; font-size:11px; font-weight:600; letter-spacing:.04em;
+.bm-call-kinds {{ text-align:right; color:{NEUTRAL}; font-size:11px; font-weight:600; letter-spacing:.04em;
     text-transform:uppercase; padding-top:4px; }}
-.bm-call-summary {{ color:#334155; font-size:13.5px; line-height:1.6; margin:10px 0 2px; max-width:82%; }}
+.bm-call-summary {{ color:var(--bm-ink); font-size:13.5px; line-height:1.6; margin:10px 0 2px; max-width:82%; }}
 .bm-call-secs {{ margin:14px 0 2px 0; max-width:82%; }}
 .bm-call-sec {{ display:flex; gap:16px; padding:10px 2px; border-top:1px dashed #e6ebf2; font-size:13.5px; line-height:1.5; }}
 .bm-call-sec:first-child {{ border-top:none; }}
 .bm-call-sec-l {{ flex:0 0 150px; font-weight:700; color:var(--bm-primary-dark); }}
 .bm-call-sec-t {{ color:{NEUTRAL}; }}
-.bm-call-sep {{ border-top:1px solid #eef2f7; margin:14px 0 12px; }}
+.bm-call-sep {{ border-top:1px solid var(--bm-line); margin:14px 0 12px; }}
 /* analyst-call cards: spacing + modern buttons with orange hover (scoped to the card key so nav /
    Sign-in / Log-out buttons are untouched) */
 div[class*="st-key-callcard"] {{ margin-bottom:16px; }}
@@ -391,10 +394,10 @@ div[class*="st-key-callcard"] .stDownloadButton button:disabled {{ opacity:.5; }
 
 /* ---------- tables ---------- */
 .bm-table {{ width:100%; border-collapse:collapse; font-size:13.5px; background:#fff;
-    border:1px solid #e8edf3; border-radius:12px; overflow:hidden; }}
+    border:1px solid var(--bm-border); border-radius:12px; overflow:hidden; }}
 .bm-table thead th {{ background:var(--bm-primary); color:#fff; font-weight:800;
     padding:11px 12px; text-align:left; letter-spacing:.2px; }}
-.bm-table tbody td {{ padding:9px 12px; border-top:1px solid #eef2f7; color:#334155; }}
+.bm-table tbody td {{ padding:9px 12px; border-top:1px solid var(--bm-line); color:var(--bm-ink); }}
 .bm-table tbody tr:hover {{ background:#f7faff; }}
 /* forecast (future) rows in the continuous forecasting table -> faint orange band (matches chart) */
 .bm-table tbody tr.bm-fc-row {{ background:rgba(238,78,36,0.05); }}
@@ -455,7 +458,7 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
        height (was -58px under the default 1rem gap) — retune if either changes.
        ~85-char wide (660px) so the full descriptive product names (app.py FORECAST_LOCATION_LABELS)
        show in full on one line; capped at the viewport so it never overflows. */
-    width:660px; max-width:100%; margin-left:auto; margin-bottom:-52px; position:relative; z-index:5;
+    width:660px; max-width:100%; margin-left:auto; margin-bottom:-52px; position:relative; z-index:var(--z-raise);
 }}
 /* Performance page reuses the same dropdown, RIGHT-aligned in its own column on the SAME row as the
    group tab-strip (st.columns handles the row, so no negative pull-up needed). */
@@ -589,7 +592,7 @@ ul[role="listbox"] li {{
 .bm-meth-hero p {{ margin:0; font-size:14px; line-height:1.6; color:#dce8f8; max-width:860px; }}
 /* stat strip */
 .bm-stat-row {{ display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin:0 0 20px; }}
-.bm-stat {{ background:#fff; border:1px solid #e8edf3; border-radius:14px; padding:16px 18px; text-align:center;
+.bm-stat {{ background:#fff; border:1px solid var(--bm-border); border-radius:14px; padding:16px 18px; text-align:center;
     box-shadow:0 1px 2px rgba(16,24,40,.05); }}
 .bm-stat-v {{ font-size:24px; font-weight:800; color:var(--bm-primary-dark); line-height:1.1; }}
 .bm-stat-l {{ font-size:12.5px; color:{NEUTRAL}; margin-top:4px; }}
@@ -599,7 +602,7 @@ ul[role="listbox"] li {{
 .bm-flow {{ display:grid; grid-template-columns:1fr auto 1fr auto 1fr auto 1fr auto 1fr auto 1fr;
     align-items:stretch; gap:0 4px; margin:18px 0 14px; }}
 .bm-flow-step {{ display:flex; flex-direction:column; align-items:flex-start; text-align:left;
-    background:#fff; border:1px solid #e8edf3; border-radius:14px;
+    background:#fff; border:1px solid var(--bm-border); border-radius:14px;
     padding:22px 16px 16px; position:relative; box-shadow:0 1px 2px rgba(16,24,40,.05);
     transition:transform .15s ease, box-shadow .15s ease; }}
 .bm-flow-step:hover {{ transform:translateY(-2px); box-shadow:0 8px 20px rgba(2,76,161,.10); }}
@@ -616,11 +619,11 @@ ul[role="listbox"] li {{
     justify-content:center; color:var(--bm-accent); font-size:18px; font-weight:700; }}
 /* methodology engine infographic (Inputs -> Model -> Outputs); replaces the old numbered chain */
 .bm-engine {{ display:grid; grid-template-columns:1fr auto 1.15fr auto 1fr; align-items:stretch; gap:0 10px; margin:18px 0 14px; }}
-.bm-engine-col {{ background:#fff; border:1px solid #e8edf3; border-radius:14px; padding:16px 16px 14px; box-shadow:0 1px 2px rgba(16,24,40,.05); }}
+.bm-engine-col {{ background:#fff; border:1px solid var(--bm-border); border-radius:14px; padding:16px 16px 14px; box-shadow:0 1px 2px rgba(16,24,40,.05); }}
 .bm-engine-in {{ border-top:3px solid var(--bm-primary); }}
 .bm-engine-out {{ border-top:3px solid var(--bm-accent); }}
 .bm-engine-h {{ font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:{NEUTRAL}; margin:0 0 10px; }}
-.bm-chip {{ display:flex; align-items:center; gap:9px; background:#f6f8fc; border:1px solid #e8edf3; border-radius:10px; padding:9px 11px; margin:0 0 8px; font-size:12.5px; color:var(--bm-primary-dark); font-weight:600; line-height:1.3; }}
+.bm-chip {{ display:flex; align-items:center; gap:9px; background:#f6f8fc; border:1px solid var(--bm-border); border-radius:10px; padding:9px 11px; margin:0 0 8px; font-size:12.5px; color:var(--bm-primary-dark); font-weight:600; line-height:1.3; }}
 .bm-chip:last-child {{ margin-bottom:0; }}
 .bm-chip .ic {{ flex:0 0 24px; width:24px; height:24px; border-radius:7px; background:var(--bm-primary-soft); color:var(--bm-primary); display:flex; align-items:center; justify-content:center; }}
 .bm-engine-core {{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; background:linear-gradient(135deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%); color:#fff; border-radius:16px; padding:20px 18px; box-shadow:0 6px 22px rgba(2,76,161,.22); }}
@@ -630,7 +633,7 @@ ul[role="listbox"] li {{
 .bm-engine-arrow {{ display:flex; align-items:center; justify-content:center; color:var(--bm-accent); font-size:20px; font-weight:700; }}
 /* factor grid */
 .bm-factor-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:6px 0; }}
-.bm-factor {{ display:flex; gap:12px; align-items:flex-start; background:#fff; border:1px solid #e8edf3;
+.bm-factor {{ display:flex; gap:12px; align-items:flex-start; background:#fff; border:1px solid var(--bm-border);
     border-radius:14px; padding:14px 16px; box-shadow:0 1px 2px rgba(16,24,40,.05);
     transition:transform .15s ease, box-shadow .15s ease; }}
 .bm-factor:hover {{ transform:translateY(-2px); box-shadow:0 8px 20px rgba(2,76,161,.10); }}
@@ -640,7 +643,7 @@ ul[role="listbox"] li {{
 .bm-factor p {{ margin:0; font-size:12.5px; color:{NEUTRAL}; line-height:1.4; }}
 /* horizon cards */
 .bm-horizon-grid {{ display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin:6px 0; }}
-.bm-horizon {{ background:#fff; border:1px solid #e8edf3; border-top:3px solid var(--bm-accent); border-radius:14px;
+.bm-horizon {{ background:#fff; border:1px solid var(--bm-border); border-top:3px solid var(--bm-accent); border-radius:14px;
     padding:16px 18px; box-shadow:0 1px 2px rgba(16,24,40,.05); }}
 .bm-horizon h5 {{ margin:0 0 4px; font-size:15px; color:var(--bm-primary-dark); }}
 .bm-horizon p {{ margin:0; font-size:12.5px; color:{NEUTRAL}; line-height:1.5; }}
@@ -753,7 +756,8 @@ def module_card(title: str, desc: str, icon: str = "") -> str:
 
 def section_title(text: str, icon: str = ""):
     ic = f"{icon} " if icon else ""
-    st.markdown(f"<div class='bm-h'>{ic}{text}</div>", unsafe_allow_html=True)
+    # role/aria-level give screen readers a real heading without Streamlit's markdown-heading anchor icon.
+    st.markdown(f"<div class='bm-h' role='heading' aria-level='3'>{ic}{text}</div>", unsafe_allow_html=True)
 
 
 def footer():
@@ -788,7 +792,7 @@ def loading_screen():
           section.main footer {{ display: none !important; }}
 
           #bm-splash {{
-              position: fixed; inset: 0; z-index: 2147483647;
+              position: fixed; inset: 0; z-index: var(--z-splash);
               display: flex; align-items: center; justify-content: center;
               background: {BG_SOFT};
           }}

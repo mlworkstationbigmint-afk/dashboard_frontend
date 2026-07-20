@@ -1480,3 +1480,13 @@ surfaces follow the role. Acceptable for the current build.
   (consistent block gap, tuned hierarchy, correct grid/flex split, 1024/760 breakpoints); no rewrite.
   One fix applied: **Methodology stat strip** (`theme.py` `.bm-stat-row`) now steps **6→3→2** — added a
   `repeat(3,1fr)` at the 1024px breakpoint so the six tiles no longer cram on tablet (was 6→2 only at 760px).
+- **2026-07-20 (audit + fixes):** Ran `/impeccable audit` (scored 15/20, Good) then the recommended
+  commands. **clarify:** `.bm-call-kinds` + login reveal-eye recoloured `#94a3b8`→`#64748B` (were <4.5:1).
+  **extract:** neutral ramp tokenised — added `--bm-border`/`--bm-line`/`--bm-ink` to `:root` and replaced
+  the repeated literals `#e8edf3`(×10)/`#eef2f7`/`#334155` in `theme.py` (grid.py left literal — AgGrid
+  shadow DOM can't read `:root`). **harden:** section-title divs got `role=heading`/`aria-level` (keeps the
+  div, avoids Streamlit's anchor icon); arbitrary z-indexes (99990/99991/2147483647/5) replaced by a named
+  `--z-raise…--z-splash` scale. **polish:** gradient-text logo fallbacks (`_adani_logo_html`,
+  `_cobrand_logo_html`) → solid `PRIMARY`; login `::placeholder` set to `#6b7686` (was failing-contrast
+  browser default). **optimize + adapt:** assessed, no change — Plotly CDN is HTTP-cached across iframes
+  with a working fallback (not worth vendoring); the 270px view-switch pill fits all real viewports (≥320px).

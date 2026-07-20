@@ -210,6 +210,11 @@ LOGIN_CSS = """
 .st-key-reset_card [data-testid="stTextInput"] input {
     background: transparent !important; padding: 11px 13px !important; font-size: 14.5px !important;
     color: var(--bm-primary-dark) !important; }
+/* placeholder: #6b7686 ≈ 4.9:1 on white (default browser placeholder gray fails AA); opacity:1 so
+   Firefox/Safari don't dim it further. */
+.st-key-login_card [data-testid="stTextInput"] input::placeholder,
+.st-key-reset_card [data-testid="stTextInput"] input::placeholder {
+    color: #6b7686 !important; opacity: 1 !important; }
 /* keep browser autofill white (it was painting a tinted fill) */
 .st-key-login_card [data-testid="stTextInput"] input:-webkit-autofill,
 .st-key-reset_card [data-testid="stTextInput"] input:-webkit-autofill {
@@ -218,7 +223,7 @@ LOGIN_CSS = """
 /* reveal-password eye: muted, accent on hover */
 .st-key-login_card [data-testid="stTextInput"] button,
 .st-key-reset_card [data-testid="stTextInput"] button {
-    color: #94a3b8 !important; background: transparent !important; border: none !important; }
+    color: #64748B !important; background: transparent !important; border: none !important; }
 .st-key-login_card [data-testid="stTextInput"] button:hover,
 .st-key-reset_card [data-testid="stTextInput"] button:hover { color: var(--bm-accent) !important; }
 /* submit button: full-width, a touch taller/bolder; invert on hover (fill -> white, text -> accent) */
@@ -873,7 +878,7 @@ def page_home():
     s4.markdown(theme.kpi_card("Last updated on", last_update, "latest actual spot date", theme.icon("calendar")), unsafe_allow_html=True)
 
     st.write("")
-    st.markdown(f"<div class='bm-h bm-modules-h'>{theme.icon('home', 22)} Modules</div>",
+    st.markdown(f"<div class='bm-h bm-modules-h' role='heading' aria-level='2'>{theme.icon('home', 22)} Modules</div>",
                 unsafe_allow_html=True)
     # Descriptions are kept ~the same length (≈95 chars, ~2 lines) so they wrap to the same number of
     # lines in every card, keeping the cards visually aligned and the cards nicely filled.
