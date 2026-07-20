@@ -57,7 +57,8 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       + ".driver-popover.bm-pop .bm-next{background:#EE4E24;color:#fff;border-color:#EE4E24}"
       + ".driver-popover.bm-pop .bm-next:hover{background:#fff;color:#EE4E24}"
       + ".driver-popover.bm-pop .bm-meta{margin-top:10px;font-size:11px;color:#94a3b8}"
-      + ".driver-popover,.driver-overlay,svg.driver-overlay{z-index:2147483000 !important}"
+      + ".driver-overlay,svg.driver-overlay{z-index:2147483000 !important}"
+      + ".driver-popover{z-index:2147483600 !important}"   // MUST sit above the overlay or clicks are swallowed
       + "#bm-tour-launch{position:fixed;right:18px;bottom:18px;z-index:2147482000;background:#024CA1;color:#fff;"
       + "border:none;border-radius:999px;padding:9px 16px;font-size:13px;font-weight:700;cursor:pointer;"
       + "box-shadow:0 8px 22px rgba(2,18,43,.30);font-family:inherit}"
@@ -160,9 +161,9 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
 
     function show(s, el, i){
       var last = i === STEPS.length - 1;
-      var back = i > 0 ? '<button type="button" class="bm-b" onclick="window.__bmTourPrev()">&larr; Back</button>' : '';
+      var back = i > 0 ? '<button type="button" class="bm-b" data-bmact="prev">&larr; Back</button>' : '';
       var nav = '<div class="bm-nav">' + back
-              + '<button type="button" class="bm-b bm-next" onclick="window.__bmTourNext()">'
+              + '<button type="button" class="bm-b bm-next" data-bmact="next">'
               + (last ? "Finish ✓" : "Next →") + '</button></div>';
       var pop = {
         title: s.title,
@@ -192,9 +193,13 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       document.body.appendChild(b);
     }
 
-    // custom-button handlers (called from the popover HTML; controller runs in the parent realm)
-    window.__bmTourNext = function(){ step(idx + 1, 1); };
-    window.__bmTourPrev = function(){ step(idx - 1, -1); };
+    // custom-button handlers via event delegation (robust to CSP / popover re-renders — no inline onclick)
+    document.addEventListener("click", function(e){
+      var b = e.target && e.target.closest ? e.target.closest("[data-bmact]") : null;
+      if (!b) return;
+      e.preventDefault(); e.stopPropagation();
+      if (b.getAttribute("data-bmact") === "next") step(idx + 1, 1); else step(idx - 1, -1);
+    }, true);
 
     launcher();
     if (AUTO){ try { if (!localStorage.getItem("bm_tour_seen")) setTimeout(start, 650); } catch(e){} }
