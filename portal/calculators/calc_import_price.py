@@ -191,7 +191,7 @@ def _results_table(regions, results, domestic):
         usd = Js("function(p){return (p.value==null||isNaN(p.value))?''"
                  ":'$'+Math.round(p.value).toLocaleString('en-US');}")
         vsd = Js("function(p){if(p.value==null||isNaN(p.value))return '';var v=Math.round(p.value);"
-                 "return (v<0?'-':'+')+'INR'+Math.abs(v).toLocaleString('en-IN');}")
+                 "return (v<0?'-':'+')+'INR '+Math.abs(v).toLocaleString('en-IN');}")
         dec = Js("function(p){var v=(p.value||'').toString();"
                  "return {color:v.indexOf('NOT')>=0?'#D8382B':'#1F9D55','font-weight':'700'};}")
         gob.configure_column("Location", width=130)
@@ -251,13 +251,13 @@ def _landed_figure(regions, results, domestic):
             colorscale=[[0.0, theme.SUCCESS], [0.5, "#FBBF24"], [1.0, theme.DANGER]],
             line=dict(color="white", width=1.5), cornerradius=9,
         ),
-        text=[f"INR{int(v):,}" for v in landed_vals], textposition="outside",
+        text=[f"INR {int(v):,}" for v in landed_vals], textposition="outside",
         textfont=dict(size=12, color="#0f172a"),
-        cliponaxis=False, hovertemplate="<b>%{x}</b><br>Landed: INR%{y:,.0f}/t<extra></extra>",
+        cliponaxis=False, hovertemplate="<b>%{x}</b><br>Landed: INR %{y:,.0f}/t<extra></extra>",
     ))
     fig.add_hline(
         y=domestic, line=dict(color=theme.PRIMARY, width=2, dash="dash"),
-        annotation_text=f"  Domestic INR{int(domestic):,}/t  ", annotation_position="top left",
+        annotation_text=f"  Domestic INR {int(domestic):,}/t  ", annotation_position="top left",
         annotation_font=dict(color="white", size=12),
         annotation_bgcolor=theme.PRIMARY, annotation_bordercolor=theme.PRIMARY, annotation_borderpad=4,
     )
@@ -265,7 +265,7 @@ def _landed_figure(regions, results, domestic):
                       plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
                       font=dict(family="sans-serif", size=12, color="#334155"),
                       bargap=0.45, showlegend=False)
-    fig.update_yaxes(title_text="Landed cost (INR/t)", tickprefix="INR", tickformat=",.0f",
+    fig.update_yaxes(title_text="Landed cost (INR/t)", tickprefix="INR ", tickformat=",.0f",
                      gridcolor="#f1f5f9", zeroline=False,
                      range=[0, max(max(landed_vals), domestic) * 1.13])
     fig.update_xaxes(title_text="", tickfont=dict(size=12.5, color="#0f172a"))
@@ -465,13 +465,13 @@ def _render_body(is_admin=False):
         loc_edit = st.data_editor(
             loc_df, key=ekey, width="stretch", hide_index=False,
             column_config={
-                "Spot INR/t": st.column_config.NumberColumn("Spot INR/t", format="INR%.0f", disabled=True,
+                "Spot INR/t": st.column_config.NumberColumn("Spot INR/t", format="INR %.0f", disabled=True,
                             help="Derived: FOB × FX (read-only). Refreshes on Calculate."),
                 "FTA": st.column_config.CheckboxColumn("FTA?", help="Waives BCD + its cess for this origin."),
                 "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0,
                             help="Origin reference price — editable; press Calculate to apply."),
                 "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
-                "Port INR/t": st.column_config.NumberColumn("Port INR/t", format="INR%.0f", step=100.0,
+                "Port INR/t": st.column_config.NumberColumn("Port INR/t", format="INR %.0f", step=100.0,
                             help="Port handling & misc for this origin."),
                 "BCD %": st.column_config.NumberColumn("BCD %", format="%.1f", step=0.5,
                             help="Basic customs duty (FTA waives it)."),
@@ -565,16 +565,16 @@ def _render_body(is_admin=False):
     if viable:
         best_v = min(viable, key=lambda r: results[r]["landed"])
         msg = (f"{len(viable)} of {len(regions)} sources viable. "
-               f"Cheapest viable: {best_v} at INR{int(results[best_v]['landed']):,}/t "
-               f"(save INR{int(domestic - results[best_v]['landed']):,}/t vs domestic INR{int(domestic):,}).")
+               f"Cheapest viable: {best_v} at INR {int(results[best_v]['landed']):,}/t "
+               f"(save INR {int(domestic - results[best_v]['landed']):,}/t vs domestic INR {int(domestic):,}).")
         css = "mgmt-good"
     else:
-        msg = (f"Imports not viable. Domestic INR{int(domestic):,}/t beats the cheapest import "
-               f"({cheapest} INR{int(cl):,}/t) by INR{int(cl - domestic):,}/t.")
+        msg = (f"Imports not viable. Domestic INR {int(domestic):,}/t beats the cheapest import "
+               f"({cheapest} INR {int(cl):,}/t) by INR {int(cl - domestic):,}/t.")
         css = "mgmt-bad"
     mgmt_ph.markdown(f"<div class='mgmt-box {css}'>Management view: {msg}</div>", unsafe_allow_html=True)
     banner_ph.markdown(
-        f"<div class='kpi-banner'>Lowest cost source: {cheapest} — INR{int(cl):,}/t"
+        f"<div class='kpi-banner'>Lowest cost source: {cheapest} — INR {int(cl):,}/t"
         f"{'  (FTA)' if results[cheapest]['is_fta'] else ''}</div>",
         unsafe_allow_html=True,
     )
@@ -593,7 +593,7 @@ def _render_body(is_admin=False):
                        "(green = cheaper, amber ≈ parity, red = pricier). Dashed line = domestic benchmark.")
         else:                                      # Tabular
             _results_table(regions, results, domestic)
-            st.caption(f"Sorted cheapest → priciest vs domestic benchmark INR{int(domestic):,}/t.")
+            st.caption(f"Sorted cheapest → priciest vs domestic benchmark INR {int(domestic):,}/t.")
 
     # --- exchange-rate sensitivity ---
     _sec("Exchange-rate sensitivity (landed INR/t)", theme.icon("rupee"))
@@ -613,7 +613,7 @@ def _render_body(is_admin=False):
         gob.configure_grid_options(domLayout="autoHeight")
 
     grid.bm_grid(pd.DataFrame(fx_rows), key="imp_fx", configure=_fx_cfg, page_size=0, height=320)
-    st.caption(f"Domestic benchmark for reference: INR{int(domestic):,}/t.")
+    st.caption(f"Domestic benchmark for reference: INR {int(domestic):,}/t.")
 
     # --- methodology (modular, equation-heavy) + glossary ---
     _methodology_infographic()

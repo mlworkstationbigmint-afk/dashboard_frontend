@@ -431,7 +431,7 @@ def _style_fig(fig, height=430, money=True):
         font=dict(family="sans-serif", size=12, color="#334155"),
     )
     if money:
-        fig.update_yaxes(tickprefix="INR", tickformat=",.0f")
+        fig.update_yaxes(tickprefix="INR ", tickformat=",.0f")
     fig.update_yaxes(gridcolor="#eef2f7", zeroline=False, showline=False, automargin=True,
                      ticklabelstandoff=8)
     fig.update_xaxes(gridcolor="rgba(0,0,0,0)", showline=True, linecolor="#e2e8f0",
@@ -450,7 +450,7 @@ _PERF_ML = 68
 
 
 def _round50(x):
-    """Round a forecast value to the nearest INR50 (NaN/None pass through unchanged).
+    """Round a forecast value to the nearest INR 50 (NaN/None pass through unchanged).
     All displayed forecasts are rounded to 50 (cards, tables, chart line + hover)."""
     if x is None or pd.isna(x):
         return x
@@ -464,7 +464,7 @@ def _spot_trace(dates, vals, fill=False):
         x=[_dt(d) for d in dates], y=list(vals), name="Spot (actual)", mode="lines",
         line=dict(color=theme.SPOT_LINE, width=2.6, shape="spline", smoothing=0.4),
         cliponaxis=False,
-        hovertemplate="%{x|%d-%b-%y}<br><b>Spot Price: INR%{y:,.2f}</b><extra></extra>",
+        hovertemplate="%{x|%d-%b-%y}<br><b>Spot Price: INR %{y:,.2f}</b><extra></extra>",
         hoverlabel=dict(bgcolor="white", bordercolor="#cfe0f5", font=dict(color=theme.SPOT_DARK)),
         **extra)
 
@@ -602,14 +602,14 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
                 x=[_dt(d) for d in l_dates], y=list(l_vals), name="China landed", mode="lines",
                 line=dict(color=CHINA_LANDED_LINE, width=2.4, shape="spline", smoothing=0.4),
                 cliponaxis=False,
-                hovertemplate="%{x|%d-%b-%y}<br><b>China landed: INR%{y:,.0f}</b><extra></extra>",
+                hovertemplate="%{x|%d-%b-%y}<br><b>China landed: INR %{y:,.0f}</b><extra></extra>",
                 hoverlabel=dict(bgcolor="white", bordercolor="#ddd0f0", font=dict(color=CHINA_LANDED_LINE))))
         fig.add_trace(go.Scatter(
             x=[_dt(d) for d in fc_dates], y=fc_vals, name="Forecast", mode="lines+markers",
             line=dict(color=theme.FORECAST_LINE, width=2.8, dash="dash", shape="spline", smoothing=0.4),
             marker=dict(size=5, color=theme.FORECAST_LINE, line=dict(width=4, color=theme.FORECAST_HALO)),
             cliponaxis=False,
-            hovertemplate="%{x|%d-%b-%y}<br><b>Forecast Price: INR%{y:,.0f}</b><extra></extra>",
+            hovertemplate="%{x|%d-%b-%y}<br><b>Forecast Price: INR %{y:,.0f}</b><extra></extra>",
             hoverlabel=dict(bgcolor="white", bordercolor="#f3c2bd", font=dict(color=theme.FORECAST_LINE))))
 
         # dotted divider + faint shaded band where the 12-week-ahead forecast begins
@@ -706,7 +706,7 @@ def perf_chart(view):
             x=[_dt(d) for d in view["Date"]], y=[_round50(v) for v in view["Forecast"]], name="Forecast",
             mode="lines+markers", line=dict(color=theme.FORECAST_LINE, width=2.6, dash="dash"),
             marker=dict(size=6, color=theme.FORECAST_LINE, line=dict(width=4, color=theme.FORECAST_HALO)),
-            hovertemplate="%{x|%d-%b-%y}<br><b>Forecast Price: INR%{y:,.0f}</b><extra></extra>",
+            hovertemplate="%{x|%d-%b-%y}<br><b>Forecast Price: INR %{y:,.0f}</b><extra></extra>",
             hoverlabel=dict(bgcolor="white", bordercolor="#f3c2bd", font=dict(color=theme.FORECAST_LINE))))
         f = _style_fig(fig, height=320)
         # fixed left margin (autoexpand off) so every performance chart is the SAME width; legend
@@ -735,13 +735,13 @@ def delta_bar(view):
             x=view["Date"], y=list(deltas),
             marker=dict(color=list(absd), cmin=0, cmax=cmax, showscale=False, line=dict(width=0),
                         colorscale=[[0.0, theme.SUCCESS], [0.55, "#8DC63F"], [0.8, "#F5A623"], [1.0, theme.DANGER]]),
-            hovertemplate="INR%{y:,.0f}<extra>Forecast − Spot</extra>"))
+            hovertemplate="INR %{y:,.0f}<extra>Forecast − Spot</extra>"))
         fig.update_layout(height=320, margin=dict(l=_PERF_ML, r=16, t=10, b=30, autoexpand=False),
                           plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)", dragmode=False,
                           hovermode="x unified", bargap=0.3,
                           hoverlabel=dict(bgcolor="white", bordercolor="#e2e8f0"),
                           font=dict(size=11, color="#334155"))
-        fig.update_yaxes(tickprefix="INR", tickformat=",.0f", gridcolor="#eef2f7", zeroline=True,
+        fig.update_yaxes(tickprefix="INR ", tickformat=",.0f", gridcolor="#eef2f7", zeroline=True,
                          zerolinecolor="#cbd5e1", automargin=False, ticklabelstandoff=3)
         fig.update_xaxes(gridcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
@@ -1115,7 +1115,7 @@ def page_forecasting():
             fc = fwd.iloc[min(max(int(n), 1), len(fwd)) - 1].get("Forecast")
         if (fc is None or pd.isna(fc)) and n == 1:
             fc = row.get("Next-wk forecast")     # fall back to the summary's next-week value
-        fc = _round50(fc)                        # forecasts are shown rounded to the nearest INR50
+        fc = _round50(fc)                        # forecasts are shown rounded to the nearest INR 50
         d = dl.direction_flag(fc - la) if (pd.notna(fc) and pd.notna(la)) else "Flat"
         return fc, d
 
@@ -1129,7 +1129,7 @@ def page_forecasting():
         last_actual = row.get("Last actual (INR/ton)", row.get("Last actual (Rs./ton)", row.get("Last actual (₹/ton)")))
         last_date = pd.to_datetime(row.get("Last actual date"), errors="coerce")
         fc, fc_dir = _forecast_at(horizon)
-        fc_val = f"INR{fc:,.0f}" if pd.notna(fc) else "—"
+        fc_val = f"₹{fc:,.0f}" if pd.notna(fc) else "—"
         # Card title = the exact calendar date this {horizon}-week forecast is FOR, long format
         # (e.g. "Forecast — 19 July, 2026"), driven by the 1W/4W/8W/12W tab. The 12-week path is
         # week-ordered (row 0 = week 1), so the date sits at positional index horizon-1.
@@ -1140,7 +1140,7 @@ def page_forecasting():
             if pd.notna(_fc_date):
                 fc_title = f"Forecast — {_fc_date.day} {_fc_date.strftime('%B, %Y')}"
         cards = [
-            ("Last actual spot", f"INR{last_actual:,.0f}", _week_of_month_label(last_date), theme.icon("rupee")),
+            ("Last actual spot", f"₹{last_actual:,.0f}", _week_of_month_label(last_date), theme.icon("rupee")),
             (fc_title, fc_val, theme.direction_chip(fc_dir), theme.icon("trending")),
         ]
         if vertical:
@@ -1185,7 +1185,7 @@ def page_forecasting():
 
     def render_table_view():
         # One continuous table: history (actual+forecast+delta, blank direction) flows into the
-        # 12-week-ahead forecast (forecast+direction, blank actual+delta). Forecasts rounded to INR50;
+        # 12-week-ahead forecast (forecast+direction, blank actual+delta). Forecasts rounded to INR 50;
         # Δ = Actual − rounded forecast. Sortable (whole dataset) + paginated (52 rows/page).
         theme.section_title("Actual vs forecast (history &rarr; 12-week ahead)", theme.icon("calendar"))
         hist_t = acc_hist.dropna(subset=["Actual"])
@@ -1216,7 +1216,7 @@ def page_forecasting():
 
         grid.bm_grid(tdf, key="fc_tbl", configure=_fc_grid, page_size=50)
         st.markdown("<div class='bm-footnote'>Shaded rows = 12-week-ahead forecast (no actuals yet). "
-                    "Forecasts rounded to INR50; &Delta; = actual &minus; forecast. "
+                    "Forecasts rounded to INR 50; &Delta; = actual &minus; forecast. "
                     "Headline line = Ensemble (Weighted Mean).</div>", unsafe_allow_html=True)
 
     def render_rationale():
@@ -1730,7 +1730,7 @@ def page_performance():
     delta_acc_bar(view)
 
     theme.section_title("Week-wise detail", theme.icon("calendar"))
-    # Forecast rounded to INR50; Delta (and %) recomputed off the rounded forecast so the row is
+    # Forecast rounded to INR 50; Delta (and %) recomputed off the rounded forecast so the row is
     # self-consistent. Sortable over the whole dataset + paginated (52 rows/page).
     pdf = view[["Date", "Actual", "Forecast"]].copy()
     pdf["Forecast"] = pdf["Forecast"].map(_round50)
@@ -1746,7 +1746,7 @@ def page_performance():
         gob.configure_column("DeltaPct", hide=True)
 
     grid.bm_grid(pdf, key="perf_tbl", configure=_perf_grid, page_size=50)
-    st.markdown("<div class='bm-footnote'>Delta = Forecast &minus; Spot (forecast rounded to INR50).</div>",
+    st.markdown("<div class='bm-footnote'>Delta = Forecast &minus; Spot (forecast rounded to INR 50).</div>",
                 unsafe_allow_html=True)
     theme.footer()
 

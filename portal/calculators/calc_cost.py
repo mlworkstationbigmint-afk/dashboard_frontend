@@ -188,8 +188,8 @@ def _totals_line(total, margin):
     col = theme.SUCCESS if margin >= 0 else theme.DANGER
     st.markdown(
         f"<div style='margin:6px 0 2px;font-size:14px;font-weight:600;color:#334155;'>"
-        f"Total cost: <b>INR{total:,.0f}</b>/MT &middot; "
-        f"Margin: <b style='color:{col};'>INR{margin:,.0f}</b>/MT</div>",
+        f"Total cost: <b>INR {total:,.0f}</b>/MT &middot; "
+        f"Margin: <b style='color:{col};'>INR {margin:,.0f}</b>/MT</div>",
         unsafe_allow_html=True)
 
 
@@ -216,19 +216,19 @@ def _cost_margin_figure(names, edited, mkt_prices):
         fig.add_bar(
             x=names, y=ys, name=label,
             marker=dict(color=SEG_COLORS[k % len(SEG_COLORS)], line=dict(color="white", width=0.5)),
-            hovertemplate="<b>%{x}</b><br>" + label + ": INR%{y:,.0f}/MT<extra></extra>",
+            hovertemplate="<b>%{x}</b><br>" + label + ": INR %{y:,.0f}/MT<extra></extra>",
         )
     margins = {n: mkt_prices[n] - totals[n] for n in names}
     fig.add_scatter(
         x=names, y=[mkt_prices[n] for n in names], name="Market price", yaxis="y", mode="markers",
         marker=dict(size=13, symbol="circle", color=theme.ACCENT, line=dict(color="white", width=2)),
-        hovertemplate="<b>%{x}</b><br>Market price: INR%{y:,.0f}/MT<extra></extra>",
+        hovertemplate="<b>%{x}</b><br>Market price: INR %{y:,.0f}/MT<extra></extra>",
     )
     mcolors = [theme.SUCCESS if margins[n] >= 0 else theme.DANGER for n in names]
     fig.add_scatter(
         x=names, y=[margins[n] for n in names], name="Mill margin", yaxis="y2", mode="markers",
         marker=dict(size=15, symbol="diamond", color=mcolors, line=dict(color="white", width=2)),
-        hovertemplate="<b>%{x}</b><br>Mill margin: INR%{y:,.0f}/MT<extra></extra>",
+        hovertemplate="<b>%{x}</b><br>Mill margin: INR %{y:,.0f}/MT<extra></extra>",
     )
     ymax = max(max(totals.values()), max(mkt_prices.values())) * 1.16
     fig.update_layout(
@@ -237,11 +237,11 @@ def _cost_margin_figure(names, edited, mkt_prices):
         bargap=0.45,
         legend=dict(orientation="h", yanchor="bottom", y=1.04, x=0.5, xanchor="center",
                     font=dict(size=10.5)),
-        yaxis=dict(title="Cost / market (INR/MT)", tickprefix="INR", tickformat=",.0f",
+        yaxis=dict(title="Cost / market (INR/MT)", tickprefix="INR ", tickformat=",.0f",
                    gridcolor="#f1f5f9", zeroline=False, range=[0, ymax]),
-        yaxis2=dict(title="Mill margin (INR/MT)", overlaying="y", side="right", tickprefix="INR",
+        yaxis2=dict(title="Mill margin (INR/MT)", overlaying="y", side="right", tickprefix="INR ",
                     tickformat=",.0f", showgrid=False, zeroline=True, zerolinecolor="#e2e8f0"),
-        annotations=[dict(x=n, y=totals[n], xref="x", yref="y", text=f"INR{totals[n]:,.0f}",
+        annotations=[dict(x=n, y=totals[n], xref="x", yref="y", text=f"INR {totals[n]:,.0f}",
                           showarrow=False, yshift=-17, font=dict(size=11.5, color="#0f172a"),
                           bgcolor="rgba(255,255,255,0.92)", bordercolor="#cbd5e1",
                           borderwidth=1, borderpad=3)
@@ -412,18 +412,18 @@ def _render_product(product, plants, key, is_if=False):
     # --- headline + verdict ---
     lower = min(plants, key=lambda n: totals[n])
     banner_ph.markdown(
-        f"<div class='kpi-banner'>Lower-cost producer: {lower} — INR{totals[lower]:,.0f}/MT "
-        f"(vs market INR{mkt_prices[lower]:,.0f}/MT)</div>", unsafe_allow_html=True)
+        f"<div class='kpi-banner'>Lower-cost producer: {lower} — INR {totals[lower]:,.0f}/MT "
+        f"(vs market INR {mkt_prices[lower]:,.0f}/MT)</div>", unsafe_allow_html=True)
     best = max(plants, key=lambda n: margins[n])
     profitable = [n for n in plants if margins[n] >= 0]
     if margins[best] >= 0:
         css = "mgmt-good"
         msg = (f"{len(profitable)} of {len(plants)} plants profitable at current market prices. "
-               f"Best margin: {best} at INR{margins[best]:,.0f}/MT ({margins[best]/mkt_prices[best]*100:.1f}%).")
+               f"Best margin: {best} at INR {margins[best]:,.0f}/MT ({margins[best]/mkt_prices[best]*100:.1f}%).")
     else:
         css = "mgmt-bad"
         msg = (f"No plant is profitable at current market prices. "
-               f"Smallest loss: {best} at INR{margins[best]:,.0f}/MT.")
+               f"Smallest loss: {best} at INR {margins[best]:,.0f}/MT.")
     mgmt_ph.markdown(f"<div class='mgmt-box {css}'>Management view: {msg}</div>", unsafe_allow_html=True)
 
 
