@@ -133,6 +133,9 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ Streamlit 1.59 ONLY (react-aria) — no more baseweb (2026-07-18).** The app targets **streamlit 1.59.0** (pinned in root + `portal/requirements.txt`); the deployment runs it too. As of 2026-07-18 **all dead 1.58 `data-baseweb="…"` / `stBaseButton-…Active` selectors were removed** — the CSS keys ONLY on 1.59 markup. **Rule:** style via **Streamlit-owned markup** (testids like `[data-testid="stTabs"]` / `stTab` / `stSelectbox` / `stNumberInput`, `st-key-*` classes, `role=`/`aria-*` attributes, `.react-aria-*`). **Do NOT add `data-baseweb` selectors** — they no-op on 1.59. Inputs/dropdowns get their white-fill + single rounded orange border from the **app-wide `stSelectbox` / `stNumberInput` / `stTextInput` / `stTextArea` / `stDateInput` rules in `theme.py`** (colour-only border, never width — a forced width makes zero-width reset borders on outer wrappers show as a second box). See memory `streamlit-159-only`.
 
 ## Changelog
+### 2026-07-21 (latest++++++++++++++++++++++++++++++++++++++++++++++++) — Take a tour: enabled for the Adani role
+- Gate in [tour.py](portal/tour.py) `render()` was `role == "analyst"`; now `role in TOUR_ROLES = {"analyst", "adani"}`. Both the auto-prompt (once/browser) and the "🧭 Take a tour" launcher now show for Adani logins. `py_compile` clean.
+
 ### 2026-07-21 (latest+++++++++++++++++++++++++++++++++++++++++++++++) — Tour popover: bigger, more readable, modular footer
 - **What:** enlarged/spaced the driver.js walkthrough popover ([tour.py](portal/tour.py) `.bm-pop` CSS): max-width 360→460px, title 16→21px, body 13.5→15.5px w/ line-height 1.5→1.7, padding 26/28px, bigger × close, bigger nav buttons.
 - **Modular footer:** progress ("Step N of M") + Back/Next now sit in one `.bm-foot` row (`space-between`, hairline `border-top`) instead of two stacked lines — `show()` wraps meta+nav in `.bm-foot`. `py_compile` clean.
@@ -1569,3 +1572,14 @@ surfaces follow the role. Acceptable for the current build.
   already purges expired rows lazily), `engine_sensitivity.effective_frac()` (%↔frac done inline).
   Inlined `data_loader.calculators_csv()`'s never-overridden `name` param. Net ~-254 lines, -1 dep.
   Rest of the tree confirmed lean. (calc_import_price.py:4 still has a stale "fpdf-safe" comment — harmless.)
+- **2026-07-21 (landed-cost overlay from real data):** Replaced the live-computed HRC-only
+  "China landed" line with the ACTUAL India duty-paid landed cost from a new data file. New
+  `dashboard-data/accuracy_tables/landed_costs.xlsx` (sheets `Rebar` = Donghua China 16mm HRB400E,
+  `HRC` = Japan Tokyo FOB; weekly, dated to week-end, ₹/t; sourced from `Landed Costs 1.xlsx`).
+  `data_loader.py`: added `LANDED_NAME`, the file to the private-repo fetch `rels` + `data_files()`
+  change-detection, `landed_path()`, and `load_landed(sheet)` reader. `app.py`: overlay now shows
+  for **Rebar IF Mumbai** (violet "China landed") and **HRC** (violet "Japan landed") via
+  `_LANDED_OVERLAY` map + `dl.load_landed()`; `forecast_chart()` gained a `landed_label` param so
+  the legend/hover/footnote name the real origin. Deleted the now-dead `_china_landed_series()` +
+  `CHINA_FX_BY_YEAR`/`CHINA_FX_DEFAULT` (kept `CHINA_LANDED_LINE`). NOTE: cross-repo — the frontend
+  fetches its data from the private dashboard-data repo, so the new xlsx must be committed there too.

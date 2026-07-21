@@ -297,14 +297,17 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
 </script></body></html>"""
 
 
+TOUR_ROLES = {"analyst", "adani"}   # roles that get the guided walkthrough
+
+
 def render(user):
-    """Render the analyst walkthrough bootstrap iframe (no-op for other roles).
+    """Render the guided-walkthrough bootstrap iframe (no-op for roles not in TOUR_ROLES).
 
     Cheap to call on every run: the iframe only injects driver.js + the controller into the
     parent document once (guarded by `__bmTourBooted` / `__bmTourInit`), after which the whole
     tour lives in the parent window and is independent of this iframe's lifecycle.
     """
-    if (user.get("role") or "").strip().lower() != "analyst":
+    if (user.get("role") or "").strip().lower() not in TOUR_ROLES:
         return
     doc = TOUR_JS.replace("__AUTO__", "true").replace("__CSS__", DRIVER_CSS).replace("__JS__", DRIVER_JS)
     token = st.session_state.setdefault("_chart_doc_token", uuid.uuid4().hex[:10])

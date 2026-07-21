@@ -547,39 +547,15 @@ def _render_with_highlighter(fig, height=430, dom_id="chart", range_buttons=None
     st.iframe(doc_path, height=height + 12 + extra_h)
 
 
-# --- China import-parity landed cost (HRC only) -----------------------------------------------
-# A third chart line: for each historical week, take the Mumbai HRC spot (INR/t), read it back to
-# an implied China FOB in USD at that YEAR's fixed average FX, then run the China lane of the
-# Landed-Cost calculator (freight + BCD/cess/safeguard + port) to get the landed INR/t. FX is one
-# flat value per calendar year (below), not a per-week rate — edit these to retune the line.
+# --- India duty-paid landed-cost overlay ------------------------------------------------------
+# A third chart line (violet) on the Rebar IF Mumbai + HRC forecast charts: the weekly India
+# duty-paid landed cost from landed_costs.xlsx (Donghua China rebar / Japan HRC). Loaded per
+# product at the call site via dl.load_landed(); see _LANDED_OVERLAY below.
 CHINA_LANDED_LINE = "#7C3AED"                 # violet — distinct from blue spot / red forecast
-CHINA_FX_BY_YEAR = {2024: 83.6, 2025: 87.4, 2026: 93.0}   # avg USD→INR per year
-CHINA_FX_DEFAULT = 93.0                        # used for any year not listed above
 
 
-def _china_landed_series(acc):
-    """(dates, vals) of the China import-parity landed cost per historical week, derived from each
-    week's Mumbai HRC spot. Returns None on any failure so the chart just drops the extra line."""
-    try:
-        from calculators import calc_import_price as cip
-        gvars, locs = cip._effective_defaults()
-        china = locs["China"]
-        hist = acc.dropna(subset=["Actual"])
-        dates, vals = [], []
-        for d, spot in zip(hist["Date"], hist["Actual"]):
-            fx = CHINA_FX_BY_YEAR.get(pd.Timestamp(d).year, CHINA_FX_DEFAULT)
-            g = {"fx": fx, "domestic": gvars["Domestic benchmark (INR/t)"],
-                 "threshold_cif": gvars["Threshold CIF ($/t)"],
-                 **{k: china[k] for k in cip.DUTY_COLS}}
-            fob = float(spot) / fx                       # implied China FOB ($/t) from the spot
-            dates.append(d)
-            vals.append(cip.compute_landed(fob, china["freight"], china["fta"], g)["landed"])
-        return (dates, vals) if dates else None
-    except Exception:
-        return None
-
-
-def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=False, landed=None):
+def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=False,
+                   landed=None, landed_label="Import landed"):
     """Light-blue actual spot (soft area fill) + bold red dashed forecast, with a dotted
     divider and a faint shaded band marking the 12-week-ahead region.
     legend_inside places the legend inside the plot (white region); year_labels adds the
@@ -599,10 +575,10 @@ def forecast_chart(acc, fwd, legend_inside=False, year_labels=False, compact=Fal
         if landed:
             l_dates, l_vals = landed
             fig.add_trace(go.Scatter(
-                x=[_dt(d) for d in l_dates], y=list(l_vals), name="China landed", mode="lines",
+                x=[_dt(d) for d in l_dates], y=list(l_vals), name=landed_label, mode="lines",
                 line=dict(color=CHINA_LANDED_LINE, width=2.4, shape="spline", smoothing=0.4),
                 cliponaxis=False,
-                hovertemplate="%{x|%d-%b-%y}<br><b>China landed: INR %{y:,.0f}</b><extra></extra>",
+                hovertemplate="%{x|%d-%b-%y}<br><b>" + landed_label + ": INR %{y:,.0f}</b><extra></extra>",
                 hoverlabel=dict(bgcolor="white", bordercolor="#ddd0f0", font=dict(color=CHINA_LANDED_LINE))))
         fig.add_trace(go.Scatter(
             x=[_dt(d) for d in fc_dates], y=fc_vals, name="Forecast", mode="lines+markers",
@@ -1100,8 +1076,15 @@ def page_forecasting():
     row = dl.summary_row(summary, meta["ff"])
     fwd = dl.load_forward(meta["ff"])
     acc_hist = dl.load_accuracy("11-week", meta["acc"])   # Accuracy_Table_11 (6/16 retired)
-    # HRC (Exy-Mumbai) also gets a China import-parity landed-cost overlay on the chart.
-    china_landed = _china_landed_series(acc_hist) if product == "HRC" else None
+    # Rebar IF Mumbai + HRC also get an India duty-paid landed-cost overlay from landed_costs.xlsx
+    # (Donghua China rebar / Japan HRC, weekly, dated to week-end). {product: (sheet, legend label)}.
+    _LANDED_OVERLAY = {"HRC": ("HRC", "Japan landed"), "Rebar IF Mumbai": ("Rebar", "China landed")}
+    landed = landed_label = None
+    if product in _LANDED_OVERLAY:
+        _sheet, landed_label = _LANDED_OVERLAY[product]
+        _ldf = dl.load_landed(_sheet)
+        if not _ldf.empty:
+            landed = (list(_ldf["Date"]), list(_ldf["Landed"]))
 
     def _forecast_at(n):
         """(forecast value, direction-vs-last-actual) at forward week n (the 1/4/8/12 horizon
@@ -1174,11 +1157,11 @@ def page_forecasting():
             # the first `horizon` weeks of the 12-week path (None => all).
             fwd_view = fwd.head(int(horizon)) if horizon else fwd
             forecast_chart(acc_hist, fwd_view, legend_inside=True, year_labels=True, compact=True,
-                           landed=china_landed)
+                           landed=landed, landed_label=landed_label)
         else:
             theme.section_title("Spot vs forecast (12-week ahead)", theme.icon("trending"))
-            forecast_chart(acc_hist, fwd, landed=china_landed)
-            _cl = (" Violet = China import-parity landed cost." if china_landed else "")
+            forecast_chart(acc_hist, fwd, landed=landed, landed_label=landed_label)
+            _cl = (f" Violet = India duty-paid {landed_label.lower()} cost." if landed else "")
             st.markdown("<div class='bm-footnote'>Light blue = actual spot. Red dashed = model forecast "
                         f"(historical fit + 12-week ahead).{_cl} Hover any point for its price.</div>",
                         unsafe_allow_html=True)

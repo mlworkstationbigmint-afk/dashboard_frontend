@@ -30,6 +30,7 @@ PORTAL_DIR = os.path.dirname(os.path.abspath(__file__))              # <repo>/po
 
 # Data files as relative paths (identical in the private repo and the in-repo sample).
 FF_NAME = "forecast_forward.xlsx"
+LANDED_NAME = "landed_costs.xlsx"                  # weekly India duty-paid landed cost (Rebar/HRC sheets)
 ACC_FILES = {"11-week": "Accuracy_Table_11.xlsx"}   # 6/16-week retired; app runs off Table_11
 HEADLINE_SHEET = "Ensemble_WgtMean"               # headline forecast line shown to Adani
 
@@ -58,6 +59,7 @@ def _fetch_private_data_dir(owner: str, repo: str, ref: str, token: str) -> str:
         "X-GitHub-Api-Version": "2022-11-28",
     }
     rels = (f"accuracy_tables/{FF_NAME}",
+            f"accuracy_tables/{LANDED_NAME}",
             *[f"accuracy_tables/{fn}" for fn in ACC_FILES.values()],
             "calculators/HRC - Copy.csv")
     for rel in rels:
@@ -103,6 +105,11 @@ def calculators_csv() -> str:
 def ff_path() -> str:
     """Absolute path to forecast_forward.xlsx (private temp dir or in-repo)."""
     return os.path.join(acc_dir(), FF_NAME)
+
+
+def landed_path() -> str:
+    """Absolute path to landed_costs.xlsx (private temp dir or in-repo)."""
+    return os.path.join(acc_dir(), LANDED_NAME)
 
 
 def acc_path(window: str) -> str:
@@ -158,7 +165,7 @@ def _mtime(path: str) -> float:
 
 def data_files() -> tuple:
     """Every data file the app reads. Used for change-detection + the sidebar caption."""
-    return (ff_path(), *[acc_path(w) for w in ACC_FILES], calculators_csv())
+    return (ff_path(), landed_path(), *[acc_path(w) for w in ACC_FILES], calculators_csv())
 
 
 def data_signature() -> float:
@@ -202,6 +209,24 @@ def load_forward(ff_sheet: str) -> pd.DataFrame:
     Re-read when the file changes."""
     p = ff_path()
     return _read_forward(p, ff_sheet, _mtime(p))
+
+
+@st.cache_data(show_spinner=False)
+def _read_landed(path: str, sheet: str, mtime: float) -> pd.DataFrame:
+    df = pd.read_excel(path, sheet_name=sheet, usecols=[0, 1], names=["Date", "Landed"], header=0)
+    df["Date"] = pd.to_datetime(df["Date"], errors="coerce")
+    df["Landed"] = _num(df["Landed"])
+    return df.dropna(subset=["Date", "Landed"]).reset_index(drop=True)
+
+
+def load_landed(sheet: str) -> pd.DataFrame:
+    """Weekly India duty-paid landed cost for one product ('Rebar' or 'HRC' sheet).
+    Returns Date, Landed. Empty frame if the file/sheet is missing. Re-read on file change."""
+    p = landed_path()
+    try:
+        return _read_landed(p, sheet, _mtime(p))
+    except Exception:
+        return pd.DataFrame(columns=["Date", "Landed"])
 
 
 @st.cache_data(show_spinner=False)
