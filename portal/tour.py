@@ -45,18 +45,22 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
     // ---- brand + driver overlay styling ----
     var stl = document.createElement("style");
     stl.textContent = ""
-      + ".driver-popover.bm-pop{border-radius:14px;box-shadow:0 18px 48px rgba(2,18,43,.34);max-width:360px}"
-      + ".driver-popover.bm-pop .driver-popover-title{font-size:16px;color:#024CA1;font-weight:800;line-height:1.25}"
-      + ".driver-popover.bm-pop .driver-popover-description{font-size:13.5px;color:#1A1A1A;line-height:1.5}"
-      + ".driver-popover.bm-pop .driver-popover-close-btn{color:#94a3b8}"
-      // custom nav buttons (driver.js renders no next/prev in single-highlight mode, so we draw our own)
-      + ".driver-popover.bm-pop .bm-nav{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}"
-      + ".driver-popover.bm-pop .bm-b{background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:8px;"
-      + "font-weight:700;padding:6px 14px;cursor:pointer;font-size:13px;font-family:inherit}"
+      + ".driver-popover.bm-pop{border-radius:16px;box-shadow:0 22px 60px rgba(2,18,43,.34);max-width:460px;padding:26px 28px 22px}"
+      + ".driver-popover.bm-pop .driver-popover-title{font-size:21px;color:#024CA1;font-weight:800;line-height:1.3;margin:0 0 12px}"
+      + ".driver-popover.bm-pop .driver-popover-description{font-size:15.5px;color:#1A1A1A;line-height:1.7;margin:0}"
+      + ".driver-popover.bm-pop .driver-popover-close-btn{color:#94a3b8;font-size:26px;width:30px;height:30px;top:14px;right:14px}"
+      + ".driver-popover.bm-pop .driver-popover-close-btn:hover{color:#1A1A1A}"
+      // footer module: progress (left) + custom nav buttons (right), split off by a hairline rule.
+      // driver.js renders no next/prev in single-highlight mode, so we draw our own.
+      + ".driver-popover.bm-pop .bm-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;"
+      + "margin-top:20px;padding-top:16px;border-top:1px solid #e8edf3}"
+      + ".driver-popover.bm-pop .bm-meta{font-size:12.5px;color:#94a3b8;font-weight:600;letter-spacing:.2px}"
+      + ".driver-popover.bm-pop .bm-nav{display:flex;gap:10px}"
+      + ".driver-popover.bm-pop .bm-b{background:#eef2f7;color:#334155;border:1px solid #cbd5e1;border-radius:9px;"
+      + "font-weight:700;padding:9px 18px;cursor:pointer;font-size:14px;font-family:inherit}"
       + ".driver-popover.bm-pop .bm-b:hover{background:#fff;color:#024CA1}"
       + ".driver-popover.bm-pop .bm-next{background:#EE4E24;color:#fff;border-color:#EE4E24}"
       + ".driver-popover.bm-pop .bm-next:hover{background:#fff;color:#EE4E24}"
-      + ".driver-popover.bm-pop .bm-meta{margin-top:10px;font-size:11px;color:#94a3b8}"
       + ".driver-overlay,svg.driver-overlay{z-index:2147483000 !important}"
       + ".driver-popover{z-index:2147483600 !important}"   // MUST sit above the overlay or clicks are swallowed
       // lift the spotlighted element above the overlay — some app elements (e.g. the pulled-up location
@@ -230,9 +234,10 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       var nav = '<div class="bm-nav">' + back
               + '<button type="button" class="bm-b bm-next" data-bmact="next">'
               + (last ? "Finish ✓" : "Next →") + '</button></div>';
+      var foot = '<div class="bm-foot"><div class="bm-meta">Step ' + (i+1) + ' of ' + STEPS.length + '</div>' + nav + '</div>';
       var pop = {
         title: s.title,
-        description: s.desc + '<div class="bm-meta">Step ' + (i+1) + ' of ' + STEPS.length + '</div>' + nav,
+        description: s.desc + foot,
         popoverClass: "bm-pop", align: "start", showButtons: ["close"]   // × only; next/prev are our own
       };
       if (el) pop.side = s.side || "bottom";     // side only matters when there's an element to anchor to
