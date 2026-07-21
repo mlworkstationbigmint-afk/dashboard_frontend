@@ -1871,8 +1871,9 @@ def page_methodology():
         unsafe_allow_html=True)
     tcol[1].markdown(
         "<div class='bm-card'><h4>IOSCO-aligned</h4>"
-        "<div class='bm-desc'>Assessments follow BigMint's IOSCO-audited methodology &mdash; objective, "
-        "consistent across time and location, with noise and bias removed by an automated pricing system.</div></div>",
+        "<div class='bm-desc'>Assessments follow BigMint's IOSCO-audited methodology &mdash; objective and "
+        "consistent across time and location, with noise and bias removed by an automated pricing system "
+        "trusted for globally referenced commodity price benchmarks.</div></div>",
         unsafe_allow_html=True)
 
     st.write("")
