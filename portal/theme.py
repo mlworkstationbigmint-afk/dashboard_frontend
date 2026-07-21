@@ -434,10 +434,6 @@ div[class*="st-key-callcard"] .stDownloadButton button:disabled {{ opacity:.5; }
     width:fit-content !important; max-width:100% !important; align-self:flex-start !important;
     box-shadow:inset 0 1px 2px rgba(16,24,40,.06) !important;
 }}
-/* Scenario Simulation opens on the tab strip (no "## h2" title). The tablist's own top box
-   already matches other pages' heading offset, so no extra top margin — pinning it to 0 stops
-   the strip drifting lower than other pages' first content. Scoped to that page only. */
-div[class*="st-key-bm_calc_top"] {{ margin-top: 0 !important; }}
 /* the white pill: react-aria's SelectionIndicator lives INSIDE the active tab, so pin it to the
    tab's own box (inset:0; inline transform/size overridden) — it moves with the selection rather
    than gliding across the track, but reads as the same white pill. Needs the tab itself

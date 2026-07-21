@@ -133,11 +133,14 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ Streamlit 1.59 ONLY (react-aria) — no more baseweb (2026-07-18).** The app targets **streamlit 1.59.0** (pinned in root + `portal/requirements.txt`); the deployment runs it too. As of 2026-07-18 **all dead 1.58 `data-baseweb="…"` / `stBaseButton-…Active` selectors were removed** — the CSS keys ONLY on 1.59 markup. **Rule:** style via **Streamlit-owned markup** (testids like `[data-testid="stTabs"]` / `stTab` / `stSelectbox` / `stNumberInput`, `st-key-*` classes, `role=`/`aria-*` attributes, `.react-aria-*`). **Do NOT add `data-baseweb` selectors** — they no-op on 1.59. Inputs/dropdowns get their white-fill + single rounded orange border from the **app-wide `stSelectbox` / `stNumberInput` / `stTextInput` / `stTextArea` / `stDateInput` rules in `theme.py`** (colour-only border, never width — a forced width makes zero-width reset borders on outer wrappers show as a second box). See memory `streamlit-159-only`.
 
 ## Changelog
-### 2026-07-21 (latest++++++++++++++++++++++++++++++++++++++++++++) — Scenario Simulation top spacing: drop the 0.35rem push-down (was sitting too low)
-- **Cause:** the earlier `margin-top:0.35rem` offset over-corrected — the tablist's own top box already matches other pages' heading offset, so the added margin pushed the Scenario strip visibly *lower* than the Performance/other-page headings.
-- **Fix:** `div[class*="st-key-bm_calc_top"]{margin-top:0 !important}` ([theme.py:439](portal/theme.py:439)). Container wrapper in [app.py:1757](portal/app.py:1757) kept (scoping hook). Scoped to this page only.
+### 2026-07-21 (latest+++++++++++++++++++++++++++++++++++++++++++++) — Scenario Simulation top spacing: rewritten to mirror page_forecasting
+- **Root cause:** the margin-hack attempts never converged because the real culprit was the `st.container(key="bm_calc_top")` **wrapper** itself — it nested an extra `stVerticalBlock`, so no top-margin value lined the strip up with a bare control page.
+- **Fix (reference = `page_forecasting`, the sibling that also opens on a control strip and looks right):** dropped the wrapper container entirely — `page_calculators` now calls `st.tabs(...)` directly, exactly like forecasting opens on its group segmented-control ([app.py:1757](portal/app.py:1757)). Deleted the dead `st-key-bm_calc_top` CSS rule from [theme.py](portal/theme.py). No hacks, no offsets — the strip now sits flush like forecasting's.
 
-### 2026-07-21 (superseded above) — Scenario Simulation top spacing aligned with other pages
+### 2026-07-21 (superseded above ×2) — Scenario Simulation top spacing: drop the 0.35rem push-down
+- Interim: set `st-key-bm_calc_top{margin-top:0}`. Didn't converge — see root cause above.
+
+### 2026-07-21 (superseded) — Scenario Simulation top spacing aligned with other pages
 - **Cause:** every other page opens with a `## h2` title, which `theme.py` pads `padding-top:0.35rem` ([theme.py:193-196](portal/theme.py:193)); `page_calculators` opens straight on `st.tabs`, so its strip sat ~0.35rem tighter to the nav (block gap 0.65rem is otherwise identical). 
 - **Fix:** wrapped the Scenario tab strip in `st.container(key="bm_calc_top")` ([app.py:1757](portal/app.py:1757)) and added `div[class*="st-key-bm_calc_top"]{margin-top:0.35rem}` ([theme.py](portal/theme.py) after the tablist block). Scoped to this page — Forecasting's inner Graph/Table tabs (not first-child) are untouched. `py_compile` clean.
 
