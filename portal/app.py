@@ -1755,13 +1755,17 @@ def page_performance():
 # PAGE: CALCULATORS
 # ---------------------------------------------------------------------------
 def page_calculators():
-    t1, t2, t3 = st.tabs(["Price Sensitivity", "Landed Cost", "Cost Head"])
-    with t1:
-        calc_elasticity.render()
-    with t2:
-        calc_import_price.render()
-    with t3:
-        calc_cost.render()
+    # This page opens on a tab strip, not an "## h2" title like every other page, so it
+    # misses the heading's padding-top (theme.py). Wrap in a keyed container that re-adds
+    # that same top offset, so the strip lines up with other pages' content.
+    with st.container(key="bm_calc_top"):
+        t1, t2, t3 = st.tabs(["Price Sensitivity", "Landed Cost", "Cost Head"])
+        with t1:
+            calc_elasticity.render()
+        with t2:
+            calc_import_price.render()
+        with t3:
+            calc_cost.render()
     theme.footer()
 
 
