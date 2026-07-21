@@ -15,31 +15,31 @@ import theme        # shared brand palette + infographic CSS/helpers
 # norm=None => product-based electricity norm (450 kWh/MT for HRC, 400 for Rebar).
 # The BF (blast-furnace) and IF (induction-furnace) routes have different build-ups.
 BF_ELEMENTS = [
-    ("Iron Ore (Sinter/Lumps/Pellets)", 9500.0, 1.650, "Rs./MT"),
-    ("Coking Coal(PHCC inc PCI)",       22000.0, 0.800, "Rs./MT"),
-    ("Scrap HMS 80:20",                 38000.0, 0.150, "Rs./MT"),
-    ("Limestone / Dolomite",             3500.0, 0.250, "Rs./MT"),
-    ("Ferroalloys (SiMn)",              85000.0, 0.012, "Rs./MT"),
-    ("Electricity",                         7.50, None,  "Rs./kWh"),
-    ("Processing Cost",                  4500.0,   1.0,  "Rs./MT"),
-    ("Miscellaneous Expenses",           1200.0,   1.0,  "Rs./MT"),
-    ("Finance Cost (Avg)",               1500.0,   1.0,  "Rs./MT"),
-    ("Depreciation & Amortization",      2000.0,   1.0,  "Rs./MT"),
+    ("Iron Ore (Sinter/Lumps/Pellets)", 9500.0, 1.650, "INR/MT"),
+    ("Coking Coal(PHCC inc PCI)",       22000.0, 0.800, "INR/MT"),
+    ("Scrap HMS 80:20",                 38000.0, 0.150, "INR/MT"),
+    ("Limestone / Dolomite",             3500.0, 0.250, "INR/MT"),
+    ("Ferroalloys (SiMn)",              85000.0, 0.012, "INR/MT"),
+    ("Electricity",                         7.50, None,  "INR/kWh"),
+    ("Processing Cost",                  4500.0,   1.0,  "INR/MT"),
+    ("Miscellaneous Expenses",           1200.0,   1.0,  "INR/MT"),
+    ("Finance Cost (Avg)",               1500.0,   1.0,  "INR/MT"),
+    ("Depreciation & Amortization",      2000.0,   1.0,  "INR/MT"),
 ]
 # IF route: metallic-mix feedstock (Sponge Iron / Scrap / Pig Iron / Ferroalloys) then
 # Non coking coal, power and OpEx. Metallic norms are plant-specific (see IF_MIX); the norms
 # below are only fallbacks for a plant not listed in IF_MIX.
 IF_ELEMENTS = [
-    ("Sponge Iron",                     23250.0, 0.976,  "Rs./MT"),
-    ("Scrap HMS 80:20",                 38000.0, 0.1575, "Rs./MT"),
-    ("Pig Iron",                        42000.0, 0.052,  "Rs./MT"),
-    ("Ferroalloys (SiMn)",              85000.0, 0.012,  "Rs./MT"),
-    ("Non coking coal RB2",             22000.0, 0.800,  "Rs./MT"),
-    ("Electricity",                         7.50, None,  "Rs./kWh"),
-    ("Processing Cost",                  4500.0,   1.0,  "Rs./MT"),
-    ("Miscellaneous Expenses",           1200.0,   1.0,  "Rs./MT"),
-    ("Finance Cost (Avg)",               1500.0,   1.0,  "Rs./MT"),
-    ("Depreciation & Amortization",      2000.0,   1.0,  "Rs./MT"),
+    ("Sponge Iron",                     23250.0, 0.976,  "INR/MT"),
+    ("Scrap HMS 80:20",                 38000.0, 0.1575, "INR/MT"),
+    ("Pig Iron",                        42000.0, 0.052,  "INR/MT"),
+    ("Ferroalloys (SiMn)",              85000.0, 0.012,  "INR/MT"),
+    ("Non coking coal RB2",             22000.0, 0.800,  "INR/MT"),
+    ("Electricity",                         7.50, None,  "INR/kWh"),
+    ("Processing Cost",                  4500.0,   1.0,  "INR/MT"),
+    ("Miscellaneous Expenses",           1200.0,   1.0,  "INR/MT"),
+    ("Finance Cost (Avg)",               1500.0,   1.0,  "INR/MT"),
+    ("Depreciation & Amortization",      2000.0,   1.0,  "INR/MT"),
 ]
 # Metallic charge: fixed finished-tonne-per-input-tonne yields, and each IF plant's mix shares.
 # Consumption norm = yield × mix share; Ferroalloys stays a fixed 1 × 1.2% = 0.012 additive.
@@ -173,7 +173,7 @@ def _editor(prefix, product, ver, key, is_if=False, plant=None):
         column_config={
             "Cost element": st.column_config.TextColumn("Cost element", disabled=True, width="medium"),
             "Unit": st.column_config.TextColumn("Unit", disabled=True, width="small",
-                        help="Unit the price is quoted in (Rs./MT, or Rs./kWh for electricity)."),
+                        help="Unit the price is quoted in (INR/MT, or INR/kWh for electricity)."),
             "Price": st.column_config.NumberColumn("Unit price", format="%.2f", step=1.0, min_value=0.0),
             "Norm": st.column_config.NumberColumn("Consumption norm", format="%.3f", step=0.05, min_value=0.0,
                         help="Consumption per tonne of finished steel (OpEx rows use 1)."),
@@ -188,8 +188,8 @@ def _totals_line(total, margin):
     col = theme.SUCCESS if margin >= 0 else theme.DANGER
     st.markdown(
         f"<div style='margin:6px 0 2px;font-size:14px;font-weight:600;color:#334155;'>"
-        f"Total cost: <b>Rs.{total:,.0f}</b>/MT &middot; "
-        f"Margin: <b style='color:{col};'>Rs.{margin:,.0f}</b>/MT</div>",
+        f"Total cost: <b>INR{total:,.0f}</b>/MT &middot; "
+        f"Margin: <b style='color:{col};'>INR{margin:,.0f}</b>/MT</div>",
         unsafe_allow_html=True)
 
 
@@ -216,19 +216,19 @@ def _cost_margin_figure(names, edited, mkt_prices):
         fig.add_bar(
             x=names, y=ys, name=label,
             marker=dict(color=SEG_COLORS[k % len(SEG_COLORS)], line=dict(color="white", width=0.5)),
-            hovertemplate="<b>%{x}</b><br>" + label + ": Rs.%{y:,.0f}/MT<extra></extra>",
+            hovertemplate="<b>%{x}</b><br>" + label + ": INR%{y:,.0f}/MT<extra></extra>",
         )
     margins = {n: mkt_prices[n] - totals[n] for n in names}
     fig.add_scatter(
         x=names, y=[mkt_prices[n] for n in names], name="Market price", yaxis="y", mode="markers",
         marker=dict(size=13, symbol="circle", color=theme.ACCENT, line=dict(color="white", width=2)),
-        hovertemplate="<b>%{x}</b><br>Market price: Rs.%{y:,.0f}/MT<extra></extra>",
+        hovertemplate="<b>%{x}</b><br>Market price: INR%{y:,.0f}/MT<extra></extra>",
     )
     mcolors = [theme.SUCCESS if margins[n] >= 0 else theme.DANGER for n in names]
     fig.add_scatter(
         x=names, y=[margins[n] for n in names], name="Mill margin", yaxis="y2", mode="markers",
         marker=dict(size=15, symbol="diamond", color=mcolors, line=dict(color="white", width=2)),
-        hovertemplate="<b>%{x}</b><br>Mill margin: Rs.%{y:,.0f}/MT<extra></extra>",
+        hovertemplate="<b>%{x}</b><br>Mill margin: INR%{y:,.0f}/MT<extra></extra>",
     )
     ymax = max(max(totals.values()), max(mkt_prices.values())) * 1.16
     fig.update_layout(
@@ -237,11 +237,11 @@ def _cost_margin_figure(names, edited, mkt_prices):
         bargap=0.45,
         legend=dict(orientation="h", yanchor="bottom", y=1.04, x=0.5, xanchor="center",
                     font=dict(size=10.5)),
-        yaxis=dict(title="Cost / market (Rs./MT)", tickprefix="Rs.", tickformat=",.0f",
+        yaxis=dict(title="Cost / market (INR/MT)", tickprefix="INR", tickformat=",.0f",
                    gridcolor="#f1f5f9", zeroline=False, range=[0, ymax]),
-        yaxis2=dict(title="Mill margin (Rs./MT)", overlaying="y", side="right", tickprefix="Rs.",
+        yaxis2=dict(title="Mill margin (INR/MT)", overlaying="y", side="right", tickprefix="INR",
                     tickformat=",.0f", showgrid=False, zeroline=True, zerolinecolor="#e2e8f0"),
-        annotations=[dict(x=n, y=totals[n], xref="x", yref="y", text=f"Rs.{totals[n]:,.0f}",
+        annotations=[dict(x=n, y=totals[n], xref="x", yref="y", text=f"INR{totals[n]:,.0f}",
                           showarrow=False, yshift=-17, font=dict(size=11.5, color="#0f172a"),
                           bgcolor="rgba(255,255,255,0.92)", bordercolor="#cbd5e1",
                           borderwidth=1, borderpad=3)
@@ -254,8 +254,8 @@ def _cost_margin_figure(names, edited, mkt_prices):
 def _methodology_infographic():
     _sec("How the cost & margin are built", theme.icon("notes"))
     st.markdown(
-        "Each plant is priced through the **same build-up** — every input's **unit price** (Rs./MT, or "
-        "Rs./kWh for electricity) is multiplied by its **consumption norm** per tonne, summed into an ex-works "
+        "Each plant is priced through the **same build-up** — every input's **unit price** (INR/MT, or "
+        "INR/kWh for electricity) is multiplied by its **consumption norm** per tonne, summed into an ex-works "
         "cost, then compared to the market price to give the mill margin. Edit any cell and the chart re-solves."
     )
 
@@ -321,7 +321,7 @@ def _glossary():
         ("Norm", "Consumption norm", "Input consumed per tonne of finished steel (MT/MT, kg/MT, kWh/MT)."),
         ("Margin", "Mill margin", "Market price minus ex-works cost &mdash; the profit per tonne."),
         ("OpEx", "Operating expenses", "Processing, miscellaneous, finance and depreciation per tonne."),
-        ("Unit", "Price unit", "The unit a price is quoted in — Rs./MT (Rs./kWh for electricity)."),
+        ("Unit", "Price unit", "The unit a price is quoted in — INR/MT (INR/kWh for electricity)."),
     ]
     html = "<div class='bm-factor-grid'>" + "".join(
         f"<div class='bm-factor'><div class='ic' style='font-weight:800;font-size:12px;'>{abbr}</div>"
@@ -368,7 +368,7 @@ def _render_product(product, plants, key, is_if=False):
         chart_ph = st.empty()
     with col_ctrl:
         theme.section_title("Scenario controls", theme.icon("gauge"))
-        mkt_prices = {n: st.number_input(f"Market price — {n} (Rs./MT)", value=55000.0, step=500.0,
+        mkt_prices = {n: st.number_input(f"Market price — {n} (INR/MT)", value=55000.0, step=500.0,
                                          key=f"cost_mkt_{key}_{n}", min_value=0.0)
                       for n in plants}
         st.button("↺ Reset tables", key=f"cost_reset_{key}", on_click=_reset_tables, width="stretch",
@@ -392,7 +392,7 @@ def _render_product(product, plants, key, is_if=False):
                 if note:
                     st.caption(note)
     st.caption("**Total cost = consumption norm × unit price** (auto-computed per row). **Consumption norm** = "
-               "input consumed per tonne of steel; **Unit** is Rs./MT (Rs./kWh for electricity). Edits update the "
+               "input consumed per tonne of steel; **Unit** is INR/MT (INR/kWh for electricity). Edits update the "
                "chart live; **Reset** restores the product defaults.")
 
     # --- fill the chart ---
@@ -412,18 +412,18 @@ def _render_product(product, plants, key, is_if=False):
     # --- headline + verdict ---
     lower = min(plants, key=lambda n: totals[n])
     banner_ph.markdown(
-        f"<div class='kpi-banner'>Lower-cost producer: {lower} — Rs.{totals[lower]:,.0f}/MT "
-        f"(vs market Rs.{mkt_prices[lower]:,.0f}/MT)</div>", unsafe_allow_html=True)
+        f"<div class='kpi-banner'>Lower-cost producer: {lower} — INR{totals[lower]:,.0f}/MT "
+        f"(vs market INR{mkt_prices[lower]:,.0f}/MT)</div>", unsafe_allow_html=True)
     best = max(plants, key=lambda n: margins[n])
     profitable = [n for n in plants if margins[n] >= 0]
     if margins[best] >= 0:
         css = "mgmt-good"
         msg = (f"{len(profitable)} of {len(plants)} plants profitable at current market prices. "
-               f"Best margin: {best} at Rs.{margins[best]:,.0f}/MT ({margins[best]/mkt_prices[best]*100:.1f}%).")
+               f"Best margin: {best} at INR{margins[best]:,.0f}/MT ({margins[best]/mkt_prices[best]*100:.1f}%).")
     else:
         css = "mgmt-bad"
         msg = (f"No plant is profitable at current market prices. "
-               f"Smallest loss: {best} at Rs.{margins[best]:,.0f}/MT.")
+               f"Smallest loss: {best} at INR{margins[best]:,.0f}/MT.")
     mgmt_ph.markdown(f"<div class='mgmt-box {css}'>Management view: {msg}</div>", unsafe_allow_html=True)
 
 

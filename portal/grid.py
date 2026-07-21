@@ -90,7 +90,7 @@ def js_row_bg(field, bg):
 
 if HAS_AGGRID:
     JS_MONEY = JsCode("function(p){return (p.value==null||isNaN(p.value))?''"
-                      ":'Rs.'+Math.round(p.value).toLocaleString('en-IN');}")
+                      ":'INR'+Math.round(p.value).toLocaleString('en-IN');}")
     JS_DATE = JsCode("function(p){if(!p.value)return '';var d=new Date(p.value);"
                      "return isNaN(d)?p.value:d.toLocaleDateString('en-GB',"
                      "{day:'2-digit',month:'short',year:'numeric'});}")

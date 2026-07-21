@@ -26,13 +26,13 @@ SETTINGS_KEY = "landed_cost_defaults"
 # g-dict key -> the human label used in the globals editor (order preserved).
 # Only the truly org-wide knobs stay here; port + duties are now per-location (see LOC_DEFAULTS).
 GMAP = {
-    "domestic":      "Domestic benchmark (Rs./t)",
+    "domestic":      "Domestic benchmark (INR/t)",
     "fx":            "FX (USD→INR)",
     "threshold_cif": "Threshold CIF ($/t)",
 }
 
 GVAR_DEFAULTS = {
-    "Domestic benchmark (Rs./t)":   52450.0,
+    "Domestic benchmark (INR/t)":   52450.0,
     "FX (USD→INR)":                 93.0,
     "Threshold CIF ($/t)":          675.0,
 }
@@ -59,7 +59,7 @@ LOC_DEFAULTS = {
 # Per-location duty/port fields -> the column header shown in the scenario table (order preserved).
 # Session state is keyed `{p}_{field}_{region}`; these feed compute_landed as a per-row `g` override.
 DUTY_COLS = {
-    "port_inr":    "Port Rs./t",
+    "port_inr":    "Port INR/t",
     "bcd_pct":     "BCD %",
     "cess_pct":    "Cess on BCD %",
     "sg_pct":      "Safeguard %",
@@ -191,7 +191,7 @@ def _results_table(regions, results, domestic):
         usd = Js("function(p){return (p.value==null||isNaN(p.value))?''"
                  ":'$'+Math.round(p.value).toLocaleString('en-US');}")
         vsd = Js("function(p){if(p.value==null||isNaN(p.value))return '';var v=Math.round(p.value);"
-                 "return (v<0?'-':'+')+'Rs.'+Math.abs(v).toLocaleString('en-IN');}")
+                 "return (v<0?'-':'+')+'INR'+Math.abs(v).toLocaleString('en-IN');}")
         dec = Js("function(p){var v=(p.value||'').toString();"
                  "return {color:v.indexOf('NOT')>=0?'#D8382B':'#1F9D55','font-weight':'700'};}")
         gob.configure_column("Location", width=130)
@@ -199,7 +199,7 @@ def _results_table(regions, results, domestic):
         gob.configure_column("CFR", headerName="CFR $/t", type=["numericColumn"], valueFormatter=usd)
         gob.configure_column("TVD", headerName="TVD $/t", type=["numericColumn"], valueFormatter=usd)
         gob.configure_column("Safeguard", width=110)
-        gob.configure_column("Landed", headerName="Landed Rs./t", type=["numericColumn"], valueFormatter=grid.JS_MONEY)
+        gob.configure_column("Landed", headerName="Landed INR/t", type=["numericColumn"], valueFormatter=grid.JS_MONEY)
         gob.configure_column("vsDomestic", headerName="vs Domestic", type=["numericColumn"], valueFormatter=vsd)
         gob.configure_column("Decision", cellStyle=dec, width=150)
 
@@ -213,7 +213,7 @@ def _results_table(regions, results, domestic):
 # -----------------------------------------------------------------------------
 # Labels are the dict keys AND what the user sees; order is preserved (py3.7+).
 GVAR_ORDER = [
-    "Domestic benchmark (Rs./t)",
+    "Domestic benchmark (INR/t)",
     "FX (USD→INR)",
     "Threshold CIF ($/t)",
 ]
@@ -233,7 +233,7 @@ def _read_globals(seed, p):
     )
     v = {k: float(edited.loc[k, "Value"]) for k in GVAR_ORDER}
     return {
-        "domestic": v["Domestic benchmark (Rs./t)"], "fx": v["FX (USD→INR)"],
+        "domestic": v["Domestic benchmark (INR/t)"], "fx": v["FX (USD→INR)"],
         "threshold_cif": v["Threshold CIF ($/t)"],
     }
 
@@ -251,13 +251,13 @@ def _landed_figure(regions, results, domestic):
             colorscale=[[0.0, theme.SUCCESS], [0.5, "#FBBF24"], [1.0, theme.DANGER]],
             line=dict(color="white", width=1.5), cornerradius=9,
         ),
-        text=[f"Rs.{int(v):,}" for v in landed_vals], textposition="outside",
+        text=[f"INR{int(v):,}" for v in landed_vals], textposition="outside",
         textfont=dict(size=12, color="#0f172a"),
-        cliponaxis=False, hovertemplate="<b>%{x}</b><br>Landed: Rs.%{y:,.0f}/t<extra></extra>",
+        cliponaxis=False, hovertemplate="<b>%{x}</b><br>Landed: INR%{y:,.0f}/t<extra></extra>",
     ))
     fig.add_hline(
         y=domestic, line=dict(color=theme.PRIMARY, width=2, dash="dash"),
-        annotation_text=f"  Domestic Rs.{int(domestic):,}/t  ", annotation_position="top left",
+        annotation_text=f"  Domestic INR{int(domestic):,}/t  ", annotation_position="top left",
         annotation_font=dict(color="white", size=12),
         annotation_bgcolor=theme.PRIMARY, annotation_bordercolor=theme.PRIMARY, annotation_borderpad=4,
     )
@@ -265,7 +265,7 @@ def _landed_figure(regions, results, domestic):
                       plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
                       font=dict(family="sans-serif", size=12, color="#334155"),
                       bargap=0.45, showlegend=False)
-    fig.update_yaxes(title_text="Landed cost (Rs./t)", tickprefix="Rs.", tickformat=",.0f",
+    fig.update_yaxes(title_text="Landed cost (INR/t)", tickprefix="INR", tickformat=",.0f",
                      gridcolor="#f1f5f9", zeroline=False,
                      range=[0, max(max(landed_vals), domestic) * 1.13])
     fig.update_xaxes(title_text="", tickfont=dict(size=12.5, color="#0f172a"))
@@ -301,7 +301,7 @@ def _methodology_infographic():
         "<p>CFR &rarr; duty &rarr; safeguard &rarr; FX &rarr; port, applied identically to every source.</p></div>"
         "<div class='bm-engine-arrow'>&rarr;</div>"
         "<div class='bm-engine-col bm-engine-out'><div class='bm-engine-h'>Outputs</div>"
-        + _chips([("rupee",    "Landed Rs./t per origin"),
+        + _chips([("rupee",    "Landed INR/t per origin"),
                   ("target",   "Viable vs domestic?"),
                   ("trending", "Cheapest source")]) +
         "</div></div>"
@@ -449,11 +449,11 @@ def _render_body(is_admin=False):
     def _editor():
         _sec("Scenario inputs by location", theme.icon("factory"))
         ekey = f"{p}_locs_{st.session_state.get(f'{p}_locs_ver', 0)}"
-        # Spot Rs./t is derived from the COMMITTED FOB (× FX), not the live edit buffer. Rebuilding
+        # Spot INR/t is derived from the COMMITTED FOB (× FX), not the live edit buffer. Rebuilding
         # the editor's source frame from in-progress edits made Streamlit treat the data as changed
         # and drop the edit (the "FOB snaps back" bug); a stable frame lets edits persist to Calculate.
         loc_cols = {
-            "Spot Rs./t": [float(st.session_state[f"{p}_fob_{r}"]) * g["fx"] for r in regions],
+            "Spot INR/t": [float(st.session_state[f"{p}_fob_{r}"]) * g["fx"] for r in regions],
             "FTA": [bool(st.session_state[f"{p}_fta_{r}"]) for r in regions],
             "FOB $/t": [float(st.session_state[f"{p}_fob_{r}"]) for r in regions],
             "Freight $/t": [float(st.session_state[f"{p}_freight_{r}"]) for r in regions],
@@ -465,13 +465,13 @@ def _render_body(is_admin=False):
         loc_edit = st.data_editor(
             loc_df, key=ekey, width="stretch", hide_index=False,
             column_config={
-                "Spot Rs./t": st.column_config.NumberColumn("Spot Rs./t", format="Rs.%.0f", disabled=True,
+                "Spot INR/t": st.column_config.NumberColumn("Spot INR/t", format="INR%.0f", disabled=True,
                             help="Derived: FOB × FX (read-only). Refreshes on Calculate."),
                 "FTA": st.column_config.CheckboxColumn("FTA?", help="Waives BCD + its cess for this origin."),
                 "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0,
                             help="Origin reference price — editable; press Calculate to apply."),
                 "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
-                "Port Rs./t": st.column_config.NumberColumn("Port Rs./t", format="Rs.%.0f", step=100.0,
+                "Port INR/t": st.column_config.NumberColumn("Port INR/t", format="INR%.0f", step=100.0,
                             help="Port handling & misc for this origin."),
                 "BCD %": st.column_config.NumberColumn("BCD %", format="%.1f", step=0.5,
                             help="Basic customs duty (FTA waives it)."),
@@ -509,7 +509,7 @@ def _render_body(is_admin=False):
             reset = bcol2.button("↺ Reset", key=f"{p}_reset", disabled=not dirty,
                                  width="stretch", help="Reset FOB / Freight / FTA back to the default values.")
             bcol3.caption("Edit FOB, freight, FTA, port or the per-origin duty rates, then press "
-                          "**Calculate** to apply. Spot Rs./t = FOB × FX (read-only); **Reset** restores defaults.")
+                          "**Calculate** to apply. Spot INR/t = FOB × FX (read-only); **Reset** restores defaults.")
         # Both commit COMMITTED state that the outputs depend on, so both fire a single full rerun
         # (scope="app") to redraw the chart + tables together — the only time anything below re-renders.
         if reset:
@@ -565,16 +565,16 @@ def _render_body(is_admin=False):
     if viable:
         best_v = min(viable, key=lambda r: results[r]["landed"])
         msg = (f"{len(viable)} of {len(regions)} sources viable. "
-               f"Cheapest viable: {best_v} at Rs.{int(results[best_v]['landed']):,}/t "
-               f"(save Rs.{int(domestic - results[best_v]['landed']):,}/t vs domestic Rs.{int(domestic):,}).")
+               f"Cheapest viable: {best_v} at INR{int(results[best_v]['landed']):,}/t "
+               f"(save INR{int(domestic - results[best_v]['landed']):,}/t vs domestic INR{int(domestic):,}).")
         css = "mgmt-good"
     else:
-        msg = (f"Imports not viable. Domestic Rs.{int(domestic):,}/t beats the cheapest import "
-               f"({cheapest} Rs.{int(cl):,}/t) by Rs.{int(cl - domestic):,}/t.")
+        msg = (f"Imports not viable. Domestic INR{int(domestic):,}/t beats the cheapest import "
+               f"({cheapest} INR{int(cl):,}/t) by INR{int(cl - domestic):,}/t.")
         css = "mgmt-bad"
     mgmt_ph.markdown(f"<div class='mgmt-box {css}'>Management view: {msg}</div>", unsafe_allow_html=True)
     banner_ph.markdown(
-        f"<div class='kpi-banner'>Lowest cost source: {cheapest} — Rs.{int(cl):,}/t"
+        f"<div class='kpi-banner'>Lowest cost source: {cheapest} — INR{int(cl):,}/t"
         f"{'  (FTA)' if results[cheapest]['is_fta'] else ''}</div>",
         unsafe_allow_html=True,
     )
@@ -588,15 +588,15 @@ def _render_body(is_admin=False):
                                 width="stretch", config={"displayModeBar": False},
                                 key=f"landed_chart_{p}")
             except Exception:
-                st.bar_chart(pd.DataFrame({"Landed Rs./t": {r: results[r]["landed"] for r in regions}}))
+                st.bar_chart(pd.DataFrame({"Landed INR/t": {r: results[r]["landed"] for r in regions}}))
             st.caption("Sorted cheapest → priciest. Colour shows distance from domestic parity "
                        "(green = cheaper, amber ≈ parity, red = pricier). Dashed line = domestic benchmark.")
         else:                                      # Tabular
             _results_table(regions, results, domestic)
-            st.caption(f"Sorted cheapest → priciest vs domestic benchmark Rs.{int(domestic):,}/t.")
+            st.caption(f"Sorted cheapest → priciest vs domestic benchmark INR{int(domestic):,}/t.")
 
     # --- exchange-rate sensitivity ---
-    _sec("Exchange-rate sensitivity (landed Rs./t)", theme.icon("rupee"))
+    _sec("Exchange-rate sensitivity (landed INR/t)", theme.icon("rupee"))
     fx_rows = []
     for r in regions:
         row = {"Location": r}
@@ -613,7 +613,7 @@ def _render_body(is_admin=False):
         gob.configure_grid_options(domLayout="autoHeight")
 
     grid.bm_grid(pd.DataFrame(fx_rows), key="imp_fx", configure=_fx_cfg, page_size=0, height=320)
-    st.caption(f"Domestic benchmark for reference: Rs.{int(domestic):,}/t.")
+    st.caption(f"Domestic benchmark for reference: INR{int(domestic):,}/t.")
 
     # --- methodology (modular, equation-heavy) + glossary ---
     _methodology_infographic()

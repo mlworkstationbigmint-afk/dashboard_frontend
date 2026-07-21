@@ -255,15 +255,15 @@ def _contrib_figure(names, contrib_rs, height):
     fig = go.Figure(go.Bar(
         x=vals, y=order, orientation="h",
         marker=dict(color=colors, cornerradius=6, line=dict(color="white", width=1)),
-        text=[(f"Rs.{v:+,.0f}" if abs(v) >= 1 else "") for v in vals], textposition="outside",
+        text=[(f"INR{v:+,.0f}" if abs(v) >= 1 else "") for v in vals], textposition="outside",
         textfont=dict(size=11, color="#0f172a"), cliponaxis=False,
-        hovertemplate="<b>%{y}</b><br>Contribution: Rs.%{x:+,.0f}/t<extra></extra>",
+        hovertemplate="<b>%{y}</b><br>Contribution: INR%{x:+,.0f}/t<extra></extra>",
     ))
     fig.add_vline(x=0, line=dict(color="#cbd5e1", width=1.5))
     fig.update_layout(height=height, margin=dict(l=10, r=40, t=8, b=8),
                       plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
                       font=dict(family="sans-serif", size=12, color="#334155"), showlegend=False)
-    fig.update_xaxes(title_text="Contribution to price (Rs./t)", tickprefix="Rs.",
+    fig.update_xaxes(title_text="Contribution to price (INR/t)", tickprefix="INR",
                      tickformat=",.0f", gridcolor="#f1f5f9", zeroline=False, range=[-rng, rng])
     fig.update_yaxes(title_text="", automargin=True)
     return fig
@@ -281,11 +281,11 @@ def _changes_table(drivers, key, contrib_rs, height):
             shock += f"  ({'+' if dabs >= 0 else '−'}{_fmt_val(abs(dabs), unit)})"
         rows.append({"Driver": nm, "Shock applied": shock,
                      "Baseline → shocked": f"{_fmt_val(base, unit)} → {_fmt_val(base * (1 + pct / 100.0), unit)}",
-                     "Contribution (Rs./t)": round(contrib_rs[nm], 0)})
+                     "Contribution (INR/t)": round(contrib_rs[nm], 0)})
     df = (pd.DataFrame(rows)
-          .sort_values("Contribution (Rs./t)", key=lambda s: s.abs(), ascending=False))
+          .sort_values("Contribution (INR/t)", key=lambda s: s.abs(), ascending=False))
     st.dataframe(df, width="stretch", hide_index=True, height=height, column_config={
-        "Contribution (Rs./t)": st.column_config.NumberColumn("Contribution (Rs./t)", format="Rs.%+.0f"),
+        "Contribution (INR/t)": st.column_config.NumberColumn("Contribution (INR/t)", format="INR%+.0f"),
     })
 
 
@@ -407,7 +407,7 @@ def _model_note(spec):
                 f"<b>Trained on:</b> {spec['period']}</div>")
     return (f"<div class='bm-modelnote'><b>Model:</b> {spec['model']}<br>"
             f"<b>Backtest:</b> OOS R² {spec['r2']:.2f} · RMSE {spec['rmse_pct']:.2f}% "
-            f"(≈Rs.{spec['rmse_rs']:,}/t)<br>"
+            f"(≈INR{spec['rmse_rs']:,}/t)<br>"
             f"<b>Fitted on:</b> {spec['n_obs']} monthly moves, {spec['period']}</div>")
 
 
@@ -448,7 +448,7 @@ def _render_product(spec, key):
             tbl_ph = st.empty()
     with col_side:
         theme.section_title("Scenario controls", theme.icon("gauge"))
-        current = st.number_input(f"Current {spec['label']} price (Rs./t)", value=float(spec["current"]),
+        current = st.number_input(f"Current {spec['label']} price (INR/t)", value=float(spec["current"]),
                                   step=250.0, min_value=0.0, key=f"sens_cur_{key}")
         kpi_ph = st.empty()      # predicted-move cards sit right under the current price
         st.button("↺ Reset all shocks", key=f"sens_reset_{key}", on_click=_reset_all, width="stretch",
@@ -539,7 +539,7 @@ def _render_product(spec, key):
             st.plotly_chart(_contrib_figure(names, crs, vh), width="stretch",
                             config={"displayModeBar": False}, key=f"elasticity_chart_{key}")
         except Exception:
-            st.bar_chart(pd.DataFrame({"Rs./t": crs}))
+            st.bar_chart(pd.DataFrame({"INR/t": crs}))
         st.caption("Each bar = current price × driver shock. Green pushes the price up, red pulls it down.")
     with tbl_ph.container():
         _changes_table(drivers, key, crs, vh)
@@ -547,8 +547,8 @@ def _render_product(spec, key):
     # --- KPI cards (modular, forecast-page style) under the current price ---
     cards = [
         ("Predicted change", f"{impact * 100:+.2f}%", "log-return applied", theme.icon("trending")),
-        ("Forecasted price", f"Rs.{final:,.0f}", f"from Rs.{current:,.0f}", theme.icon("rupee")),
-        ("Absolute change", f"Rs.{change:+,.0f}", "per tonne", theme.icon("gauge")),
+        ("Forecasted price", f"INR{final:,.0f}", f"from INR{current:,.0f}", theme.icon("rupee")),
+        ("Absolute change", f"INR{change:+,.0f}", "per tonne", theme.icon("gauge")),
     ]
     kpi_ph.markdown("<div class='bm-vcards bm-vcards-sm'>"
                     + "".join(theme.kpi_card(t, v, s, ic) for t, v, s, ic in cards)
@@ -613,7 +613,7 @@ def _methodology_infographic(product_label=None):
         "<div class='bm-engine-arrow'>&rarr;</div>"
         "<div class='bm-engine-col bm-engine-out'><div class='bm-engine-h'>Outputs</div>"
         + _chips([("trending", "Predicted % move"),
-                  ("rupee",    "Forecasted price Rs./t"),
+                  ("rupee",    "Forecasted price INR/t"),
                   ("target",   "Driver-by-driver split")]) +
         "</div></div>"
     )
@@ -658,7 +658,7 @@ def _glossary():
         ("Σ", "Predicted move", "Sum of every driver's contribution (shock × sensitivity) — the total log-return."),
         ("e^Σ", "Compounding", "The summed move is applied as a growth factor: price × e^Σ."),
         ("R²", "Out-of-sample fit", "Share of real price moves the model explained on data it never saw."),
-        ("RMSE", "Typical error", "Average size of the model's one-period miss, in % and Rs./t."),
+        ("RMSE", "Typical error", "Average size of the model's one-period miss, in % and INR/t."),
     ]
     html = "<div class='bm-factor-grid'>" + "".join(
         f"<div class='bm-factor'><div class='ic' style='font-weight:800;font-size:12px;'>{abbr}</div>"

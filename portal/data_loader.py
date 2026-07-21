@@ -132,7 +132,7 @@ def _num(s):
     )
 
 
-FLAT_THRESHOLD = 500.0   # Rs./ton dead-band: |change| <= 500 => Flat
+FLAT_THRESHOLD = 500.0   # INR/ton dead-band: |change| <= 500 => Flat
 
 
 def direction_flag(delta, thr: float = FLAT_THRESHOLD) -> str:
@@ -231,7 +231,7 @@ def _read_accuracy(path: str, acc_label: str, mtime: float) -> pd.DataFrame:
     # Each commodity block in the sheet carries Actual, Forecast, MAE, MAPA (%), Delta (%),
     # Directional (%). Those metric cells are Excel FORMULAS (no cached values), so we recompute
     # them here. All three are in POINTS (0..1); the UI multiplies by 100 to show a %. th = the
-    # +/-500 Rs./ton dead-band (FLAT_THRESHOLD). am = actual week-over-week move (spot - prior spot);
+    # +/-500 INR/ton dead-band (FLAT_THRESHOLD). am = actual week-over-week move (spot - prior spot);
     # pm = predicted move (forecast - prior spot).
     th = FLAT_THRESHOLD
     am = df["Actual"] - prev_actual
