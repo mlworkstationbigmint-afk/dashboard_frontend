@@ -549,8 +549,8 @@ def _render_with_highlighter(fig, height=430, dom_id="chart", range_buttons=None
 
 # --- India duty-paid landed-cost overlay ------------------------------------------------------
 # A third chart line (violet) on the Rebar IF Mumbai + HRC forecast charts: the weekly India
-# duty-paid landed cost from landed_costs.xlsx (Donghua China rebar / Japan HRC). Loaded per
-# product at the call site via dl.load_landed(); see _LANDED_OVERLAY below.
+# duty-paid landed cost from landed_costs.xlsx (Donghua China rebar / FOB-Rizhao China HRC).
+# Loaded per product at the call site via dl.load_landed(); see _LANDED_OVERLAY below.
 CHINA_LANDED_LINE = "#7C3AED"                 # violet — distinct from blue spot / red forecast
 
 
@@ -1077,8 +1077,8 @@ def page_forecasting():
     fwd = dl.load_forward(meta["ff"])
     acc_hist = dl.load_accuracy("11-week", meta["acc"])   # Accuracy_Table_11 (6/16 retired)
     # Rebar IF Mumbai + HRC also get an India duty-paid landed-cost overlay from landed_costs.xlsx
-    # (Donghua China rebar / Japan HRC, weekly, dated to week-end). {product: (sheet, legend label)}.
-    _LANDED_OVERLAY = {"HRC": ("HRC", "Japan landed"), "Rebar IF Mumbai": ("Rebar", "China landed")}
+    # (Donghua China rebar / FOB-Rizhao China HRC, weekly, dated to week-end). {product: (sheet, label)}.
+    _LANDED_OVERLAY = {"HRC": ("HRC", "China landed"), "Rebar IF Mumbai": ("Rebar", "China landed")}
     landed = landed_label = None
     if product in _LANDED_OVERLAY:
         _sheet, landed_label = _LANDED_OVERLAY[product]

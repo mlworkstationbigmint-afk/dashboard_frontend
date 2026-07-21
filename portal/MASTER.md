@@ -1583,3 +1583,13 @@ surfaces follow the role. Acceptable for the current build.
   the legend/hover/footnote name the real origin. Deleted the now-dead `_china_landed_series()` +
   `CHINA_FX_BY_YEAR`/`CHINA_FX_DEFAULT` (kept `CHINA_LANDED_LINE`). NOTE: cross-repo — the frontend
   fetches its data from the private dashboard-data repo, so the new xlsx must be committed there too.
+- **2026-07-21 (HRC landed → China FOB Rizhao basis):** Re-based the HRC landed-cost line from
+  Japan Tokyo FOB to **HRC, FOB Rizhao, China, 2.5mm** (from calculators/HRC - Copy.csv). Rebuilt
+  the `HRC` sheet of `dashboard-data/accuracy_tables/landed_costs.xlsx`: CIF = (FOB Rizhao + full
+  CN→India ocean freight)×1.003 insurance; +BCD 7.5% (HS 7208) +SWS 10%×BCD +safeguard (date-tiered
+  12%/gap/11.5%, exempt if CIF≥$675/t) +₹900 port; freight & weekly USD/INR from Landed Costs 1.xlsx.
+  Duty formula verified against the workbook's own HRC-Japan row (reproduces ₹56,829.60 exactly). CSV
+  Rizhao ended 25-Jan-2026; extended with user-supplied weekly FOB (2026 wks 1–29, week-end =
+  2026-01-04 + (N−1)×7d), so HRC landed now spans 2023-12-31 → 2026-07-19 (134 wks, last ≈ ₹61,519 —
+  Year-2 11.5% safeguard now active). app.py: HRC overlay legend/footnote label flipped "Japan
+  landed" → "China landed" (both overlays are now China-origin). Rebar sheet unchanged.
