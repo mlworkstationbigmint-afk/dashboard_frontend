@@ -117,8 +117,8 @@ def _plant_costs(edited):
 
 CALC_CSS = """
 <style>
-/* breathing room (theme.py squeezes the block gap; loosen it on this dense page) */
-[data-testid="stVerticalBlock"] { gap: 0.9rem !important; }
+/* NB: do NOT override [data-testid="stVerticalBlock"] gap here — unscoped/page-global, it shoved the
+   whole Scenario page down and broke top alignment vs other pages. Keep app-wide 0.65rem (theme.py). */
 [data-testid="stHorizontalBlock"] { gap: 1.1rem !important; }
 /* prominent page heading (mirrors the Landed Cost calculator) */
 .bm-calc-head { margin: 4px 0 14px; padding: 0 0 13px; border-bottom: 2px solid var(--bm-primary-soft); }

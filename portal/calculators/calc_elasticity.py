@@ -32,8 +32,10 @@ HRC_FULL_NAME = "HRC, Exy-Mumbai · 2.5-8mm / CTL · IS2062, Gr E250 Br."
 
 CALC_CSS = """
 <style>
-/* breathing room (theme.py squeezes the block gap; loosen it on this dense page) */
-[data-testid="stVerticalBlock"] { gap: 0.9rem !important; }
+/* NB: do NOT override [data-testid="stVerticalBlock"] gap here — it's an unscoped, page-global
+   selector, so widening it shoved the whole Scenario page (nav -> tab strip -> content) down and
+   broke top alignment vs every other page. Keep the app-wide 0.65rem (theme.py) so pages match.
+   Horizontal (column) gap is fine to loosen — it only affects within-page column air. */
 [data-testid="stHorizontalBlock"] { gap: 1.1rem !important; }
 /* prominent page heading (mirrors the Landed Cost / Cost Head calculators) */
 .bm-calc-head { margin: 4px 0 14px; padding: 0 0 13px; border-bottom: 2px solid var(--bm-primary-soft); }

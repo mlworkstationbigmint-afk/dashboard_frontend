@@ -96,10 +96,10 @@ def _effective_defaults():
 
 CALC_CSS = """
 <style>
-/* Element breathing room: the global theme squeezes the block gap to 0.65rem, which reads as very
-   compact on this dense page. Loosen the gap between stacked elements (injected after theme.py, so
-   it wins). Scoped to the Calculators page since this CSS is only emitted while that page renders. */
-[data-testid="stVerticalBlock"] { gap: 0.9rem !important; }
+/* NB: do NOT override [data-testid="stVerticalBlock"] gap here. It reads as "scoped to the
+   Calculators page" but the selector is page-GLOBAL — it also widened the nav -> tab strip -> content
+   gaps, shoving the whole Scenario page down and breaking top alignment vs every other page. Keep the
+   app-wide 0.65rem (theme.py) so pages match. */
 /* Column pairs (graph|globals) get a touch more horizontal air too. */
 [data-testid="stHorizontalBlock"] { gap: 1.1rem !important; }
 /* ...except the Calculate/Reset row: keep Reset hugging Calculate (override the wider gap above). */
