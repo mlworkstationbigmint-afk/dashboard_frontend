@@ -59,7 +59,7 @@ LOC_DEFAULTS = {
 # Per-location duty/port fields -> the column header shown in the scenario table (order preserved).
 # Session state is keyed `{p}_{field}_{region}`; these feed compute_landed as a per-row `g` override.
 DUTY_COLS = {
-    "port_inr":    "Port INR/t",
+    "port_inr":    "Port/Customs/Inland Freight",
     "bcd_pct":     "BCD %",
     "cess_pct":    "Cess on BCD %",
     "sg_pct":      "Safeguard %",
@@ -155,12 +155,15 @@ def compute_landed(fob, freight, is_fta, g):
     cost_usd = tvd + addl
     cost_inr = cost_usd * g["fx"]
     landed = cost_inr + g["port_inr"]
+    # Landed EXCLUDING all customs duties: (FOB + Freight) × FX + Port/Customs/Inland Freight.
+    landed_excl = cfr * g["fx"] + g["port_inr"]
     diff = landed - g["domestic"]
     return {
         "fob": fob, "freight": freight, "cfr": cfr,
         "bcd_pct": bcd_pct, "bcd_amt": bcd_amt, "cess_pct": cess_pct, "cess_amt": cess_amt,
         "tvd": tvd, "sg_applied": sg_applied, "addl_usd": addl, "addl_inr": addl * g["fx"],
-        "cost_usd": cost_usd, "cost_inr": cost_inr, "landed": landed, "diff": diff, "is_fta": is_fta,
+        "cost_usd": cost_usd, "cost_inr": cost_inr, "landed": landed, "landed_excl": landed_excl,
+        "diff": diff, "is_fta": is_fta,
     }
 
 
@@ -239,35 +242,41 @@ def _read_globals(seed, p):
 
 
 def _landed_figure(regions, results, domestic):
-    """Diverging landed-cost bar chart vs the domestic benchmark line."""
+    """Grouped bars per origin — Landed (Excl. duties) vs Landed incl. All duties — with the
+    domestic-benchmark line. (Excl. duties = (FOB + Freight) × FX + Port/Customs/Inland Freight;
+    incl. duties adds BCD + cess + safeguard.)"""
     import plotly.graph_objects as go
     ordered = sorted(regions, key=lambda r: results[r]["landed"])
-    landed_vals = [results[r]["landed"] for r in ordered]
-    diffs = [results[r]["diff"] for r in ordered]     # landed - domestic (cheap < 0 < pricey)
-    fig = go.Figure(go.Bar(
-        x=ordered, y=landed_vals,
-        marker=dict(
-            color=diffs, cmid=0,                       # diverging: green (cheap) -> amber -> red (pricey)
-            colorscale=[[0.0, theme.SUCCESS], [0.5, "#FBBF24"], [1.0, theme.DANGER]],
-            line=dict(color="white", width=1.5), cornerradius=9,
-        ),
-        text=[f"INR {int(v):,}" for v in landed_vals], textposition="outside",
-        textfont=dict(size=12, color="#0f172a"),
-        cliponaxis=False, hovertemplate="<b>%{x}</b><br>Landed: INR %{y:,.0f}/t<extra></extra>",
-    ))
+    incl_vals = [results[r]["landed"] for r in ordered]
+    excl_vals = [results[r]["landed_excl"] for r in ordered]
+    fig = go.Figure()
+    fig.add_trace(go.Bar(
+        name="Landed (Excl. duties)", x=ordered, y=excl_vals,
+        marker=dict(color="#5E92D6", line=dict(color="white", width=1.5), cornerradius=7),
+        text=[f"INR {int(v):,}" for v in excl_vals], textposition="outside",
+        textfont=dict(size=10, color="#0f172a"), cliponaxis=False,
+        hovertemplate="<b>%{x}</b><br>Landed excl. duties: INR %{y:,.0f}/MT<extra></extra>"))
+    fig.add_trace(go.Bar(
+        name="Landed incl. All duties", x=ordered, y=incl_vals,
+        marker=dict(color=theme.PRIMARY, line=dict(color="white", width=1.5), cornerradius=7),
+        text=[f"INR {int(v):,}" for v in incl_vals], textposition="outside",
+        textfont=dict(size=10, color="#0f172a"), cliponaxis=False,
+        hovertemplate="<b>%{x}</b><br>Landed incl. all duties: INR %{y:,.0f}/MT<extra></extra>"))
     fig.add_hline(
         y=domestic, line=dict(color=theme.PRIMARY, width=2, dash="dash"),
-        annotation_text=f"  Domestic INR {int(domestic):,}/t  ", annotation_position="top left",
+        annotation_text=f"  Domestic INR {int(domestic):,}/MT  ", annotation_position="top left",
         annotation_font=dict(color="white", size=12),
         annotation_bgcolor=theme.PRIMARY, annotation_bordercolor=theme.PRIMARY, annotation_borderpad=4,
     )
-    fig.update_layout(height=400, margin=dict(l=10, r=10, t=34, b=10),
+    fig.update_layout(height=400, margin=dict(l=10, r=10, t=44, b=10),
                       plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
                       font=dict(family="sans-serif", size=12, color="#334155"),
-                      bargap=0.45, showlegend=False)
+                      barmode="group", bargap=0.32, bargroupgap=0.12,
+                      legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0,
+                                  bgcolor="rgba(0,0,0,0)", font=dict(size=12)))
     fig.update_yaxes(title_text="Landed cost (INR/MT)", tickprefix="INR ", tickformat=",.0f",
                      gridcolor="#f1f5f9", zeroline=False,
-                     range=[0, max(max(landed_vals), domestic) * 1.13])
+                     range=[0, max(max(incl_vals), domestic) * 1.16])
     fig.update_xaxes(title_text="", tickfont=dict(size=12.5, color="#0f172a"))
     return fig
 
@@ -320,7 +329,7 @@ def _methodology_infographic():
         ("gauge",     "USD cost",         "TVD + any safeguard.",
          "Cost$ = TVD + <b>SG</b>"),
         ("rupee",     "Rupee landed",     "Convert at FX, add port.",
-         "Landed = Cost$&times;<b>FX</b> + Port"),
+         "Landed = Cost$&times;<b>FX</b> + Port/Customs/Inland Freight"),
         ("trending",  "Verdict",          "Beat the domestic price.",
          "Landed &lt; <b>Domestic</b> &rArr; VIABLE"),
     ]
@@ -405,7 +414,7 @@ def _render_body(is_admin=False):
 
     st.markdown(
         "<div class='bm-calc-head'>"
-        f"<div class='bm-calc-title'>{theme.icon('calculator', 30)} Import Price Scenario Simulation</div>"
+        f"<div class='bm-calc-title'>{theme.icon('calculator', 30)} Import Landed Cost Price Scenario Simulation</div>"
         "<div class='bm-calc-sub'>Hot-Rolled Coil &middot; landed-cost parity vs the domestic benchmark</div>"
         "</div>",
         unsafe_allow_html=True,
@@ -449,11 +458,14 @@ def _render_body(is_admin=False):
     def _editor():
         _sec("Scenario inputs by location", theme.icon("factory"))
         ekey = f"{p}_locs_{st.session_state.get(f'{p}_locs_ver', 0)}"
-        # Spot INR/t is derived from the COMMITTED FOB (× FX), not the live edit buffer. Rebuilding
-        # the editor's source frame from in-progress edits made Streamlit treat the data as changed
-        # and drop the edit (the "FOB snaps back" bug); a stable frame lets edits persist to Calculate.
+        # "Landed (Excl. duties)" is derived from the COMMITTED FOB/Freight/Port (not the live edit
+        # buffer): (FOB + Freight) × FX + Port/Customs/Inland Freight. Rebuilding the editor's source
+        # frame from in-progress edits made Streamlit treat the data as changed and drop the edit (the
+        # "FOB snaps back" bug); a stable frame lets edits persist to Calculate.
         loc_cols = {
-            "Spot INR/t": [float(st.session_state[f"{p}_fob_{r}"]) * g["fx"] for r in regions],
+            "Landed (Excl. duties)": [(float(st.session_state[f"{p}_fob_{r}"])
+                                       + float(st.session_state[f"{p}_freight_{r}"])) * g["fx"]
+                                      + float(st.session_state[f"{p}_port_inr_{r}"]) for r in regions],
             "FTA": [bool(st.session_state[f"{p}_fta_{r}"]) for r in regions],
             "FOB $/t": [float(st.session_state[f"{p}_fob_{r}"]) for r in regions],
             "Freight $/t": [float(st.session_state[f"{p}_freight_{r}"]) for r in regions],
@@ -465,14 +477,14 @@ def _render_body(is_admin=False):
         loc_edit = st.data_editor(
             loc_df, key=ekey, width="stretch", hide_index=False,
             column_config={
-                "Spot INR/t": st.column_config.NumberColumn("Spot INR/t", format="INR %.0f", disabled=True,
-                            help="Derived: FOB × FX (read-only). Refreshes on Calculate."),
+                "Landed (Excl. duties)": st.column_config.NumberColumn("Landed (Excl. duties)", format="INR %.0f", disabled=True,
+                            help="Derived: (FOB + Freight) × FX + Port/Customs/Inland Freight (read-only). Refreshes on Calculate."),
                 "FTA": st.column_config.CheckboxColumn("FTA?", help="Waives BCD + its cess for this origin."),
                 "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0,
                             help="Origin reference price — editable; press Calculate to apply."),
                 "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
-                "Port INR/t": st.column_config.NumberColumn("Port INR/t", format="INR %.0f", step=100.0,
-                            help="Port handling & misc for this origin."),
+                "Port/Customs/Inland Freight": st.column_config.NumberColumn("Port/Customs/Inland Freight", format="INR %.0f", step=100.0,
+                            help="Port handling, customs clearance & inland freight for this origin (INR/MT)."),
                 "BCD %": st.column_config.NumberColumn("BCD %", format="%.1f", step=0.5,
                             help="Basic customs duty (FTA waives it)."),
                 "Cess on BCD %": st.column_config.NumberColumn("Cess on BCD %", format="%.1f", step=0.5,
@@ -509,7 +521,8 @@ def _render_body(is_admin=False):
             reset = bcol2.button("↺ Reset", key=f"{p}_reset", disabled=not dirty,
                                  width="stretch", help="Reset FOB / Freight / FTA back to the default values.")
             bcol3.caption("Edit FOB, freight, FTA, port or the per-origin duty rates, then press "
-                          "**Calculate** to apply. Spot INR/t = FOB × FX (read-only); **Reset** restores defaults.")
+                          "**Calculate** to apply. Landed (Excl. duties) = (FOB + Freight) × FX + Port/Customs/Inland Freight "
+                          "(read-only); **Reset** restores defaults.")
         # Both commit COMMITTED state that the outputs depend on, so both fire a single full rerun
         # (scope="app") to redraw the chart + tables together — the only time anything below re-renders.
         if reset:

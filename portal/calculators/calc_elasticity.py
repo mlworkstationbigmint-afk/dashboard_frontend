@@ -93,7 +93,7 @@ CALC_CSS = """
 /* the current-value bubble above the thumb */
 .st-key-sens_knobwrap [data-testid="stSliderThumbValue"] {
     font-size: 12px !important; font-weight: 700 !important; color: var(--bm-primary-dark) !important; }
-/* hide the widget's own -20/+20 ticks; we render our own aligned scale under the slider */
+/* hide the widget's own -50/+50 ticks; we render our own aligned scale under the slider */
 .st-key-sens_knobwrap [data-testid="stSliderTickBar"] { display: none !important; }
 .knob-ticks { display: flex; justify-content: space-between; font-size: 9.5px; color: #a3adbb;
     letter-spacing: .2px; margin: -16px 3px 2px; }
@@ -373,7 +373,7 @@ def _result_html(baseline, pct, unit):
 
 def driver_control(driver_id, label, baseline, unit):
     """One driver card: coupled slider + number_input (two-way synced via the
-    shared shock state), a tick scale, ±20/±10/0 presets, a baseline→shocked
+    shared shock state), a tick scale, ±50/±25/0 presets, a baseline→shocked
     readout, and a per-driver reset. Adding a driver is a single call."""
     ss = st.session_state
     sk = f"shock_{driver_id}"
@@ -387,14 +387,14 @@ def driver_control(driver_id, label, baseline, unit):
         st.markdown(f"<div class='knob-label'>{label}</div>", unsafe_allow_html=True)
         c_sl, c_num = st.columns([2, 1], vertical_alignment="center")
         with c_sl:
-            st.slider(label, -20.0, 20.0, step=0.5, key=f"sl_{driver_id}",
+            st.slider(label, -50.0, 50.0, step=0.5, key=f"sl_{driver_id}",
                       on_change=_cb_slider, args=(driver_id,), label_visibility="collapsed")
-            st.markdown("<div class='knob-ticks'><span>-20</span><span>-10</span>"
-                        "<span>0</span><span>+10</span><span>+20</span></div>", unsafe_allow_html=True)
+            st.markdown("<div class='knob-ticks'><span>-50</span><span>-25</span>"
+                        "<span>0</span><span>+25</span><span>+50</span></div>", unsafe_allow_html=True)
         with c_num:
-            st.number_input(label, -20.0, 20.0, step=0.5, key=f"num_{driver_id}", format="%.1f",
+            st.number_input(label, -50.0, 50.0, step=0.5, key=f"num_{driver_id}", format="%.1f",
                             on_change=_cb_number, args=(driver_id,), label_visibility="collapsed")
-        for c, val in zip(st.columns(5), (-20, -10, 0, 10, 20)):
+        for c, val in zip(st.columns(5), (-50, -25, 0, 25, 50)):
             c.button("0" if val == 0 else f"{val:+d}", key=f"pre_{driver_id}_{val}",
                      on_click=_cb_preset, args=(driver_id, float(val)), width="stretch")
         st.markdown(_result_html(baseline, ss[sk], unit), unsafe_allow_html=True)
@@ -674,7 +674,8 @@ def render():
     st.markdown(CALC_CSS, unsafe_allow_html=True)
     st.markdown(
         "<div class='bm-calc-head'>"
-        f"<div class='bm-calc-title'>{theme.icon('gauge', 30)} Price Sensitivity Scenario Simulation</div>"
+        f"<div class='bm-calc-title'>{theme.icon('gauge', 30)} Price Sensitivity Scenario Simulation"
+        " <span style='font-size:0.5em;font-weight:600;color:#64748b;'>(wrt Market Factor)</span></div>"
         "<div class='bm-calc-sub'>What-if driver shocks &middot; predicted price move by product</div>"
         "</div>",
         unsafe_allow_html=True,
