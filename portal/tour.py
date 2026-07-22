@@ -68,9 +68,11 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       + ".driver-active-element{position:relative !important;z-index:2147483200 !important}"
       // launcher lives INSIDE the blue topbar (.bm-topbar-r), just left of the Log out button ->
       // white pill on the blue bar, accent-red on hover (matches the Log out invert)
-      + "#bm-tour-launch{background:#024CA1;color:#fff;border:none;border-radius:999px;padding:11px 22px;"
-      + "font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;"
-      + "box-shadow:0 3px 12px rgba(2,18,43,.28)}"
+      // Match the Log out button's design (Streamlit primary button): rounded-rectangle, same
+      // radius/height/weight — just blue instead of orange, per the brief.
+      + "#bm-tour-launch{background:#024CA1;color:#fff;border:none;border-radius:8px;padding:12px 22px;"
+      + "font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;"
+      + "box-shadow:0 1px 2px rgba(16,24,40,.10)}"
       + "#bm-tour-launch:hover{background:#013a7d;color:#fff}";
     document.head.appendChild(stl);
 

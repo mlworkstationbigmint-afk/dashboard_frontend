@@ -75,7 +75,7 @@ ALL_PAGES = ["Home", "Price Forecasting", "Analyst Calls",
 DEFAULT_PROFILE = {
     "cobrand_logo": "adani_logo.png",   # white chip logo in the topbar (None => no chip)
     "cobrand_label": "adani",           # gradient-text fallback if the image is missing
-    "title": "GCP Steel - AI Lab - BigMint - Steel Price Forecasting Model",
+    "title": "GCP Steel - AI Labs - BigMint - Steel Price Forecasting Model",
     "primary": PRIMARY,
     "primary_dark": PRIMARY_DARK,
     "primary_soft": PRIMARY_SOFT,
@@ -84,20 +84,18 @@ DEFAULT_PROFILE = {
 }
 
 ROLE_PROFILES = {
+    # title omitted on every role -> all inherit DEFAULT_PROFILE's title (one header everywhere).
     "Adani": {
         "cobrand_logo": "adani_logo.png",
         "cobrand_label": "adani",
-        "title": "STEEL GCP - AI LABS : Steel Prices Forecasting Model",
     },
     "Analyst": {                         # internal BigMint view (no client co-brand)
         "cobrand_logo": None,
         "cobrand_label": "",
-        "title": "AI LABS : Steel Prices Forecasting Model",
     },
     "Admin": {                           # internal BigMint view (Admin tab added in top_nav)
         "cobrand_logo": None,
         "cobrand_label": "",
-        "title": "AI LABS : Steel Prices Forecasting Model",
     },
 }
 
@@ -472,7 +470,10 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
 .st-key-fc_horizon button:nth-of-type(4) {{ background:#024CA1 !important; }}
 .st-key-fc_horizon button:nth-of-type(1) p, .st-key-fc_horizon button:nth-of-type(2) p {{ color:#024CA1 !important; }}
 .st-key-fc_horizon button:nth-of-type(3) p, .st-key-fc_horizon button:nth-of-type(4) p {{ color:#fff !important; }}
-.st-key-fc_horizon button[aria-checked="true"] p {{ font-weight:800 !important; }}
+/* selected horizon -> FULL orange fill (not just the border) */
+.st-key-fc_horizon button[aria-checked="true"] {{ background:var(--bm-accent) !important;
+    border-color:var(--bm-accent) !important; }}
+.st-key-fc_horizon button[aria-checked="true"] p {{ color:#fff !important; font-weight:800 !important; }}
 /* accuracy glossary: hover-info marker on cards/titles + the reference box at the page foot */
 .bm-help {{ cursor:help; color:var(--bm-accent); font-weight:700; font-size:.82em;
     vertical-align:super; margin-left:2px; text-decoration:none; }}
@@ -785,12 +786,10 @@ def section_title(text: str, icon: str = ""):
 
 
 def footer():
-    # Footer is BigMint-only (co-brand lives in the topbar chip, not here).
-    brand = "BigMint"
     st.markdown(
         "<div class='bm-footer'>"
-        "<span>AI-generated forecasts are indicative.</span>"
-        f"<span>&copy; {brand} &middot; AI Labs &nbsp;|&nbsp; <a href='https://www.bigmint.co/' target='_blank'>bigmint.co</a></span>"
+        "<span>Note: AI-generated forecasts are indicative.</span>"
+        "<span>&copy; BigMint &middot; Adani</span>"
         "</div>",
         unsafe_allow_html=True,
     )

@@ -499,12 +499,14 @@ _HL_TEMPLATE = """
   outline:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;
   transition:background .12s ease,color .12s ease,border-color .12s ease;}
 .rangebtns button:hover{border-color:#cbd5e1;background:#e6ebf2;}
-/* historical week window: blue gradient light (1W) -> dark (12W); 26W/YTD/ALL stay neutral.
+/* historical week window: blue gradient light (1W) -> dark (12W/26W/YTD); ALL stays neutral.
    .active still wins (defined after) so the clicked button reads as selected. */
 .rangebtns button:nth-child(1){background:#e8f0fb;border-color:#cfe0f6;color:#024CA1;}
 .rangebtns button:nth-child(2){background:#b9d3f2;border-color:#a9cbef;color:#024CA1;}
 .rangebtns button:nth-child(3){background:#5b93da;border-color:#5b93da;color:#fff;}
 .rangebtns button:nth-child(4){background:#024CA1;border-color:#024CA1;color:#fff;}
+.rangebtns button:nth-child(5){background:#023d82;border-color:#023d82;color:#fff;}
+.rangebtns button:nth-child(6){background:#012f66;border-color:#012f66;color:#fff;}
 .rangebtns button.active{background:__ACCENT__;border-color:__ACCENT__;color:#fff;}</style>
 __RANGEBTNS__
 <div id="__DIV__" style="width:100%;height:__H__px;"></div>
@@ -1306,12 +1308,6 @@ def _deck_button(col, label, path, sig, mime, icon, key):
                         mime=mime, key=key, icon=icon)
 
 
-@st.dialog("Video not available")
-def _video_unavailable():
-    st.write("The video for this analyst call isn't available yet. "
-             "Please check back later.")
-
-
 def _call_date_label(call) -> str:
     """Full display date for a call — formatted 'date' (ISO) if set, else the legacy 'month' string."""
     d = call.get("date")
@@ -1351,8 +1347,8 @@ def _render_call_card(call, sig):
             f"<div class='bm-call-date'>{html.escape(_call_date_label(call))}</div>"
             f"<div class='bm-call-title'>{html.escape(call.get('title', ''))}</div>"
             f"</div>", unsafe_allow_html=True)
-        top[1].markdown("<div class='bm-call-kinds'>Report &middot; Pitchdeck &middot; Video</div>",
-                        unsafe_allow_html=True)
+        kinds = "Report &middot; Pitchdeck" + (" &middot; Video" if call.get("video") else "")
+        top[1].markdown(f"<div class='bm-call-kinds'>{kinds}</div>", unsafe_allow_html=True)
         if call.get("summary"):
             st.markdown(f"<div class='bm-call-summary'>{html.escape(call['summary'])}</div>",
                         unsafe_allow_html=True)
@@ -1365,16 +1361,18 @@ def _render_call_card(call, sig):
         if rows:
             st.markdown(f"<div class='bm-call-secs'>{rows}</div>", unsafe_allow_html=True)
         st.markdown("<div class='bm-call-sep'></div>", unsafe_allow_html=True)
-        b1, b2, b3, _ = st.columns([2, 2, 1.2, 1])
+        # Video button only shows when a link is set in the backend (else it's dropped entirely).
+        if call.get("video"):
+            b1, b2, b3, _ = st.columns([2, 2, 1.2, 1])
+        else:
+            b1, b2, _ = st.columns([2, 2, 2.2])
+            b3 = None
         _deck_button(b1, "Download Market Summary Report", call.get("pdf", ""), sig, "application/pdf",
                      ":material/picture_as_pdf:", f"pdf_{cid}")
         _deck_button(b2, "Download Analyst Call Pitchdeck", call.get("ppt", ""), sig, _PPT_MIME,
                      ":material/slideshow:", f"ppt_{cid}")
-        # Video link is always live: opens the admin-set URL (new tab), else a "not available" modal.
-        if call.get("video"):
+        if b3 is not None:
             b3.link_button("Video Podcast", call["video"], icon=":material/play_circle:")
-        elif b3.button("Video Podcast", key=f"vid_{cid}", icon=":material/play_circle:"):
-            _video_unavailable()
 
 
 def page_analyst():
@@ -1609,7 +1607,7 @@ def page_admin():
         video = st.text_input("Video link (URL)", value=(editing or {}).get("video", ""),
                               placeholder="https://…  (leave blank if none)", key=f"video_{ekey}",
                               help="Users get a live “Video Podcast” button linking here; "
-                                   "blank shows a “video not available” message.")
+                                   "blank hides the button entirely.")
         pdf_up = st.file_uploader("Market Summary Report (PDF)", type=["pdf"], key=f"pdf_up_{ekey}")
         if editing:
             for kind, p in (("PDF", editing.get("pdf")), ("PPT", editing.get("ppt"))):
