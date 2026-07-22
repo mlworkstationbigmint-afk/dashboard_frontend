@@ -56,6 +56,10 @@ LOC_DEFAULTS = {
     "Custom 2":    {"fob": 535.0, "freight": 20.0, "fta": False, **_LOC_DUTY},
 }
 
+# Seed values for a brand-new location an admin adds via the scenario table.
+_NEW_LOC = {"fob": 500.0, "freight": 20.0, "fta": False, **_LOC_DUTY}
+_LOC_FIELDS = ("fob", "freight", "fta", *_LOC_DUTY.keys())
+
 # Per-location duty/port fields -> the column header shown in the scenario table (order preserved).
 # Session state is keyed `{p}_{field}_{region}`; these feed compute_landed as a per-row `g` override.
 DUTY_COLS = {
@@ -85,12 +89,22 @@ def _effective_defaults():
                     gvars[lbl] = float(val)
                 except (TypeError, ValueError):
                     pass
-        for r, v in (saved.get("locations") or {}).items():
-            if r in locs and isinstance(v, dict):
-                out = dict(locs[r])
-                for f in out:
+        # Saved locations are AUTHORITATIVE when present (so an admin can add / remove / rename
+        # origins, not just tweak the built-in ones): rebuild the set from the saved dict, seeding
+        # each field from the matching built-in row (or _NEW_LOC for a brand-new origin).
+        saved_locs = saved.get("locations")
+        if saved_locs:
+            locs = {}
+            for r, v in saved_locs.items():
+                if not isinstance(v, dict):
+                    continue
+                out = dict(LOC_DEFAULTS.get(r, _NEW_LOC))
+                for f in _LOC_FIELDS:
                     if f in v:
-                        out[f] = bool(v[f]) if f == "fta" else float(v[f])
+                        try:
+                            out[f] = bool(v[f]) if f == "fta" else float(v[f])
+                        except (TypeError, ValueError):
+                            pass
                 locs[r] = out
     return gvars, locs
 
@@ -242,38 +256,45 @@ def _read_globals(seed, p):
 
 
 def _landed_figure(regions, results, domestic):
-    """Grouped bars per origin — Landed (Excl. duties) vs Landed incl. All duties — with the
-    domestic-benchmark line. (Excl. duties = (FOB + Freight) × FX + Port/Customs/Inland Freight;
-    incl. duties adds BCD + cess + safeguard.)"""
+    """Stacked bars per origin: Landed (Excl. duties) as the base + all duties as the top segment,
+    totalling Landed incl. All duties, vs the domestic-benchmark line. Both segments share the
+    diverging colour-by-distance-from-domestic (green cheaper / amber parity / red pricier); the
+    base is a LIGHTER tint of the same hue so the excl-duties portion is easy to tell apart."""
     import plotly.graph_objects as go
     ordered = sorted(regions, key=lambda r: results[r]["landed"])
     incl_vals = [results[r]["landed"] for r in ordered]
     excl_vals = [results[r]["landed_excl"] for r in ordered]
+    duty_vals = [max(results[r]["landed"] - results[r]["landed_excl"], 0.0) for r in ordered]
+    diffs = [results[r]["diff"] for r in ordered]        # landed - domestic (cheap < 0 < pricey)
+    m = max((abs(d) for d in diffs), default=1.0) or 1.0  # symmetric range so cmid=0 is centred
+    FULL = [[0.0, theme.SUCCESS], [0.5, "#FBBF24"], [1.0, theme.DANGER]]
+    LIGHT = [[0.0, "#A6DCBD"], [0.5, "#FDE6AB"], [1.0, "#EFAEA6"]]   # lighter tints of the same hues
     fig = go.Figure()
-    fig.add_trace(go.Bar(
+    fig.add_trace(go.Bar(          # base = landed EXCL duties (lighter shade)
         name="Landed (Excl. duties)", x=ordered, y=excl_vals,
-        marker=dict(color="#5E92D6", line=dict(color="white", width=1.5), cornerradius=7),
-        text=[f"INR {int(v):,}" for v in excl_vals], textposition="outside",
-        textfont=dict(size=10, color="#0f172a"), cliponaxis=False,
+        marker=dict(color=diffs, cmin=-m, cmid=0, cmax=m, colorscale=LIGHT,
+                    line=dict(color="white", width=1.5)),
+        text=[f"INR {int(v):,}" for v in excl_vals], textposition="inside",
+        insidetextanchor="middle", textfont=dict(size=10, color="#0f172a"),
         hovertemplate="<b>%{x}</b><br>Landed excl. duties: INR %{y:,.0f}/MT<extra></extra>"))
-    fig.add_trace(go.Bar(
-        name="Landed incl. All duties", x=ordered, y=incl_vals,
-        marker=dict(color=theme.PRIMARY, line=dict(color="white", width=1.5), cornerradius=7),
+    fig.add_trace(go.Bar(          # top = duties (full-strength colour); label shows the grand total
+        name="All duties", x=ordered, y=duty_vals, customdata=incl_vals,
+        marker=dict(color=diffs, cmin=-m, cmid=0, cmax=m, colorscale=FULL,
+                    line=dict(color="white", width=1.5)),
         text=[f"INR {int(v):,}" for v in incl_vals], textposition="outside",
         textfont=dict(size=10, color="#0f172a"), cliponaxis=False,
-        hovertemplate="<b>%{x}</b><br>Landed incl. all duties: INR %{y:,.0f}/MT<extra></extra>"))
+        hovertemplate="<b>%{x}</b><br>Duties: INR %{y:,.0f}/MT"
+                      "<br>Total incl. duties: INR %{customdata:,.0f}/MT<extra></extra>"))
     fig.add_hline(
         y=domestic, line=dict(color=theme.PRIMARY, width=2, dash="dash"),
         annotation_text=f"  Domestic INR {int(domestic):,}/MT  ", annotation_position="top left",
         annotation_font=dict(color="white", size=12),
         annotation_bgcolor=theme.PRIMARY, annotation_bordercolor=theme.PRIMARY, annotation_borderpad=4,
     )
-    fig.update_layout(height=400, margin=dict(l=10, r=10, t=44, b=10),
+    fig.update_layout(height=400, margin=dict(l=10, r=10, t=34, b=10),
                       plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
                       font=dict(family="sans-serif", size=12, color="#334155"),
-                      barmode="group", bargap=0.32, bargroupgap=0.12,
-                      legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0,
-                                  bgcolor="rgba(0,0,0,0)", font=dict(size=12)))
+                      barmode="stack", bargap=0.45, showlegend=False)
     fig.update_yaxes(title_text="Landed cost (INR/MT)", tickprefix="INR ", tickformat=",.0f",
                      gridcolor="#f1f5f9", zeroline=False,
                      range=[0, max(max(incl_vals), domestic) * 1.16])
@@ -387,21 +408,31 @@ def _render_body(is_admin=False):
     p = "adm" if is_admin else "imp"
 
     gvars_def, locs_def = _effective_defaults()
-    regions = list(locs_def.keys())
     st.session_state.setdefault(f"{p}_locs_ver", 0)     # bump -> new editor key -> fresh widget
     st.session_state.setdefault(f"{p}_gvars_ver", 0)
+    # Admin can add/remove/rename origins via the table, so the live location set is kept in
+    # session state (seeded from the defaults). Non-admins always use the fixed default set.
+    if is_admin:
+        st.session_state.setdefault(f"{p}_region_list", list(locs_def.keys()))
+        regions = list(st.session_state[f"{p}_region_list"])
+    else:
+        regions = list(locs_def.keys())
     for r in regions:
-        st.session_state.setdefault(f"{p}_fob_{r}", locs_def[r]["fob"])
-        st.session_state.setdefault(f"{p}_freight_{r}", locs_def[r]["freight"])
-        st.session_state.setdefault(f"{p}_fta_{r}", locs_def[r]["fta"])
+        base = locs_def.get(r, _NEW_LOC)                # admin-added origins aren't in locs_def
+        st.session_state.setdefault(f"{p}_fob_{r}", base["fob"])
+        st.session_state.setdefault(f"{p}_freight_{r}", base["freight"])
+        st.session_state.setdefault(f"{p}_fta_{r}", base["fta"])
         for f in DUTY_COLS:
-            st.session_state.setdefault(f"{p}_{f}_{r}", locs_def[r][f])
+            st.session_state.setdefault(f"{p}_{f}_{r}", base[f])
 
     # Reset callbacks run BEFORE widgets re-instantiate (on_click). Bumping the editor's key version
     # gives it a brand-new key, so the widget re-initialises from the fresh (default) DataFrame —
     # reliably clearing edited numbers AND the FTA checkboxes (popping the old key could miss cells).
     def _reset_locs():
-        for r in regions:
+        # Revert to the default location SET + values (drops any admin-added origins).
+        if is_admin:
+            st.session_state[f"{p}_region_list"] = list(locs_def.keys())
+        for r in locs_def:
             st.session_state[f"{p}_fob_{r}"] = locs_def[r]["fob"]
             st.session_state[f"{p}_freight_{r}"] = locs_def[r]["freight"]
             st.session_state[f"{p}_fta_{r}"] = locs_def[r]["fta"]
@@ -472,56 +503,73 @@ def _render_body(is_admin=False):
         }
         for f, col in DUTY_COLS.items():                # per-location port + duty columns
             loc_cols[col] = [float(st.session_state[f"{p}_{f}_{r}"]) for r in regions]
-        loc_df = pd.DataFrame(loc_cols, index=regions)
-        loc_df.index.name = "Location"
+        # Admin gets an editable Location column + dynamic rows (add / remove / rename origins);
+        # everyone else keeps the fixed default set with Location as the (read-only) row index.
+        if is_admin:
+            loc_df = pd.DataFrame({"Location": regions, **loc_cols}).reset_index(drop=True)
+            loc_cfg = {"Location": st.column_config.TextColumn(
+                "Location", required=False,
+                help="Add, rename or delete origins here (＋ to add a row, select + 🗑 to remove). "
+                     "Blank / duplicate rows are ignored on Calculate.")}
+        else:
+            loc_df = pd.DataFrame(loc_cols, index=regions)
+            loc_df.index.name = "Location"
+            loc_cfg = {}
+        loc_cfg.update({
+            "Landed (Excl. duties)": st.column_config.NumberColumn("Landed (Excl. duties)", format="INR %.0f", disabled=True,
+                        help="Derived: (FOB + Freight) × FX + Port/Customs/Inland Freight (read-only). Refreshes on Calculate."),
+            "FTA": st.column_config.CheckboxColumn("FTA?", help="Waives BCD + its cess for this origin."),
+            "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0,
+                        help="Origin reference price — editable; press Calculate to apply."),
+            "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
+            "Port/Customs/Inland Freight": st.column_config.NumberColumn("Port/Customs/Inland Freight", format="INR %.0f", step=100.0,
+                        help="Port handling, customs clearance & inland freight for this origin (INR/MT)."),
+            "BCD %": st.column_config.NumberColumn("BCD %", format="%.1f", step=0.5,
+                        help="Basic customs duty (FTA waives it)."),
+            "Cess on BCD %": st.column_config.NumberColumn("Cess on BCD %", format="%.1f", step=0.5,
+                        help="Social welfare surcharge on BCD (FTA waives it)."),
+            "Safeguard %": st.column_config.NumberColumn("Safeguard %", format="%.1f", step=0.5,
+                        help="Safeguard duty, applied only if TVD < threshold."),
+            "Cess on SG %": st.column_config.NumberColumn("Cess on SG %", format="%.1f", step=0.5,
+                        help="Cess on the safeguard duty."),
+        })
         loc_edit = st.data_editor(
-            loc_df, key=ekey, width="stretch", hide_index=False,
-            column_config={
-                "Landed (Excl. duties)": st.column_config.NumberColumn("Landed (Excl. duties)", format="INR %.0f", disabled=True,
-                            help="Derived: (FOB + Freight) × FX + Port/Customs/Inland Freight (read-only). Refreshes on Calculate."),
-                "FTA": st.column_config.CheckboxColumn("FTA?", help="Waives BCD + its cess for this origin."),
-                "FOB $/t": st.column_config.NumberColumn("FOB $/t", format="$%.0f", step=5.0,
-                            help="Origin reference price — editable; press Calculate to apply."),
-                "Freight $/t": st.column_config.NumberColumn("Freight $/t", format="$%.0f", step=1.0),
-                "Port/Customs/Inland Freight": st.column_config.NumberColumn("Port/Customs/Inland Freight", format="INR %.0f", step=100.0,
-                            help="Port handling, customs clearance & inland freight for this origin (INR/MT)."),
-                "BCD %": st.column_config.NumberColumn("BCD %", format="%.1f", step=0.5,
-                            help="Basic customs duty (FTA waives it)."),
-                "Cess on BCD %": st.column_config.NumberColumn("Cess on BCD %", format="%.1f", step=0.5,
-                            help="Social welfare surcharge on BCD (FTA waives it)."),
-                "Safeguard %": st.column_config.NumberColumn("Safeguard %", format="%.1f", step=0.5,
-                            help="Safeguard duty, applied only if TVD < threshold."),
-                "Cess on SG %": st.column_config.NumberColumn("Cess on SG %", format="%.1f", step=0.5,
-                            help="Cess on the safeguard duty."),
-            },
+            loc_df, key=ekey, width="stretch", hide_index=not is_admin,
+            num_rows="dynamic" if is_admin else "fixed", column_config=loc_cfg,
         )
-        # pending = the editor buffer differs from the applied (committed) values -> lights Calculate
-        # (Spot is derived/read-only, so it isn't part of the diff.)
-        pending = any(
-            float(loc_edit.loc[r, "FOB $/t"]) != float(st.session_state[f"{p}_fob_{r}"])
-            or float(loc_edit.loc[r, "Freight $/t"]) != float(st.session_state[f"{p}_freight_{r}"])
-            or bool(loc_edit.loc[r, "FTA"]) != bool(st.session_state[f"{p}_fta_{r}"])
-            or any(float(loc_edit.loc[r, col]) != float(st.session_state[f"{p}_{f}_{r}"])
-                   for f, col in DUTY_COLS.items())
-            for r in regions
-        )
-        # reset enabled whenever anything (buffer or committed) differs from the effective defaults
-        dirty = pending or any(
-            float(st.session_state[f"{p}_fob_{r}"]) != float(locs_def[r]["fob"])
-            or float(st.session_state[f"{p}_freight_{r}"]) != float(locs_def[r]["freight"])
-            or bool(st.session_state[f"{p}_fta_{r}"]) != bool(locs_def[r]["fta"])
-            or any(float(st.session_state[f"{p}_{f}_{r}"]) != float(locs_def[r][f])
-                   for f in DUTY_COLS)
-            for r in regions
-        )
+        # pending = the editor buffer differs from the applied (committed) values -> lights Calculate.
+        # For the admin (dynamic rows / renamable index) the row-by-row diff doesn't apply, so both
+        # buttons stay live and Calculate reconciles whatever is in the table.
+        if is_admin:
+            pending = dirty = True
+        else:
+            pending = any(
+                float(loc_edit.loc[r, "FOB $/t"]) != float(st.session_state[f"{p}_fob_{r}"])
+                or float(loc_edit.loc[r, "Freight $/t"]) != float(st.session_state[f"{p}_freight_{r}"])
+                or bool(loc_edit.loc[r, "FTA"]) != bool(st.session_state[f"{p}_fta_{r}"])
+                or any(float(loc_edit.loc[r, col]) != float(st.session_state[f"{p}_{f}_{r}"])
+                       for f, col in DUTY_COLS.items())
+                for r in regions
+            )
+            # reset enabled whenever anything (buffer or committed) differs from the effective defaults
+            dirty = pending or any(
+                float(st.session_state[f"{p}_fob_{r}"]) != float(locs_def[r]["fob"])
+                or float(st.session_state[f"{p}_freight_{r}"]) != float(locs_def[r]["freight"])
+                or bool(st.session_state[f"{p}_fta_{r}"]) != bool(locs_def[r]["fta"])
+                or any(float(st.session_state[f"{p}_{f}_{r}"]) != float(locs_def[r][f])
+                       for f in DUTY_COLS)
+                for r in regions
+            )
         with st.container(key="imp_btnrow"):           # scoped tight gap so Reset hugs Calculate
             bcol1, bcol2, bcol3 = st.columns([1, 1, 6], vertical_alignment="center")
             calc = bcol1.button("Calculate", key=f"{p}_calc", type="primary", disabled=not pending,
                                 width="stretch")
             reset = bcol2.button("↺ Reset", key=f"{p}_reset", disabled=not dirty,
-                                 width="stretch", help="Reset FOB / Freight / FTA back to the default values.")
-            bcol3.caption("Edit FOB, freight, FTA, port or the per-origin duty rates, then press "
-                          "**Calculate** to apply. Landed (Excl. duties) = (FOB + Freight) × FX + Port/Customs/Inland Freight "
+                                 width="stretch", help="Reset locations + inputs back to the defaults.")
+            _lead = ("Add, rename or delete rows, edit any input, then press **Calculate** to apply. "
+                     if is_admin else
+                     "Edit FOB, freight, FTA, port or the per-origin duty rates, then press **Calculate** to apply. ")
+            bcol3.caption(_lead + "Landed (Excl. duties) = (FOB + Freight) × FX + Port/Customs/Inland Freight "
                           "(read-only); **Reset** restores defaults.")
         # Both commit COMMITTED state that the outputs depend on, so both fire a single full rerun
         # (scope="app") to redraw the chart + tables together — the only time anything below re-renders.
@@ -529,15 +577,34 @@ def _render_body(is_admin=False):
             _reset_locs()
             st.rerun(scope="app")
         if calc:                                       # commit the buffer -> full rerun recomputes below
-            for r in regions:
-                st.session_state[f"{p}_fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
-                st.session_state[f"{p}_freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
-                is_fta = bool(loc_edit.loc[r, "FTA"])
-                st.session_state[f"{p}_fta_{r}"] = is_fta
-                for f, col in DUTY_COLS.items():
-                    # FTA waives BCD + its cess -> force those rates to 0 so the table mirrors the math.
-                    st.session_state[f"{p}_{f}_{r}"] = 0.0 if (is_fta and f in ("bcd_pct", "cess_pct")) \
-                        else float(loc_edit.loc[r, col])
+            if is_admin:
+                def _num(v, d=0.0):
+                    return float(v) if pd.notna(v) else d
+                new_regions = []
+                for _, rr in loc_edit.iterrows():
+                    loc = str(rr.get("Location", "") or "").strip()
+                    if not loc or loc in new_regions:      # skip blank / duplicate origin names
+                        continue
+                    is_fta = bool(rr["FTA"]) if pd.notna(rr["FTA"]) else False
+                    st.session_state[f"{p}_fob_{loc}"] = _num(rr["FOB $/t"], _NEW_LOC["fob"])
+                    st.session_state[f"{p}_freight_{loc}"] = _num(rr["Freight $/t"], _NEW_LOC["freight"])
+                    st.session_state[f"{p}_fta_{loc}"] = is_fta
+                    for f, col in DUTY_COLS.items():
+                        st.session_state[f"{p}_{f}_{loc}"] = 0.0 if (is_fta and f in ("bcd_pct", "cess_pct")) \
+                            else _num(rr[col], _NEW_LOC[f])
+                    new_regions.append(loc)
+                st.session_state[f"{p}_region_list"] = new_regions or list(locs_def.keys())
+                st.session_state[f"{p}_locs_ver"] += 1   # fresh editor -> no ghost add/delete deltas
+            else:
+                for r in regions:
+                    st.session_state[f"{p}_fob_{r}"] = float(loc_edit.loc[r, "FOB $/t"])
+                    st.session_state[f"{p}_freight_{r}"] = float(loc_edit.loc[r, "Freight $/t"])
+                    is_fta = bool(loc_edit.loc[r, "FTA"])
+                    st.session_state[f"{p}_fta_{r}"] = is_fta
+                    for f, col in DUTY_COLS.items():
+                        # FTA waives BCD + its cess -> force those rates to 0 so the table mirrors the math.
+                        st.session_state[f"{p}_{f}_{r}"] = 0.0 if (is_fta and f in ("bcd_pct", "cess_pct")) \
+                            else float(loc_edit.loc[r, col])
             st.rerun(scope="app")
 
         # --- Admin: persist the current values as the org-wide defaults for every user ---
@@ -602,7 +669,8 @@ def _render_body(is_admin=False):
                                 key=f"landed_chart_{p}")
             except Exception:
                 st.bar_chart(pd.DataFrame({"Landed INR/t": {r: results[r]["landed"] for r in regions}}))
-            st.caption("Sorted cheapest → priciest. Colour shows distance from domestic parity "
+            st.caption("Sorted cheapest → priciest. Each bar stacks Landed excl. duties (lighter base) + "
+                       "all duties (darker top) = total landed. Colour shows distance from domestic parity "
                        "(green = cheaper, amber ≈ parity, red = pricier). Dashed line = domestic benchmark.")
         else:                                      # Tabular
             _results_table(regions, results, domestic)
