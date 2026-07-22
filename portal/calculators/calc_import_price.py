@@ -534,7 +534,9 @@ def _render_body(is_admin=False):
                         help="Cess on the safeguard duty."),
         })
         loc_edit = st.data_editor(
-            loc_df, key=ekey, width="stretch", hide_index=not is_admin,
+            # admin: Location is an editable COLUMN -> hide the default row index; everyone else:
+            # Location IS the index -> show it (this is where the origin names appear for users).
+            loc_df, key=ekey, width="stretch", hide_index=is_admin,
             num_rows="dynamic" if is_admin else "fixed", column_config=loc_cfg,
         )
         # pending = the editor buffer differs from the applied (committed) values -> lights Calculate.
