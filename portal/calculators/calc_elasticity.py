@@ -265,7 +265,7 @@ def _contrib_figure(names, contrib_rs, height):
     fig.update_layout(height=height, margin=dict(l=10, r=40, t=8, b=8),
                       plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
                       font=dict(family="sans-serif", size=12, color="#334155"), showlegend=False)
-    fig.update_xaxes(title_text="Contribution to price (INR/t)", tickprefix="INR ",
+    fig.update_xaxes(title_text="Contribution to price (INR/MT)", tickprefix="INR ",
                      tickformat=",.0f", gridcolor="#f1f5f9", zeroline=False, range=[-rng, rng])
     fig.update_yaxes(title_text="", automargin=True)
     return fig

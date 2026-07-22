@@ -75,7 +75,7 @@ ALL_PAGES = ["Home", "Price Forecasting", "Analyst Calls",
 DEFAULT_PROFILE = {
     "cobrand_logo": "adani_logo.png",   # white chip logo in the topbar (None => no chip)
     "cobrand_label": "adani",           # gradient-text fallback if the image is missing
-    "title": "AI LABS : Steel Prices Forecasting Model",
+    "title": "GCP Steel - AI Lab - BigMint - Steel Price Forecasting Model",
     "primary": PRIMARY,
     "primary_dark": PRIMARY_DARK,
     "primary_soft": PRIMARY_SOFT,
@@ -460,6 +460,31 @@ button[data-variant="segmented_control"][aria-checked="true"] {{
     background-color:rgba(238,78,36,0.10) !important;
 }}
 button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--bm-accent) !important; }}
+/* commodity group / product tab-strips -> bold names */
+.st-key-fc_group button p, .st-key-perf_group button p,
+.st-key-fc_prod button p, .st-key-perf_prod button p {{ font-weight:800 !important; }}
+/* Forecast-forward horizon tabs (fc_horizon: 1W/4W/8W/12W) -> blue gradient, light 1W -> dark 12W.
+   Same gradient idea as the chart's historical zoom buttons (.rangebtns in app.py). The selected
+   option keeps its orange border (generic segmented rule) as the pick indicator. */
+.st-key-fc_horizon button:nth-of-type(1) {{ background:#e8f0fb !important; }}
+.st-key-fc_horizon button:nth-of-type(2) {{ background:#b9d3f2 !important; }}
+.st-key-fc_horizon button:nth-of-type(3) {{ background:#5b93da !important; }}
+.st-key-fc_horizon button:nth-of-type(4) {{ background:#024CA1 !important; }}
+.st-key-fc_horizon button:nth-of-type(1) p, .st-key-fc_horizon button:nth-of-type(2) p {{ color:#024CA1 !important; }}
+.st-key-fc_horizon button:nth-of-type(3) p, .st-key-fc_horizon button:nth-of-type(4) p {{ color:#fff !important; }}
+.st-key-fc_horizon button[aria-checked="true"] p {{ font-weight:800 !important; }}
+/* accuracy glossary: hover-info marker on cards/titles + the reference box at the page foot */
+.bm-help {{ cursor:help; color:var(--bm-accent); font-weight:700; font-size:.82em;
+    vertical-align:super; margin-left:2px; text-decoration:none; }}
+.bm-glossary {{ background:#f7f9fc; border:1px solid var(--bm-border); border-radius:12px;
+    padding:14px 18px; margin-top:6px; }}
+.bm-glossary-h {{ font-weight:800; color:var(--bm-primary-dark); font-size:14.5px; margin-bottom:8px; }}
+.bm-gl-item {{ padding:7px 0; border-top:1px solid var(--bm-line); }}
+.bm-gl-item:first-of-type {{ border-top:none; }}
+.bm-gl-term {{ font-weight:700; color:var(--bm-ink); }}
+.bm-gl-idea {{ color:#475569; font-size:13px; margin:2px 0; }}
+.bm-gl-formula {{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px;
+    color:var(--bm-primary-dark); background:#eef3fb; border-radius:6px; padding:2px 7px; display:inline-block; }}
 /* grouped-forecasting location dropdown -> make it stand out: coloured border + tint */
 /* RIGHT-aligned and pulled down onto the Graphical/Tabular slider row (negative margin eats
    the block gap + its own height) so switch (left) + dropdown (right) share one line; it stays
@@ -715,16 +740,17 @@ def icon(name: str, size: int = 18) -> str:
 
 
 def render_topbar(user: dict | None = None):
-    """Brand bar for the logged-in user's role: BigMint logo · (co-brand chip) · title.
-    The co-brand chip + one pipe are omitted when the role's profile has no co-brand, and
-    always on the login screen (no user) so it stays BigMint-only."""
+    """Brand bar for the logged-in user's role: (co-brand chip) · BigMint logo · title.
+    The co-brand chip + one pipe are omitted when the role's profile has no co-brand
+    (internal Analyst/Admin); the login screen uses DEFAULT_PROFILE, which keeps the chip."""
     profile = profile_for(user.get("role") if user else None)
-    # Login screen (user is None) is BigMint-only — never show a client co-brand there.
-    cobrand = _cobrand_logo_html(profile) if user else ""
-    parts = [f"<div class='bm-topbar-l'>{_logo_html()}"]
-    if cobrand:
-        parts.append("<span class='bm-cobrand-x'>|</span>"
-                     f"<span class='bm-adani-chip'>{cobrand}</span>")
+    # Co-brand chip shows on the login screen too (DEFAULT_PROFILE carries the Adani logo).
+    cobrand = _cobrand_logo_html(profile)
+    parts = ["<div class='bm-topbar-l'>"]
+    if cobrand:   # Adani chip sits BEFORE the BigMint logo
+        parts.append(f"<span class='bm-adani-chip'>{cobrand}</span>"
+                     "<span class='bm-cobrand-x'>|</span>")
+    parts.append(_logo_html())
     parts.append("<span class='bm-cobrand-x'>|</span>"
                  f"<span class='bm-portal-title'>{html.escape(profile['title'])}</span></div>")
     st.markdown(

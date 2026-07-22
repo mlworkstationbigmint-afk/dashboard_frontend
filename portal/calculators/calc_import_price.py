@@ -265,7 +265,7 @@ def _landed_figure(regions, results, domestic):
                       plot_bgcolor="white", paper_bgcolor="rgba(0,0,0,0)",
                       font=dict(family="sans-serif", size=12, color="#334155"),
                       bargap=0.45, showlegend=False)
-    fig.update_yaxes(title_text="Landed cost (INR/t)", tickprefix="INR ", tickformat=",.0f",
+    fig.update_yaxes(title_text="Landed cost (INR/MT)", tickprefix="INR ", tickformat=",.0f",
                      gridcolor="#f1f5f9", zeroline=False,
                      range=[0, max(max(landed_vals), domestic) * 1.13])
     fig.update_xaxes(title_text="", tickfont=dict(size=12.5, color="#0f172a"))

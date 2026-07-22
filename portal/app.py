@@ -330,10 +330,22 @@ theme.apply_role_theme(_profile)
 
 st.session_state.setdefault("page", "Home")
 
-# header: brand bar + a primary "Log out" button (same design as Sign in) pinned top-right
-hcol1, hcol2 = st.columns([6, 1], vertical_alignment="center")
+# header: brand bar + a primary "Log out" button (same design as Sign in) pinned top-right.
+# Tour-eligible roles get a slot between the two for the "Take a tour" launcher (tour.py injects
+# its button into .st-key-tour_slot — beside Log out, outside the blue topbar).
+_tour_on = (user.get("role") or "").strip().lower() in tour.TOUR_ROLES
+if _tour_on:
+    hcol1, hcol_tour, hcol2 = st.columns([6, 1.5, 1], vertical_alignment="center")
+else:
+    hcol1, hcol2 = st.columns([6, 1], vertical_alignment="center")
+    hcol_tour = None
 with hcol1:
     theme.render_topbar(user)
+if hcol_tour is not None:
+    with hcol_tour:
+        # Static markdown HTML host (identical every run) so the JS-appended tour button survives
+        # reruns — same trick as .bm-topbar-r. A React-managed st.container would wipe it on rerun.
+        st.markdown("<div class='bm-tour-host'></div>", unsafe_allow_html=True)
 with hcol2:
     if st.button("Log out", key="logout_top", type="primary", width="stretch", icon=":material/logout:"):
         auth.logout(st.session_state.get("_auth_token"))
@@ -431,7 +443,9 @@ def _style_fig(fig, height=430, money=True):
         font=dict(family="sans-serif", size=12, color="#334155"),
     )
     if money:
-        fig.update_yaxes(tickprefix="INR ", tickformat=",.0f")
+        fig.update_yaxes(tickprefix="INR ", tickformat=",.0f",
+                         title_text="per MT", title_font=dict(size=11, color="#64748b"),
+                         title_standoff=8)
     fig.update_yaxes(gridcolor="#eef2f7", zeroline=False, showline=False, automargin=True,
                      ticklabelstandoff=8)
     fig.update_xaxes(gridcolor="rgba(0,0,0,0)", showline=True, linecolor="#e2e8f0",
@@ -446,7 +460,7 @@ def _dt(t):
 # Fixed left margin (px) shared by ALL performance-page charts so they render at the SAME width,
 # regardless of how wide each one's y-axis labels are ("INR62,000" vs "98%" vs "Correct"). Wide
 # enough for the price labels; used with margin autoexpand=False so it never varies per chart.
-_PERF_ML = 68
+_PERF_ML = 92   # room for the vertical "per MT" y-axis title on the price charts (still aligns all charts)
 
 
 def _round50(x):
@@ -485,6 +499,12 @@ _HL_TEMPLATE = """
   outline:none;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;
   transition:background .12s ease,color .12s ease,border-color .12s ease;}
 .rangebtns button:hover{border-color:#cbd5e1;background:#e6ebf2;}
+/* historical week window: blue gradient light (1W) -> dark (12W); 26W/YTD/ALL stay neutral.
+   .active still wins (defined after) so the clicked button reads as selected. */
+.rangebtns button:nth-child(1){background:#e8f0fb;border-color:#cfe0f6;color:#024CA1;}
+.rangebtns button:nth-child(2){background:#b9d3f2;border-color:#a9cbef;color:#024CA1;}
+.rangebtns button:nth-child(3){background:#5b93da;border-color:#5b93da;color:#fff;}
+.rangebtns button:nth-child(4){background:#024CA1;border-color:#024CA1;color:#fff;}
 .rangebtns button.active{background:__ACCENT__;border-color:__ACCENT__;color:#fff;}</style>
 __RANGEBTNS__
 <div id="__DIV__" style="width:100%;height:__H__px;"></div>
@@ -718,7 +738,9 @@ def delta_bar(view):
                           hoverlabel=dict(bgcolor="white", bordercolor="#e2e8f0"),
                           font=dict(size=11, color="#334155"))
         fig.update_yaxes(tickprefix="INR ", tickformat=",.0f", gridcolor="#eef2f7", zeroline=True,
-                         zerolinecolor="#cbd5e1", automargin=False, ticklabelstandoff=3)
+                         zerolinecolor="#cbd5e1", automargin=False, ticklabelstandoff=3,
+                         title_text="per MT", title_font=dict(size=11, color="#64748b"),
+                         title_standoff=8)
         fig.update_xaxes(gridcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     except Exception:
@@ -1170,7 +1192,7 @@ def page_forecasting():
         # One continuous table: history (actual+forecast+delta, blank direction) flows into the
         # 12-week-ahead forecast (forecast+direction, blank actual+delta). Forecasts rounded to INR 50;
         # Δ = Actual − rounded forecast. Sortable (whole dataset) + paginated (52 rows/page).
-        theme.section_title("Actual vs forecast (history &rarr; 12-week ahead)", theme.icon("calendar"))
+        theme.section_title("Actual vs Forecast Price (history &rarr; 12-week ahead)", theme.icon("calendar"))
         hist_t = acc_hist.dropna(subset=["Actual"])
         rows = []
         for r in hist_t.itertuples():
@@ -1645,6 +1667,37 @@ def page_admin():
 # ---------------------------------------------------------------------------
 # PAGE: PERFORMANCE DASHBOARD
 # ---------------------------------------------------------------------------
+# Accuracy glossary — rendered as a reference box at the foot of the Performance page and as
+# hover tooltips (ⓘ) on the matching metric cards + chart titles. (term, idea, formula).
+ACC_GLOSSARY = {
+    "mapa": ("Absolute accuracy (MAPA)",
+             "How close the forecast is to the actual price on average — error size only, ignoring direction.",
+             "100% - mean(|Forecast - Actual| / Actual)"),
+    "dir": ("Directional accuracy",
+            "Share of weeks the forecast called the week-over-week move (Up / Down / Flat) correctly.",
+            "correct direction calls / total weeks x 100"),
+    "delta": ("Delta accuracy",
+              "How much of the actual weekly price move the forecast captured. 100% = fully captured; negative = wrong way.",
+              "mean(captured move / actual move x 100)"),
+}
+
+
+def _acc_help(key):
+    """A small ⓘ marker whose native tooltip carries the metric's idea + formula (see ACC_GLOSSARY)."""
+    _term, idea, formula = ACC_GLOSSARY[key]
+    return f" <span class='bm-help' title='{idea}  Formula: {formula}'>&#9432;</span>"
+
+
+def _acc_glossary_html():
+    items = "".join(
+        f"<div class='bm-gl-item'><span class='bm-gl-term'>{term}</span>"
+        f"<div class='bm-gl-idea'>{idea}</div>"
+        f"<span class='bm-gl-formula'>{formula}</span></div>"
+        for term, idea, formula in ACC_GLOSSARY.values())
+    return ("<div class='bm-glossary'><div class='bm-glossary-h'>Accuracy glossary</div>"
+            f"{items}</div>")
+
+
 def page_performance():
     st.markdown("## Performance dashboard")
     products = allowed_products(user["role"])
@@ -1693,23 +1746,23 @@ def page_performance():
 
     with st.container(key="perf_kpis"):        # stable anchor for the analyst walkthrough (tour.py)
         k1, k2, k3 = st.columns(3)
-        k1.markdown(theme.kpi_card("Absolute accuracy (MAPA)",
+        k1.markdown(theme.kpi_card("Absolute accuracy (MAPA)" + _acc_help("mapa"),
                     f"{kpis['mapa']:.1f}%" if kpis['mapa'] is not None else "-", f"100 - mean abs % error · {len(view)} wk", theme.icon("target")), unsafe_allow_html=True)
-        k2.markdown(theme.kpi_card("Directional accuracy",
-                    f"{kpis['dir_acc']:.0f}%" if kpis['dir_acc'] is not None else "-", "correct up/down/flat calls", theme.icon("gauge")), unsafe_allow_html=True)
-        k3.markdown(theme.kpi_card("Delta accuracy",
-                    f"{kpis['delta_acc']:.0f}%" if kpis['delta_acc'] is not None else "-", "avg weekly move capture", theme.icon("trending")), unsafe_allow_html=True)
+        k2.markdown(theme.kpi_card("Directional accuracy" + _acc_help("dir"),
+                    f"{kpis['dir_acc']:.0f}%" if kpis['dir_acc'] is not None else "-", f"correct up/down/flat calls · {len(view)} wk", theme.icon("gauge")), unsafe_allow_html=True)
+        k3.markdown(theme.kpi_card("Delta accuracy" + _acc_help("delta"),
+                    f"{kpis['delta_acc']:.0f}%" if kpis['delta_acc'] is not None else "-", f"avg weekly move capture · {len(view)} wk", theme.icon("trending")), unsafe_allow_html=True)
 
     st.write("")
-    theme.section_title("Actual vs forecast", theme.icon("trending"))
+    theme.section_title("Actual vs Forecast Price" + _acc_help("mapa"), theme.icon("trending"))
     perf_chart(view)
     theme.section_title("Actual price vs Forecast price", theme.icon("gauge"))
     delta_bar(view)
-    theme.section_title("Weekly forecast absolute accuracy", theme.icon("target"))
+    theme.section_title("Weekly forecast absolute accuracy" + _acc_help("mapa"), theme.icon("target"))
     accuracy_chart(view)
-    theme.section_title("Weekly directional hit accuracy", theme.icon("gauge"))
+    theme.section_title("Weekly directional hit accuracy" + _acc_help("dir"), theme.icon("gauge"))
     directional_accuracy_bar(view)
-    theme.section_title("Weekly delta accuracy", theme.icon("trending"))
+    theme.section_title("Weekly delta accuracy" + _acc_help("delta"), theme.icon("trending"))
     delta_acc_bar(view)
 
     theme.section_title("Week-wise detail", theme.icon("calendar"))
@@ -1731,6 +1784,8 @@ def page_performance():
     grid.bm_grid(pdf, key="perf_tbl", configure=_perf_grid, page_size=50)
     st.markdown("<div class='bm-footnote'>Delta = Forecast &minus; Spot (forecast rounded to INR 50).</div>",
                 unsafe_allow_html=True)
+    st.write("")
+    st.markdown(_acc_glossary_html(), unsafe_allow_html=True)
     theme.footer()
 
 

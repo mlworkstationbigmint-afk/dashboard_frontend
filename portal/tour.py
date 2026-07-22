@@ -68,10 +68,10 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       + ".driver-active-element{position:relative !important;z-index:2147483200 !important}"
       // launcher lives INSIDE the blue topbar (.bm-topbar-r), just left of the Log out button ->
       // white pill on the blue bar, accent-red on hover (matches the Log out invert)
-      + "#bm-tour-launch{background:#fff;color:#024CA1;border:none;border-radius:999px;padding:7px 15px;"
-      + "font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap;"
-      + "box-shadow:0 2px 8px rgba(2,18,43,.20)}"
-      + "#bm-tour-launch:hover{background:#EE4E24;color:#fff}";
+      + "#bm-tour-launch{background:#024CA1;color:#fff;border:none;border-radius:999px;padding:11px 22px;"
+      + "font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;white-space:nowrap;"
+      + "box-shadow:0 3px 12px rgba(2,18,43,.28)}"
+      + "#bm-tour-launch:hover{background:#013a7d;color:#fff}";
     document.head.appendChild(stl);
 
     // ---- parent-DOM helpers ----
@@ -260,10 +260,12 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       var b = document.createElement("button");
       b.id = "bm-tour-launch"; b.type = "button"; b.textContent = "🧭 Take a tour";
       b.addEventListener("click", start);
-      // ponytail: append into the blue topbar's right slot; survives reruns because the topbar
-      // markdown HTML is identical each run (React skips the innerHTML re-set). Falls back to body
-      // if the bar isn't present. If it ever vanishes on rerun, upgrade to a MutationObserver.
-      var host = document.querySelector(".bm-topbar-r") || document.body;
+      // ponytail: dock beside Log out (white header area, OUTSIDE the blue topbar) via the static
+      // markdown host <div class='bm-tour-host'> rendered in app.py's header column. It's identical
+      // markup each run so React never re-sets it -> the appended button survives reruns. Falls back
+      // to the blue topbar's right slot, then body.
+      var host = document.querySelector(".bm-tour-host")
+               || document.querySelector(".bm-topbar-r") || document.body;
       host.appendChild(b);
     }
 
