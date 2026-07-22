@@ -330,22 +330,12 @@ theme.apply_role_theme(_profile)
 
 st.session_state.setdefault("page", "Home")
 
-# header: brand bar + a primary "Log out" button (same design as Sign in) pinned top-right.
-# Tour-eligible roles get a slot between the two for the "Take a tour" launcher (tour.py injects
-# its button into .st-key-tour_slot — beside Log out, outside the blue topbar).
-_tour_on = (user.get("role") or "").strip().lower() in tour.TOUR_ROLES
-if _tour_on:
-    hcol1, hcol_tour, hcol2 = st.columns([6, 1.5, 1], vertical_alignment="center")
-else:
-    hcol1, hcol2 = st.columns([6, 1], vertical_alignment="center")
-    hcol_tour = None
+# header: brand bar + a primary "Log out" button (same design as Sign in) pinned top-right. The
+# "Take a tour" launcher (tour-eligible roles) is injected by tour.py into the blue bar's right slot
+# (.bm-topbar-r), so it sits at the bar's right end just left of Log out.
+hcol1, hcol2 = st.columns([6, 1], vertical_alignment="center")
 with hcol1:
     theme.render_topbar(user)
-if hcol_tour is not None:
-    with hcol_tour:
-        # Static markdown HTML host (identical every run) so the JS-appended tour button survives
-        # reruns — same trick as .bm-topbar-r. A React-managed st.container would wipe it on rerun.
-        st.markdown("<div class='bm-tour-host'></div>", unsafe_allow_html=True)
 with hcol2:
     if st.button("Log out", key="logout_top", type="primary", width="stretch", icon=":material/logout:"):
         auth.logout(st.session_state.get("_auth_token"))

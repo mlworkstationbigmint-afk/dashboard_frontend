@@ -66,14 +66,13 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       // lift the spotlighted element above the overlay — some app elements (e.g. the pulled-up location
       // dropdown) set their own z-index/stacking context that would otherwise keep them dimmed
       + ".driver-active-element{position:relative !important;z-index:2147483200 !important}"
-      // launcher lives INSIDE the blue topbar (.bm-topbar-r), just left of the Log out button ->
-      // white pill on the blue bar, accent-red on hover (matches the Log out invert)
-      // Match the Log out button's design (Streamlit primary button): rounded-rectangle, same
-      // radius/height/weight — just blue instead of orange, per the brief.
-      + "#bm-tour-launch{background:#024CA1;color:#fff;border:none;border-radius:8px;padding:12px 22px;"
-      + "font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;"
-      + "box-shadow:0 1px 2px rgba(16,24,40,.10)}"
-      + "#bm-tour-launch:hover{background:#013a7d;color:#fff}";
+      // launcher lives INSIDE the blue topbar (.bm-topbar-r), at the bar's right end just left of
+      // Log out — so the blue header extends right up to it. Rounded-rectangle like Log out, but a
+      // translucent-white chip so it stays visible ON the blue bar; hover inverts to white/blue.
+      + "#bm-tour-launch{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.5);"
+      + "border-radius:8px;padding:9px 18px;font-size:14px;font-weight:600;cursor:pointer;"
+      + "font-family:inherit;white-space:nowrap}"
+      + "#bm-tour-launch:hover{background:#fff;color:#024CA1;border-color:#fff}";
     document.head.appendChild(stl);
 
     // ---- parent-DOM helpers ----
@@ -262,12 +261,9 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       var b = document.createElement("button");
       b.id = "bm-tour-launch"; b.type = "button"; b.textContent = "🧭 Take a tour";
       b.addEventListener("click", start);
-      // ponytail: dock beside Log out (white header area, OUTSIDE the blue topbar) via the static
-      // markdown host <div class='bm-tour-host'> rendered in app.py's header column. It's identical
-      // markup each run so React never re-sets it -> the appended button survives reruns. Falls back
-      // to the blue topbar's right slot, then body.
-      var host = document.querySelector(".bm-tour-host")
-               || document.querySelector(".bm-topbar-r") || document.body;
+      // Dock into the blue topbar's right slot (bar's right end, just left of Log out) so the blue
+      // header runs right up to the button. A MutationObserver (below) re-adds it if a rerun wipes it.
+      var host = document.querySelector(".bm-topbar-r") || document.body;
       host.appendChild(b);
     }
 
@@ -280,6 +276,14 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
     }, true);
 
     launcher();
+    // Streamlit reruns re-render the topbar and can drop the injected button. Re-add it whenever it
+    // goes missing (append triggers another mutation, but launcher() no-ops once it exists -> no loop).
+    if (!window.__bmTourObserver){
+      window.__bmTourObserver = new MutationObserver(function(){
+        if (!document.getElementById("bm-tour-launch")) launcher();
+      });
+      window.__bmTourObserver.observe(document.body, {childList:true, subtree:true});
+    }
     if (AUTO){ try { if (!localStorage.getItem("bm_tour_seen")) setTimeout(start, 650); } catch(e){} }
   }
 
