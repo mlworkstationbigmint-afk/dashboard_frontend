@@ -8,6 +8,7 @@ import os
 import sys
 import re
 import html
+import base64
 import uuid
 import tempfile
 import datetime as dt
@@ -191,6 +192,9 @@ LOGIN_CSS = """
 .bm-login-title { font-size: 22px; font-weight: 800; color: var(--bm-primary-dark);
     letter-spacing: .2px; line-height: 1.2; }
 .bm-login-sub { margin-top: 5px; font-size: 13px; color: #6b7686; font-weight: 500; }
+/* tighter vertical rhythm so username/password sit closer together */
+.st-key-login_card [data-testid="stVerticalBlock"],
+.st-key-reset_card [data-testid="stVerticalBlock"] { gap: 0.4rem !important; }
 /* field labels */
 .st-key-login_card [data-testid="stTextInput"] label,
 .st-key-reset_card [data-testid="stTextInput"] label {
@@ -250,8 +254,38 @@ def _login_brand(title: str, sub: str) -> str:
             "</div>")
 
 
+def _login_bg_style() -> str:
+    """Full-bleed steel-mill backdrop for the sign-in screen only. Encodes
+    assets/login_bg.webp as a data URI (same pattern as the logo helpers), lays a
+    brand-tinted gradient over it for contrast, and turns the login card into a
+    frosted translucent white section that floats on top. Returns '' (plain
+    background, login still works) if the asset is missing. Injected AFTER LOGIN_CSS
+    so these rules win on source order."""
+    path = os.path.join(theme.ASSETS_DIR, "login_bg.webp")
+    try:
+        with open(path, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+    except OSError:
+        return ""
+    return (
+        "<style>"
+        "[data-testid='stAppViewContainer']{"
+        "background:"
+        "linear-gradient(180deg,rgba(3,26,60,.80) 0%,rgba(2,76,161,.46) 42%,rgba(3,26,60,.84) 100%),"
+        f"url('data:image/webp;base64,{b64}') center/cover no-repeat fixed !important;}}"
+        "[data-testid='stHeader']{background:transparent !important;}"
+        # frosted translucent 'section' the login lies on
+        ".st-key-login_card{background:rgba(255,255,255,.82) !important;"
+        "backdrop-filter:blur(13px) saturate(1.05);-webkit-backdrop-filter:blur(13px) saturate(1.05);"
+        "border:1px solid rgba(255,255,255,.55) !important;"
+        "box-shadow:0 26px 70px rgba(2,18,46,.48) !important;}"
+        "</style>"
+    )
+
+
 def login_screen():
     st.markdown(LOGIN_CSS, unsafe_allow_html=True)
+    st.markdown(_login_bg_style(), unsafe_allow_html=True)
     with st.columns([1, 1.4, 1])[1]:
         with st.container(border=True, key="login_card"):
             st.markdown(_login_brand("Steel Price Forecasting", "Sign in to your dashboard"),
