@@ -1986,6 +1986,14 @@ def page_methodology():
     st.info("Forecasts use selected factors based on data availability and do not account for unexpected "
             "events or market disruptions. Treat them as indicative, not guarantees.",
             icon=":material/info:")
+
+    _manual = os.path.join(theme.ASSETS_DIR, "BigMint_Portal_User_Manual.pdf")
+    if os.path.exists(_manual):
+        st.write("")
+        with open(_manual, "rb") as _f:
+            st.download_button("Download the portal user manual (PDF)", _f.read(),
+                               file_name="BigMint_Portal_User_Manual.pdf",
+                               mime="application/pdf", icon=":material/download:")
     theme.footer()
 
 

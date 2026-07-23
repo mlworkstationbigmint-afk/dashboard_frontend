@@ -140,8 +140,9 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **"Actual price vs Forecast price" delta bar** ([app.py](portal/app.py) `page_performance`, after `delta_bar(view)`): added a `bm-footnote` — "Top / positive bars = Forecast was higher than Spot; bottom / negative bars = Forecast was lower than Spot."
 - **Directional-accuracy KPI caption** (same page, `k2` card): `correct up/down/flat calls · {len(view)} wk` → `correct up/down/flat calls · 12wk cycle avg over {len(view)} wk`.
 
-### 2026-07-23 (latest++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — PDF user manual for the "Take a tour" walkthrough
-- New deliverable **`BigMint_Portal_User_Manual.pdf`** (repo root, 5 pp). Content = the guided-tour steps from [tour.py](portal/tour.py), grouped into 8 sections (Getting started, Top nav, Home, Forecasting, Analyst Calls, Performance, Calculators, Methodology) + closer. Design = CodeG/BigMint report template (blue cover, red footer bars, Archivo fonts, analyst logos). Generator script kept in scratchpad (`build_manual.py`, reportlab); re-run it to regenerate if tour copy changes.
+### 2026-07-23 (latest++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — PDF user manual + download button in Methodology
+- New asset **`portal/assets/BigMint_Portal_User_Manual.pdf`** (5 pp). Content = the guided-tour steps from [tour.py](portal/tour.py), grouped into 8 sections (Getting started, Top nav, Home, Forecasting, Analyst Calls, Performance, Calculators, Methodology) + closer. Design = CodeG/BigMint report template (blue cover, red footer bars, Archivo fonts, analyst logos). Generator script in scratchpad (`build_manual.py`, reportlab); re-run it if tour copy changes.
+- **Download button** at the end of `page_methodology` ([app.py](portal/app.py), after the disclaimer `st.info`): `st.download_button` serves the PDF from `theme.ASSETS_DIR`, guarded by `os.path.exists`.
 
 ### 2026-07-23 (latest+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Methodology: first Inputs chip copy tweak
 - **First Inputs chip** ([app.py](portal/app.py) `engine_in`): title "15+ yrs of assessed prices" → "15+ yrs of assessed prices and values of 80+ factors"; sub "BigMint's daily physical price benchmarks" → "BigMint's physical price benchmarks" (dropped "daily").
