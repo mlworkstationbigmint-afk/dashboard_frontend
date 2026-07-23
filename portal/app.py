@@ -1851,10 +1851,27 @@ def page_methodology():
         unsafe_allow_html=True,
     )
 
-    theme.section_title("Forecasting Model", theme.icon("gauge"))
-    # Modular pipeline infographic: Market Inputs -> AI Forecast Engine -> Output.
-    # Each stage is a framed block with nested module cards; styled by .bm-fm* in theme.py;
-    # collapses to a single column on narrow screens.
+    theme.section_title("From data to forecast", theme.icon("trending"))
+    # Engine layout: the original Inputs / Outputs chip columns flank a rich modular
+    # pipeline (the blue .bm-fm infographic) in the centre, in place of the old plain
+    # "model" box. .bm-engine-wide sizes all tracks to content so the wide centre fits
+    # (the plain .bm-engine grid stays narrow for the calculators). Styled in theme.py.
+    engine_in = [
+        ("factory", "15+ yrs of BigMint-assessed prices"),
+        ("rupee",   "Cost, supply &amp; demand signals"),
+        ("home",    "Global &amp; macro factors"),
+    ]
+    engine_out = [
+        ("calendar", "12-week forward price path"),
+        ("trending", "Up / down / flat direction"),
+        ("notes",    "Back-checked vs realised spot"),
+    ]
+    def _engine_chips(items):
+        return "".join(
+            f"<div class='bm-chip'><span class='ic'>{theme.icon(ic, 15)}</span>{label}</div>"
+            for ic, label in items
+        )
+    # centre: modular pipeline infographic (Market Inputs -> AI Forecast Engine -> Output)
     fm_inputs = [
         ("home",     "Domestic Price",      "Local market rates"),
         ("globe",    "Global Price",        "International benchmarks"),
@@ -1888,7 +1905,16 @@ def page_methodology():
         "<span class='bm-fm-badge'>Prediction</span></div></div></div>"
         "</div>"
     )
-    st.markdown(fm, unsafe_allow_html=True)
+    engine = (
+        "<div class='bm-engine bm-engine-wide'>"
+        f"<div class='bm-engine-col bm-engine-in'><div class='bm-engine-h'>Inputs</div>{_engine_chips(engine_in)}</div>"
+        "<div class='bm-engine-arrow'>&rarr;</div>"
+        f"{fm}"
+        "<div class='bm-engine-arrow'>&rarr;</div>"
+        f"<div class='bm-engine-col bm-engine-out'><div class='bm-engine-h'>Outputs</div>{_engine_chips(engine_out)}</div>"
+        "</div>"
+    )
+    st.markdown(engine, unsafe_allow_html=True)
 
     st.write("")
     theme.section_title("Key factors the model weighs", theme.icon("gauge"))

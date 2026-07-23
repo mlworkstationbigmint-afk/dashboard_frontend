@@ -704,6 +704,11 @@ ul[role="listbox"] li {{
 .bm-engine-core h4 {{ margin:0 0 6px; font-size:16px; color:#fff; }}
 .bm-engine-core p {{ margin:0; font-size:12.5px; line-height:1.5; color:#dce8f8; }}
 .bm-engine-arrow {{ display:flex; align-items:center; justify-content:center; color:var(--bm-accent); font-size:20px; font-weight:700; }}
+/* methodology variant: Inputs/Outputs chip columns flanking the modular .bm-fm pipeline as
+   the centre. All tracks size to content and the row centres vertically so the short chip
+   columns sit against the taller infographic. (Plain .bm-engine grid stays narrow for calculators.) */
+.bm-engine-wide {{ grid-template-columns:auto auto auto auto auto; justify-content:center; align-items:center; gap:0 14px; }}
+.bm-engine-wide .bm-fm {{ margin:0; }}
 /* factor grid */
 .bm-factor-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:6px 0; }}
 .bm-factor {{ display:flex; gap:12px; align-items:flex-start; background:#fff; border:1px solid var(--bm-border);
