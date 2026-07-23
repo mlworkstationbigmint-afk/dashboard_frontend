@@ -1090,9 +1090,10 @@ def page_forecasting():
     row = dl.summary_row(summary, meta["ff"])
     fwd = dl.load_forward(meta["ff"])
     acc_hist = dl.load_accuracy("11-week", meta["acc"])   # Accuracy_Table_11 (6/16 retired)
-    # Rebar IF Mumbai + HRC also get an India duty-paid landed-cost overlay from landed_costs.xlsx
-    # (Donghua China rebar / FOB-Rizhao China HRC, weekly, dated to week-end). {product: (sheet, label)}.
-    _LANDED_OVERLAY = {"HRC": ("HRC", "China landed"), "Rebar IF Mumbai": ("Rebar", "China landed")}
+    # Rebar IF Mumbai + HRC + HR Plate also get an India duty-paid landed-cost overlay from landed_costs.xlsx
+    # (Donghua China rebar / FOB-Rizhao China HRC & HR Plate, weekly, dated to week-end). {product: (sheet, label)}.
+    _LANDED_OVERLAY = {"HRC": ("HRC", "China landed"), "Rebar IF Mumbai": ("Rebar", "China landed"),
+                       "HR Plate": ("HR Plate", "China landed")}
     landed = landed_label = None
     if product in _LANDED_OVERLAY:
         _sheet, landed_label = _LANDED_OVERLAY[product]

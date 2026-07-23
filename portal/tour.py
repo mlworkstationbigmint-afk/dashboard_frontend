@@ -69,10 +69,10 @@ TOUR_JS = r"""<!doctype html><html><head><meta charset="utf-8"></head><body>
       // launcher lives INSIDE the blue topbar (.bm-topbar-r), at the bar's right end just left of
       // Log out — so the blue header extends right up to it. Rounded-rectangle like Log out, but a
       // translucent-white chip so it stays visible ON the blue bar; hover inverts to white/blue.
-      + "#bm-tour-launch{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.5);"
-      + "border-radius:8px;padding:9px 18px;font-size:14px;font-weight:600;cursor:pointer;"
+      + "#bm-tour-launch{background:#fff;color:#024CA1;border:1px solid #fff;"
+      + "border-radius:8px;padding:12px 26px;font-size:15.5px;font-weight:800;cursor:pointer;"
       + "font-family:inherit;white-space:nowrap}"
-      + "#bm-tour-launch:hover{background:#fff;color:#024CA1;border-color:#fff}";
+      + "#bm-tour-launch:hover{background:#024CA1;color:#fff;border-color:#fff}";
     document.head.appendChild(stl);
 
     // ---- parent-DOM helpers ----

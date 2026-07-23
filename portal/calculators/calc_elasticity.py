@@ -302,8 +302,8 @@ _ZERO_SNAP = 0.75      # |shock| within this snaps to exactly 0 (neutral / no ch
 
 
 def _snap(v):
-    """Clamp to [-20, 20] and snap the neutral zone to exactly 0."""
-    v = max(-20.0, min(20.0, float(v)))
+    """Clamp to [-50, 50] and snap the neutral zone to exactly 0."""
+    v = max(-50.0, min(50.0, float(v)))
     return 0.0 if abs(v) <= _ZERO_SNAP else v
 
 
@@ -508,7 +508,7 @@ def _render_product(spec, key):
             "Shocked": st.column_config.TextColumn("Shocked value", disabled=True),
             "Result": st.column_config.TextColumn("Δ", disabled=True),
             editcol: (st.column_config.NumberColumn("Shock %", format="%.1f", step=0.5,
-                        help="Percentage change (−20 to +20).") if pct_mode else
+                        help="Percentage change (−50 to +50).") if pct_mode else
                       st.column_config.NumberColumn("Δ (native unit)", format="%.2f", step=1.0,
                         help="Absolute change in the driver's own unit — converted to % via the baseline.")),
         }
