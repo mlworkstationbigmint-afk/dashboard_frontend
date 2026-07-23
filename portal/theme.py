@@ -397,8 +397,8 @@ div[class*="st-key-callcard"] .stButton button:disabled,
 div[class*="st-key-callcard"] .stDownloadButton button:disabled {{ opacity:.5; }}
 
 /* section heading */
-.bm-h {{ font-size:15px; font-weight:600; color:var(--bm-primary-dark); margin:6px 0 6px 0;
-    display:flex; align-items:center; gap:8px; }}
+.bm-h {{ font-size:16.5px; font-weight:700; color:var(--bm-primary-dark); margin:18px 0 11px 0;
+    display:flex; align-items:center; gap:9px; letter-spacing:.01em; }}
 /* Home "Modules" heading: larger + more breathing room so the section fills the page */
 .bm-modules-h {{ font-size:22px; font-weight:700; margin:24px 0 16px 0; gap:10px; }}
 .bm-modules-h svg {{ stroke-width:2.2; }}
@@ -667,11 +667,11 @@ ul[role="listbox"] li {{
     background:linear-gradient(160deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%);
     border:1px solid rgba(255,255,255,.16); border-radius:14px; padding:16px 16px 18px;
     box-shadow:0 6px 22px rgba(2,76,161,.22); }}
-.bm-fm-hd {{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; margin:0 0 14px; }}
-.bm-fm-num {{ width:24px; height:24px; border-radius:50%; background:#fff; color:var(--bm-primary);
-    font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }}
-.bm-fm-hd b {{ font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:rgba(255,255,255,.92); }}
-.bm-fm-cards {{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:8px; align-items:center; }}
+.bm-fm-hd {{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; margin:2px 0 17px; }}
+.bm-fm-num {{ width:26px; height:26px; border-radius:50%; background:#fff; color:var(--bm-primary);
+    font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center; }}
+.bm-fm-hd b {{ font-size:12.5px; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:rgba(255,255,255,.95); }}
+.bm-fm-cards {{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:10px; align-items:center; }}
 .bm-fm-card {{ width:210px; box-sizing:border-box; display:flex; flex-direction:column;
     align-items:center; text-align:center; gap:5px; background:#fff; border:1px solid var(--bm-border);
     border-radius:10px; padding:10px; transition:transform .15s ease, box-shadow .15s ease; }}
@@ -712,8 +712,11 @@ ul[role="listbox"] li {{
 /* methodology variant: Inputs/Outputs chip columns flanking the modular .bm-fm pipeline as
    the centre. All tracks size to content and the row centres vertically so the short chip
    columns sit against the taller infographic. (Plain .bm-engine grid stays narrow for calculators.) */
-.bm-engine-wide {{ grid-template-columns:1fr auto auto auto 1fr; align-items:center; gap:0 14px; }}
+.bm-engine-wide {{ grid-template-columns:1fr auto auto auto 1fr; align-items:center; gap:0 18px; margin:24px 0 20px; }}
 .bm-engine-wide .bm-fm {{ margin:0; }}
+/* roomier, higher-contrast column headers + chip spacing for readability */
+.bm-engine-wide .bm-engine-h {{ font-size:11.5px; letter-spacing:.1em; color:var(--bm-primary-dark); margin-bottom:14px; }}
+.bm-engine-wide .bm-chip {{ margin-bottom:10px; padding:11px 13px; }}
 /* factor grid */
 .bm-factor-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:6px 0; }}
 .bm-factor {{ display:flex; gap:12px; align-items:flex-start; background:#fff; border:1px solid var(--bm-border);
