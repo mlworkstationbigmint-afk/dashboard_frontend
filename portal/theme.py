@@ -247,7 +247,9 @@ section[data-testid="stSidebar"], div[data-testid="collapsedControl"] {{ display
 }}
 .bm-topbar-l {{ display:flex; align-items:center; gap:13px; }}
 .bm-cobrand-x {{ color:#cfe0f5; font-size:17px; font-weight:600; }}
-.bm-adani-chip {{ display:inline-flex; align-items:center; }}
+/* Adani co-brand logo is a blue->magenta gradient; its blue half vanishes on the blue bar,
+   so sit it on a white pill for guaranteed contrast (a bar shade can't fix a blue-containing logo). */
+.bm-adani-chip {{ display:inline-flex; align-items:center; background:#fff; border-radius:8px; padding:5px 11px; }}
 .bm-portal-title {{ color:#fff; font-size:15px; font-weight:600; opacity:.96; }}
 .bm-topbar-r {{ color:#cfe0f5; font-size:12.5px; text-align:right; line-height:1.4; }}
 .bm-topbar-r b {{ color:#fff; }}

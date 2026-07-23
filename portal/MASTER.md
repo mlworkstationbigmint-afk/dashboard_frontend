@@ -133,6 +133,9 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ Streamlit 1.59 ONLY (react-aria) — no more baseweb (2026-07-18).** The app targets **streamlit 1.59.0** (pinned in root + `portal/requirements.txt`); the deployment runs it too. As of 2026-07-18 **all dead 1.58 `data-baseweb="…"` / `stBaseButton-…Active` selectors were removed** — the CSS keys ONLY on 1.59 markup. **Rule:** style via **Streamlit-owned markup** (testids like `[data-testid="stTabs"]` / `stTab` / `stSelectbox` / `stNumberInput`, `st-key-*` classes, `role=`/`aria-*` attributes, `.react-aria-*`). **Do NOT add `data-baseweb` selectors** — they no-op on 1.59. Inputs/dropdowns get their white-fill + single rounded orange border from the **app-wide `stSelectbox` / `stNumberInput` / `stTextInput` / `stTextArea` / `stDateInput` rules in `theme.py`** (colour-only border, never width — a forced width makes zero-width reset borders on outer wrappers show as a second box). See memory `streamlit-159-only`.
 
 ## Changelog
+### 2026-07-23 (latest+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Adani co-brand logo: white pill so it's visible on the blue bar
+- **`.bm-adani-chip`** ([theme.py](portal/theme.py)) got `background:#fff; border-radius:8px; padding:5px 11px`. The Adani wordmark is a blue→magenta gradient whose blue half blends into the blue topbar — a white pill (standard for partner logos on coloured headers) guarantees contrast. A different bar-blue can't fix a logo that itself contains blue.
+
 ### 2026-07-23 (latest++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Take-a-tour button: hover fills orange, not blue
 - **`#bm-tour-launch:hover`** ([tour.py](portal/tour.py)) background `#024CA1` (blue) → `#EE4E24` (accent orange); border-color to match. Text stays white.
 
