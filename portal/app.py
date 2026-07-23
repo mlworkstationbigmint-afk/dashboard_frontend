@@ -252,7 +252,6 @@ def _login_brand(title: str, sub: str) -> str:
 
 def login_screen():
     st.markdown(LOGIN_CSS, unsafe_allow_html=True)
-    theme.render_topbar(None)
     with st.columns([1, 1.4, 1])[1]:
         with st.container(border=True, key="login_card"):
             st.markdown(_login_brand("Steel Price Forecasting", "Sign in to your dashboard"),
@@ -271,7 +270,6 @@ def login_screen():
                     st.error("This account is disabled. Contact an administrator.")
                 else:
                     st.error("Invalid username or password.")
-    theme.footer()
     st.stop()
 
 

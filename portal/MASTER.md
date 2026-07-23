@@ -133,6 +133,9 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ Streamlit 1.59 ONLY (react-aria) — no more baseweb (2026-07-18).** The app targets **streamlit 1.59.0** (pinned in root + `portal/requirements.txt`); the deployment runs it too. As of 2026-07-18 **all dead 1.58 `data-baseweb="…"` / `stBaseButton-…Active` selectors were removed** — the CSS keys ONLY on 1.59 markup. **Rule:** style via **Streamlit-owned markup** (testids like `[data-testid="stTabs"]` / `stTab` / `stSelectbox` / `stNumberInput`, `st-key-*` classes, `role=`/`aria-*` attributes, `.react-aria-*`). **Do NOT add `data-baseweb` selectors** — they no-op on 1.59. Inputs/dropdowns get their white-fill + single rounded orange border from the **app-wide `stSelectbox` / `stNumberInput` / `stTextInput` / `stTextArea` / `stDateInput` rules in `theme.py`** (colour-only border, never width — a forced width makes zero-width reset borders on outer wrappers show as a second box). See memory `streamlit-159-only`.
 
 ## Changelog
+### 2026-07-23 (latest++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Login page: dropped top bar + footer
+- **Sign-in screen** ([app.py](portal/app.py) `login_screen()`): removed `theme.render_topbar(None)` and `theme.footer()` — no brand top bar, no copyright footer on login. `force_password_change()` keeps both (unchanged).
+
 ### 2026-07-23 (latest+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Login subtitle trimmed
 - **Login page subtitle** ([app.py](portal/app.py) `_login_brand` call): "AI Labs · sign in to your dashboard" → **"Sign in to your dashboard"**.
 
