@@ -707,7 +707,7 @@ ul[role="listbox"] li {{
 /* methodology variant: Inputs/Outputs chip columns flanking the modular .bm-fm pipeline as
    the centre. All tracks size to content and the row centres vertically so the short chip
    columns sit against the taller infographic. (Plain .bm-engine grid stays narrow for calculators.) */
-.bm-engine-wide {{ grid-template-columns:260px auto auto auto 260px; justify-content:center; align-items:center; gap:0 14px; }}
+.bm-engine-wide {{ grid-template-columns:1fr auto auto auto 1fr; align-items:center; gap:0 14px; }}
 .bm-engine-wide .bm-fm {{ margin:0; }}
 /* factor grid */
 .bm-factor-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:6px 0; }}
