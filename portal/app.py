@@ -1765,7 +1765,7 @@ def page_performance():
         k1.markdown(theme.kpi_card("Absolute accuracy (MAPA)" + _acc_help("mapa"),
                     f"{kpis['mapa']:.1f}%" if kpis['mapa'] is not None else "-", f"100 - mean abs % error · {len(view)} wk", theme.icon("target")), unsafe_allow_html=True)
         k2.markdown(theme.kpi_card("Directional accuracy" + _acc_help("dir"),
-                    f"{kpis['dir_acc']:.0f}%" if kpis['dir_acc'] is not None else "-", f"correct up/down/flat calls · {len(view)} wk", theme.icon("gauge")), unsafe_allow_html=True)
+                    f"{kpis['dir_acc']:.0f}%" if kpis['dir_acc'] is not None else "-", f"correct up/down/flat calls · 12wk cycle avg over {len(view)} wk", theme.icon("gauge")), unsafe_allow_html=True)
         k3.markdown(theme.kpi_card("Delta accuracy" + _acc_help("delta"),
                     f"{kpis['delta_acc']:.0f}%" if kpis['delta_acc'] is not None else "-", f"avg weekly move capture · {len(view)} wk", theme.icon("trending")), unsafe_allow_html=True)
 
@@ -1774,6 +1774,8 @@ def page_performance():
     perf_chart(view)
     theme.section_title("Actual price vs Forecast price", theme.icon("gauge"))
     delta_bar(view)
+    st.markdown("<div class='bm-footnote'>Top / positive bars = Forecast was higher than Spot; "
+                "bottom / negative bars = Forecast was lower than Spot.</div>", unsafe_allow_html=True)
     theme.section_title("Weekly forecast absolute accuracy" + _acc_help("mapa"), theme.icon("target"))
     accuracy_chart(view)
     theme.section_title("Weekly directional hit accuracy" + _acc_help("dir"), theme.icon("gauge"))

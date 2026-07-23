@@ -133,6 +133,13 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ Streamlit 1.59 ONLY (react-aria) — no more baseweb (2026-07-18).** The app targets **streamlit 1.59.0** (pinned in root + `portal/requirements.txt`); the deployment runs it too. As of 2026-07-18 **all dead 1.58 `data-baseweb="…"` / `stBaseButton-…Active` selectors were removed** — the CSS keys ONLY on 1.59 markup. **Rule:** style via **Streamlit-owned markup** (testids like `[data-testid="stTabs"]` / `stTab` / `stSelectbox` / `stNumberInput`, `st-key-*` classes, `role=`/`aria-*` attributes, `.react-aria-*`). **Do NOT add `data-baseweb` selectors** — they no-op on 1.59. Inputs/dropdowns get their white-fill + single rounded orange border from the **app-wide `stSelectbox` / `stNumberInput` / `stTextInput` / `stTextArea` / `stDateInput` rules in `theme.py`** (colour-only border, never width — a forced width makes zero-width reset borders on outer wrappers show as a second box). See memory `streamlit-159-only`.
 
 ## Changelog
+### 2026-07-23 (latest+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Performance: delta-bar footnote + directional-caption wording
+- **"Actual price vs Forecast price" delta bar** ([app.py](portal/app.py) `page_performance`, after `delta_bar(view)`): added a `bm-footnote` — "Top / positive bars = Forecast was higher than Spot; bottom / negative bars = Forecast was lower than Spot."
+- **Directional-accuracy KPI caption** (same page, `k2` card): `correct up/down/flat calls · {len(view)} wk` → `correct up/down/flat calls · 12wk cycle avg over {len(view)} wk`.
+
+### 2026-07-23 (latest++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — PDF user manual for the "Take a tour" walkthrough
+- New deliverable **`BigMint_Portal_User_Manual.pdf`** (repo root, 5 pp). Content = the guided-tour steps from [tour.py](portal/tour.py), grouped into 8 sections (Getting started, Top nav, Home, Forecasting, Analyst Calls, Performance, Calculators, Methodology) + closer. Design = CodeG/BigMint report template (blue cover, red footer bars, Archivo fonts, analyst logos). Generator script kept in scratchpad (`build_manual.py`, reportlab); re-run it to regenerate if tour copy changes.
+
 ### 2026-07-23 (latest+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Methodology: first Inputs chip copy tweak
 - **First Inputs chip** ([app.py](portal/app.py) `engine_in`): title "15+ yrs of assessed prices" → "15+ yrs of assessed prices and values of 80+ factors"; sub "BigMint's daily physical price benchmarks" → "BigMint's physical price benchmarks" (dropped "daily").
 
