@@ -1782,6 +1782,8 @@ def page_performance():
     directional_accuracy_bar(view)
     theme.section_title("Weekly delta accuracy" + _acc_help("delta"), theme.icon("trending"))
     delta_acc_bar(view)
+    st.markdown("<div class='bm-footnote'>Absent weeks are marked NA and dropped from the average.</div>",
+                unsafe_allow_html=True)
 
     theme.section_title("Week-wise detail", theme.icon("calendar"))
     # Forecast rounded to INR 50; Delta (and %) recomputed off the rounded forecast so the row is
