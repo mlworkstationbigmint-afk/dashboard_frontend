@@ -1851,41 +1851,6 @@ def page_methodology():
         unsafe_allow_html=True,
     )
 
-    theme.section_title("From data to forecast", theme.icon("trending"))
-    # General Inputs -> Model -> Outputs infographic. Grounded in BigMint's published,
-    # deliberately high-level methodology — a defined, data-driven method over selected factors
-    # from available data. Styled by .bm-engine* in theme.py; collapses to one column on narrow screens.
-    engine_in = [
-        ("factory", "15+ yrs of BigMint-assessed prices"),
-        ("rupee",   "Cost, supply &amp; demand signals"),
-        ("home",    "Global &amp; macro factors"),
-    ]
-    engine_out = [
-        ("calendar", "12-week forward price path"),
-        ("trending", "Up / down / flat direction"),
-        ("notes",    "Back-checked vs realised spot"),
-    ]
-    def _engine_chips(items):
-        return "".join(
-            f"<div class='bm-chip'><span class='ic'>{theme.icon(ic, 15)}</span>{label}</div>"
-            for ic, label in items
-        )
-    engine = (
-        "<div class='bm-engine'>"
-        f"<div class='bm-engine-col bm-engine-in'><div class='bm-engine-h'>Inputs</div>{_engine_chips(engine_in)}</div>"
-        "<div class='bm-engine-arrow'>&rarr;</div>"
-        "<div class='bm-engine-core'>"
-        f"<span class='ic'>{theme.icon('gauge', 26)}</span>"
-        "<h4>Forecasting model</h4>"
-        "<p>A defined, data-driven methodology fits historical price relationships across "
-        "selected factors from available data.</p></div>"
-        "<div class='bm-engine-arrow'>&rarr;</div>"
-        f"<div class='bm-engine-col bm-engine-out'><div class='bm-engine-h'>Outputs</div>{_engine_chips(engine_out)}</div>"
-        "</div>"
-    )
-    st.markdown(engine, unsafe_allow_html=True)
-
-    st.write("")
     theme.section_title("Forecasting Model", theme.icon("gauge"))
     # Modular pipeline infographic: Market Inputs -> AI Forecast Engine -> Output.
     # Each stage is a framed block with nested module cards; styled by .bm-fm* in theme.py;

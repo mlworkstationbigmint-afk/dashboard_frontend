@@ -662,31 +662,31 @@ ul[role="listbox"] li {{
    they land on the card center. Collapses to one column on narrow screens (media query below). */
 .bm-fm {{ display:flex; align-items:center; justify-content:center; gap:6px; margin:18px 0 14px; flex-wrap:nowrap; }}
 .bm-fm-block {{ flex:0 0 auto; width:fit-content; display:flex; flex-direction:column; align-items:center;
-    background:#fff; border:1px solid var(--bm-border); border-radius:14px; padding:16px 16px 18px;
-    box-shadow:0 1px 2px rgba(16,24,40,.05); }}
+    background:linear-gradient(160deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%);
+    border:1px solid rgba(255,255,255,.16); border-radius:14px; padding:16px 16px 18px;
+    box-shadow:0 6px 22px rgba(2,76,161,.22); }}
 .bm-fm-hd {{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; margin:0 0 14px; }}
-.bm-fm-num {{ width:24px; height:24px; border-radius:50%; background:var(--bm-primary); color:#fff;
+.bm-fm-num {{ width:24px; height:24px; border-radius:50%; background:#fff; color:var(--bm-primary);
     font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }}
-.bm-fm-hd b {{ font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:{NEUTRAL}; }}
+.bm-fm-hd b {{ font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:rgba(255,255,255,.92); }}
 .bm-fm-cards {{ display:flex; flex-direction:column; gap:8px; align-items:center; }}
 .bm-fm-card {{ width:210px; box-sizing:border-box; display:flex; flex-direction:column;
-    align-items:center; text-align:center; gap:5px; background:#f6f8fc; border:1px solid var(--bm-border);
-    border-radius:10px; padding:10px; transition:transform .15s ease, box-shadow .15s ease; }}
-.bm-fm-card:hover {{ transform:translateY(-2px); box-shadow:0 6px 16px rgba(2,76,161,.10); }}
-.bm-fm-card .ic {{ width:34px; height:34px; border-radius:9px; background:var(--bm-primary-soft); color:var(--bm-primary);
+    align-items:center; text-align:center; gap:5px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.22);
+    border-radius:10px; padding:10px; transition:transform .15s ease, background-color .15s ease; }}
+.bm-fm-card:hover {{ transform:translateY(-2px); background:rgba(255,255,255,.2); }}
+.bm-fm-card .ic {{ width:34px; height:34px; border-radius:9px; background:rgba(255,255,255,.18); color:#fff;
     display:flex; align-items:center; justify-content:center; }}
-.bm-fm-card b {{ font-size:12.5px; font-weight:700; color:var(--bm-primary-dark); line-height:1.2; }}
-.bm-fm-card small {{ font-size:10.5px; color:{NEUTRAL}; line-height:1.25; }}
+.bm-fm-card b {{ font-size:12.5px; font-weight:700; color:#fff; line-height:1.2; }}
+.bm-fm-card small {{ font-size:10.5px; color:rgba(255,255,255,.75); line-height:1.25; }}
 .bm-fm-arrow {{ display:flex; align-items:center; justify-content:center; flex:0 0 auto;
     padding:0 12px; color:var(--bm-accent); font-size:20px; font-weight:700; }}
 .bm-fm-fc {{ width:210px; box-sizing:border-box; display:flex; flex-direction:column;
-    align-items:center; gap:8px; background:linear-gradient(135deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%);
-    color:#fff; border-radius:12px; padding:18px 14px; border-bottom:4px solid var(--bm-accent);
-    box-shadow:0 6px 22px rgba(2,76,161,.22); }}
-.bm-fm-fc .ic {{ width:46px; height:46px; border-radius:12px; background:rgba(255,255,255,.16);
+    align-items:center; gap:8px; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.3);
+    color:#fff; border-radius:12px; padding:18px 14px; border-bottom:4px solid var(--bm-accent); }}
+.bm-fm-fc .ic {{ width:46px; height:46px; border-radius:12px; background:rgba(255,255,255,.2);
     display:flex; align-items:center; justify-content:center; }}
 .bm-fm-fc b {{ font-size:17px; font-weight:700; color:#fff; }}
-.bm-fm-fc small {{ font-size:10.5px; color:#dce8f8; line-height:1.35; max-width:160px; }}
+.bm-fm-fc small {{ font-size:10.5px; color:rgba(255,255,255,.82); line-height:1.35; max-width:160px; }}
 .bm-fm-badge {{ font-size:9.5px; font-weight:700; letter-spacing:.08em; background:var(--bm-accent); color:#fff;
     padding:3px 10px; border-radius:20px; text-transform:uppercase; }}
 /* chips reused by the calculators' assumptions strip */
