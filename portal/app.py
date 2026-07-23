@@ -255,7 +255,7 @@ def login_screen():
     theme.render_topbar(None)
     with st.columns([1, 1.4, 1])[1]:
         with st.container(border=True, key="login_card"):
-            st.markdown(_login_brand("Steel Price Forecasting", "AI Labs · sign in to your dashboard"),
+            st.markdown(_login_brand("Steel Price Forecasting", "Sign in to your dashboard"),
                         unsafe_allow_html=True)
             username = st.text_input("Username", placeholder="Enter your username")
             password = st.text_input("Password", type="password", placeholder="Enter your password")
