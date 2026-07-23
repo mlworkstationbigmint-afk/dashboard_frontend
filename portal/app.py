@@ -1856,19 +1856,20 @@ def page_methodology():
     # "model" box. .bm-engine-wide sizes all tracks to content so the wide centre fits
     # (the plain .bm-engine grid stays narrow for the calculators). Styled in theme.py.
     engine_in = [
-        ("factory", "15+ yrs of BigMint-assessed prices"),
-        ("rupee",   "Cost, supply &amp; demand signals"),
-        ("home",    "Global &amp; macro factors"),
+        ("factory", "15+ yrs of assessed prices",   "BigMint's daily physical price benchmarks"),
+        ("rupee",   "Cost, supply &amp; demand",     "Raw-material costs and market-balance signals"),
+        ("home",    "Global &amp; macro factors",    "Import/export parity, FX, rates &amp; policy"),
     ]
     engine_out = [
-        ("calendar", "12-week forward price path"),
-        ("trending", "Up / down / flat direction"),
-        ("notes",    "Back-checked vs realised spot"),
+        ("calendar", "12-week forward price path",   "Weekly outlook, refreshed every week"),
+        ("trending", "Up / down / flat direction",   "Expected move against the current level"),
+        ("notes",    "Back-checked vs realised spot", "Every forecast validated against actuals"),
     ]
     def _engine_chips(items):
         return "".join(
-            f"<div class='bm-chip'><span class='ic'>{theme.icon(ic, 15)}</span>{label}</div>"
-            for ic, label in items
+            f"<div class='bm-chip'><span class='ic'>{theme.icon(ic, 15)}</span>"
+            f"<span class='bm-chip-txt'><b>{title}</b><small>{sub}</small></span></div>"
+            for ic, title, sub in items
         )
     # centre: modular pipeline infographic (Market Inputs -> AI Forecast Engine -> Output)
     fm_inputs = [

@@ -695,6 +695,9 @@ ul[role="listbox"] li {{
 .bm-chip {{ display:flex; align-items:center; gap:9px; background:#f6f8fc; border:1px solid var(--bm-border); border-radius:10px; padding:9px 11px; margin:0 0 8px; font-size:12.5px; color:var(--bm-primary-dark); font-weight:600; line-height:1.3; }}
 .bm-chip:last-child {{ margin-bottom:0; }}
 .bm-chip .ic {{ flex:0 0 24px; width:24px; height:24px; border-radius:7px; background:var(--bm-primary-soft); color:var(--bm-primary); display:flex; align-items:center; justify-content:center; }}
+/* two-line chip variant (title + descriptor) used by the methodology engine columns */
+.bm-chip-txt {{ display:flex; flex-direction:column; gap:1px; text-align:left; }}
+.bm-chip-txt small {{ font-size:10.5px; font-weight:400; color:{NEUTRAL}; line-height:1.25; }}
 /* engine infographic (Inputs -> Model -> Outputs) — still used by the calculators */
 .bm-engine {{ display:grid; grid-template-columns:1fr auto 1.15fr auto 1fr; align-items:stretch; gap:0 10px; margin:18px 0 14px; }}
 .bm-engine-col {{ background:#fff; border:1px solid var(--bm-border); border-radius:14px; padding:16px 16px 14px; box-shadow:0 1px 2px rgba(16,24,40,.05); }}
