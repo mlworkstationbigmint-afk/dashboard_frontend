@@ -135,7 +135,7 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 ## Changelog
 ### 2026-07-23 (latest+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Login page: steel backdrop + frosted card + tighter fields
 - **Steel-mill background on the sign-in screen.** New asset `portal/assets/login_bg.webp` (user-supplied galvanized-coil warehouse photo, 214 KB). New helper [app.py](portal/app.py) `_login_bg_style()` base64-encodes it into a data URI (same pattern as the logo helpers), sets it as a `center/cover` fixed background on `[data-testid='stAppViewContainer']` under a brand-tinted dark gradient, and makes `[data-testid='stHeader']` transparent. Called from `login_screen()` only (not the reset screen); returns `''` if the asset is missing so login still works.
-- **Login card → frosted translucent "section".** Same helper overrides `.st-key-login_card` to `rgba(255,255,255,.82)` + `backdrop-filter: blur(13px)` + light border + deeper shadow, so the card reads as a translucent white module floating on the steel photo. Injected AFTER `LOGIN_CSS` so it wins on source order.
+- **Login card = solid white** (per follow-up: "make this white not frosted"). `_login_bg_style()` keeps only a deeper shadow (`0 26px 70px rgba(2,18,46,.48)`) to lift the card off the dark backdrop; the white fill comes from `LOGIN_CSS`. (Earlier frosted `rgba(.82)` + `backdrop-filter` version dropped.)
 - **Tighter field spacing.** `LOGIN_CSS` now sets the card's `[data-testid="stVerticalBlock"]` `gap: 0.4rem` — username and password sit closer together (applies to the reset card too).
 
 ### 2026-07-23 (latest++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Login page: dropped top bar + footer

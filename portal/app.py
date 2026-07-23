@@ -256,11 +256,10 @@ def _login_brand(title: str, sub: str) -> str:
 
 def _login_bg_style() -> str:
     """Full-bleed steel-mill backdrop for the sign-in screen only. Encodes
-    assets/login_bg.webp as a data URI (same pattern as the logo helpers), lays a
-    brand-tinted gradient over it for contrast, and turns the login card into a
-    frosted translucent white section that floats on top. Returns '' (plain
-    background, login still works) if the asset is missing. Injected AFTER LOGIN_CSS
-    so these rules win on source order."""
+    assets/login_bg.webp as a data URI (same pattern as the logo helpers) and lays a
+    brand-tinted gradient over it for contrast; the solid-white login card (styled in
+    LOGIN_CSS) floats on top. Returns '' (plain background, login still works) if the
+    asset is missing. Injected AFTER LOGIN_CSS so these rules win on source order."""
     path = os.path.join(theme.ASSETS_DIR, "login_bg.webp")
     try:
         with open(path, "rb") as f:
@@ -274,11 +273,8 @@ def _login_bg_style() -> str:
         "linear-gradient(180deg,rgba(3,26,60,.80) 0%,rgba(2,76,161,.46) 42%,rgba(3,26,60,.84) 100%),"
         f"url('data:image/webp;base64,{b64}') center/cover no-repeat fixed !important;}}"
         "[data-testid='stHeader']{background:transparent !important;}"
-        # frosted translucent 'section' the login lies on
-        ".st-key-login_card{background:rgba(255,255,255,.82) !important;"
-        "backdrop-filter:blur(13px) saturate(1.05);-webkit-backdrop-filter:blur(13px) saturate(1.05);"
-        "border:1px solid rgba(255,255,255,.55) !important;"
-        "box-shadow:0 26px 70px rgba(2,18,46,.48) !important;}"
+        # solid-white card, lifted off the dark backdrop with a deeper shadow
+        ".st-key-login_card{box-shadow:0 26px 70px rgba(2,18,46,.48) !important;}"
         "</style>"
     )
 
