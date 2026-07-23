@@ -1824,39 +1824,43 @@ def page_methodology():
     )
 
     theme.section_title("From data to forecast", theme.icon("trending"))
-    # General Inputs -> Model -> Outputs infographic (replaces the old 6-step chain).
-    # Grounded in BigMint's published, deliberately high-level methodology — a defined,
-    # data-driven method over selected factors from available data, no over-claimed model
-    # names. Styled by .bm-engine* in theme.py; collapses to a single column on narrow screens.
-    engine_in = [
-        ("factory", "15+ yrs of BigMint-assessed prices"),
-        ("rupee",   "Cost, supply &amp; demand signals"),
-        ("home",    "Global &amp; macro factors"),
+    # Forecasting-model infographic: Market Inputs -> AI Forecast Engine -> Output.
+    # Modular 3-block layout (each stage a framed block with nested module cards) styled by
+    # .bm-fm* in theme.py; collapses to a single column on narrow screens.
+    fm_inputs = [
+        ("home",     "Domestic Price",      "Local market rates"),
+        ("globe",    "Global Price",        "International benchmarks"),
+        ("gauge",    "Supply &amp; Demand", "Market balance"),
+        ("rupee",    "Cost Drivers",        "Input &amp; freight costs"),
+        ("calendar", "Macro Factors",       "Economy, FX, policy"),
     ]
-    engine_out = [
-        ("calendar", "12-week forward price path"),
-        ("trending", "Up / down / flat direction"),
-        ("notes",    "Back-checked vs realised spot"),
+    fm_engine = [
+        ("cpu",    "ML Evaluation",      "Pattern &amp; trend models"),
+        ("chat",   "Sentiment Analysis", "News &amp; market mood"),
+        ("target", "Impact Analysis",    "Event-driven shifts"),
     ]
-    def _engine_chips(items):
+    def _fm_cards(items):
         return "".join(
-            f"<div class='bm-chip'><span class='ic'>{theme.icon(ic, 15)}</span>{label}</div>"
-            for ic, label in items
+            f"<div class='bm-fm-card'><span class='ic'>{theme.icon(ic, 20)}</span>"
+            f"<b>{title}</b><small>{desc}</small></div>"
+            for ic, title, desc in items
         )
-    engine = (
-        "<div class='bm-engine'>"
-        f"<div class='bm-engine-col bm-engine-in'><div class='bm-engine-h'>Inputs</div>{_engine_chips(engine_in)}</div>"
-        "<div class='bm-engine-arrow'>&rarr;</div>"
-        "<div class='bm-engine-core'>"
-        f"<span class='ic'>{theme.icon('gauge', 26)}</span>"
-        "<h4>Forecasting model</h4>"
-        "<p>A defined, data-driven methodology fits historical price relationships across "
-        "selected factors from available data.</p></div>"
-        "<div class='bm-engine-arrow'>&rarr;</div>"
-        f"<div class='bm-engine-col bm-engine-out'><div class='bm-engine-h'>Outputs</div>{_engine_chips(engine_out)}</div>"
+    fm = (
+        "<div class='bm-fm'>"
+        "<div class='bm-fm-block'><div class='bm-fm-hd'><span class='bm-fm-num'>1</span><b>Market Inputs</b></div>"
+        f"<div class='bm-fm-cards'>{_fm_cards(fm_inputs)}</div></div>"
+        "<div class='bm-fm-arrow'>&rarr;</div>"
+        "<div class='bm-fm-block'><div class='bm-fm-hd'><span class='bm-fm-num'>2</span><b>AI Forecast Engine</b></div>"
+        f"<div class='bm-fm-cards'>{_fm_cards(fm_engine)}</div></div>"
+        "<div class='bm-fm-arrow'>&rarr;</div>"
+        "<div class='bm-fm-block'><div class='bm-fm-hd'><span class='bm-fm-num'>3</span><b>Output</b></div>"
+        "<div class='bm-fm-cards'><div class='bm-fm-fc'>"
+        f"<span class='ic'>{theme.icon('monitor', 26)}</span><b>Forecast</b>"
+        "<small>Price direction, range &amp; horizon</small>"
+        "<span class='bm-fm-badge'>Prediction</span></div></div></div>"
         "</div>"
     )
-    st.markdown(engine, unsafe_allow_html=True)
+    st.markdown(fm, unsafe_allow_html=True)
 
     st.write("")
     theme.section_title("Key factors the model weighs", theme.icon("gauge"))

@@ -657,15 +657,48 @@ ul[role="listbox"] li {{
 /* arrow pinned to the icon row (align-self:start + padding) so 1..6 share one flow line */
 .bm-flow-arrow {{ align-self:start; padding-top:30px; display:flex; align-items:flex-start;
     justify-content:center; color:var(--bm-accent); font-size:18px; font-weight:700; }}
-/* methodology engine infographic (Inputs -> Model -> Outputs); replaces the old numbered chain */
+/* methodology forecasting-model infographic: Market Inputs -> AI Engine -> Output.
+   Three uniform blocks with nested module cards; arrows offset past the 62px header so
+   they land on the card center. Collapses to one column on narrow screens (media query below). */
+.bm-fm {{ display:flex; align-items:stretch; justify-content:center; gap:0; margin:18px 0 14px; }}
+.bm-fm-block {{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center;
+    background:#fff; border:1px solid var(--bm-border); border-radius:14px; padding:16px 14px 18px;
+    box-shadow:0 1px 2px rgba(16,24,40,.05); }}
+.bm-fm-hd {{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; height:62px; }}
+.bm-fm-num {{ width:24px; height:24px; border-radius:50%; background:var(--bm-primary); color:#fff;
+    font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }}
+.bm-fm-hd b {{ font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:{NEUTRAL}; }}
+.bm-fm-cards {{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:8px; width:100%; align-items:center; }}
+.bm-fm-card {{ width:100%; max-width:220px; box-sizing:border-box; display:flex; flex-direction:column;
+    align-items:center; text-align:center; gap:5px; background:#f6f8fc; border:1px solid var(--bm-border);
+    border-radius:10px; padding:10px; transition:transform .15s ease, box-shadow .15s ease; }}
+.bm-fm-card:hover {{ transform:translateY(-2px); box-shadow:0 6px 16px rgba(2,76,161,.10); }}
+.bm-fm-card .ic {{ width:34px; height:34px; border-radius:9px; background:var(--bm-primary-soft); color:var(--bm-primary);
+    display:flex; align-items:center; justify-content:center; }}
+.bm-fm-card b {{ font-size:12.5px; font-weight:700; color:var(--bm-primary-dark); line-height:1.2; }}
+.bm-fm-card small {{ font-size:10.5px; color:{NEUTRAL}; line-height:1.25; }}
+.bm-fm-arrow {{ display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+    padding:78px 8px 18px; color:var(--bm-accent); font-size:20px; font-weight:700; }}
+.bm-fm-fc {{ width:100%; max-width:220px; box-sizing:border-box; display:flex; flex-direction:column;
+    align-items:center; gap:8px; background:linear-gradient(135deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%);
+    color:#fff; border-radius:12px; padding:18px 14px; border-bottom:4px solid var(--bm-accent);
+    box-shadow:0 6px 22px rgba(2,76,161,.22); }}
+.bm-fm-fc .ic {{ width:46px; height:46px; border-radius:12px; background:rgba(255,255,255,.16);
+    display:flex; align-items:center; justify-content:center; }}
+.bm-fm-fc b {{ font-size:17px; font-weight:700; color:#fff; }}
+.bm-fm-fc small {{ font-size:10.5px; color:#dce8f8; line-height:1.35; max-width:160px; }}
+.bm-fm-badge {{ font-size:9.5px; font-weight:700; letter-spacing:.08em; background:var(--bm-accent); color:#fff;
+    padding:3px 10px; border-radius:20px; text-transform:uppercase; }}
+/* chips reused by the calculators' assumptions strip */
+.bm-chip {{ display:flex; align-items:center; gap:9px; background:#f6f8fc; border:1px solid var(--bm-border); border-radius:10px; padding:9px 11px; margin:0 0 8px; font-size:12.5px; color:var(--bm-primary-dark); font-weight:600; line-height:1.3; }}
+.bm-chip:last-child {{ margin-bottom:0; }}
+.bm-chip .ic {{ flex:0 0 24px; width:24px; height:24px; border-radius:7px; background:var(--bm-primary-soft); color:var(--bm-primary); display:flex; align-items:center; justify-content:center; }}
+/* engine infographic (Inputs -> Model -> Outputs) — still used by the calculators */
 .bm-engine {{ display:grid; grid-template-columns:1fr auto 1.15fr auto 1fr; align-items:stretch; gap:0 10px; margin:18px 0 14px; }}
 .bm-engine-col {{ background:#fff; border:1px solid var(--bm-border); border-radius:14px; padding:16px 16px 14px; box-shadow:0 1px 2px rgba(16,24,40,.05); }}
 .bm-engine-in {{ border-top:3px solid var(--bm-primary); }}
 .bm-engine-out {{ border-top:3px solid var(--bm-accent); }}
 .bm-engine-h {{ font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:{NEUTRAL}; margin:0 0 10px; }}
-.bm-chip {{ display:flex; align-items:center; gap:9px; background:#f6f8fc; border:1px solid var(--bm-border); border-radius:10px; padding:9px 11px; margin:0 0 8px; font-size:12.5px; color:var(--bm-primary-dark); font-weight:600; line-height:1.3; }}
-.bm-chip:last-child {{ margin-bottom:0; }}
-.bm-chip .ic {{ flex:0 0 24px; width:24px; height:24px; border-radius:7px; background:var(--bm-primary-soft); color:var(--bm-primary); display:flex; align-items:center; justify-content:center; }}
 .bm-engine-core {{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; background:linear-gradient(135deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%); color:#fff; border-radius:16px; padding:20px 18px; box-shadow:0 6px 22px rgba(2,76,161,.22); }}
 .bm-engine-core .ic {{ width:46px; height:46px; border-radius:12px; background:rgba(255,255,255,.16); display:flex; align-items:center; justify-content:center; margin:0 0 10px; }}
 .bm-engine-core h4 {{ margin:0 0 6px; font-size:16px; color:#fff; }}
@@ -694,7 +727,11 @@ ul[role="listbox"] li {{
     .bm-flow {{ grid-template-columns:1fr; }}
     .bm-flow-step {{ margin:0 0 4px; }}
     .bm-flow-arrow {{ transform:rotate(90deg); margin:3px 0; padding-top:0; align-self:center; }}
-    /* engine: single column, arrows point downward */
+    /* forecasting-model infographic: single column, arrows point downward */
+    .bm-fm {{ flex-direction:column; align-items:center; }}
+    .bm-fm-block {{ width:100%; max-width:340px; }}
+    .bm-fm-arrow {{ transform:rotate(90deg); padding:6px 0; }}
+    /* engine infographic (calculators): single column, arrows point downward */
     .bm-engine {{ grid-template-columns:1fr; gap:8px 0; }}
     .bm-engine-arrow {{ transform:rotate(90deg); margin:2px 0; }}
     /* stat strip: 6-up gets cramped on tablet -> 3-up before the 2-up phone step below */
@@ -730,6 +767,10 @@ _ICON_PATHS = {
     "factory":    "<path d='M3 21V9l6 4V9l6 4V9l6 4v8z'/>",
     "target":     "<circle cx='12' cy='12' r='8'/><circle cx='12' cy='12' r='3'/>",
     "notes":      "<rect x='5' y='3' width='14' height='18' rx='2'/><path d='M8 8h8M8 12h8M8 16h5'/>",
+    "globe":      "<circle cx='12' cy='12' r='9'/><path d='M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18'/>",
+    "cpu":        "<rect x='7' y='7' width='10' height='10' rx='2'/><path d='M10 7V4M14 7V4M10 20v-3M14 20v-3M7 10H4M7 14H4M20 10h-3M20 14h-3'/>",
+    "chat":       "<path d='M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z'/><path d='M8 10h.01M12 10h.01M16 10h.01'/>",
+    "monitor":    "<rect x='2' y='3' width='20' height='14' rx='2'/><path d='M8 21h8M12 17v4'/><path d='M6 12l3.5-3.5 2.5 2.5L17 6'/><path d='M17 6h-3M17 6v3'/>",
 }
 
 
