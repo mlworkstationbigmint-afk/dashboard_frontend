@@ -660,16 +660,16 @@ ul[role="listbox"] li {{
 /* methodology forecasting-model infographic: Market Inputs -> AI Engine -> Output.
    Three uniform blocks with nested module cards; arrows offset past the 62px header so
    they land on the card center. Collapses to one column on narrow screens (media query below). */
-.bm-fm {{ display:flex; align-items:stretch; justify-content:center; gap:0; margin:18px 0 14px; }}
-.bm-fm-block {{ flex:1 1 0; min-width:0; display:flex; flex-direction:column; align-items:center;
-    background:#fff; border:1px solid var(--bm-border); border-radius:14px; padding:16px 14px 18px;
+.bm-fm {{ display:flex; align-items:center; justify-content:center; gap:6px; margin:18px 0 14px; flex-wrap:nowrap; }}
+.bm-fm-block {{ flex:0 0 auto; width:fit-content; display:flex; flex-direction:column; align-items:center;
+    background:#fff; border:1px solid var(--bm-border); border-radius:14px; padding:16px 16px 18px;
     box-shadow:0 1px 2px rgba(16,24,40,.05); }}
-.bm-fm-hd {{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; height:62px; }}
+.bm-fm-hd {{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; margin:0 0 14px; }}
 .bm-fm-num {{ width:24px; height:24px; border-radius:50%; background:var(--bm-primary); color:#fff;
     font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }}
 .bm-fm-hd b {{ font-size:12px; font-weight:700; letter-spacing:.05em; text-transform:uppercase; color:{NEUTRAL}; }}
-.bm-fm-cards {{ flex:1; display:flex; flex-direction:column; justify-content:center; gap:8px; width:100%; align-items:center; }}
-.bm-fm-card {{ width:100%; max-width:220px; box-sizing:border-box; display:flex; flex-direction:column;
+.bm-fm-cards {{ display:flex; flex-direction:column; gap:8px; align-items:center; }}
+.bm-fm-card {{ width:210px; box-sizing:border-box; display:flex; flex-direction:column;
     align-items:center; text-align:center; gap:5px; background:#f6f8fc; border:1px solid var(--bm-border);
     border-radius:10px; padding:10px; transition:transform .15s ease, box-shadow .15s ease; }}
 .bm-fm-card:hover {{ transform:translateY(-2px); box-shadow:0 6px 16px rgba(2,76,161,.10); }}
@@ -678,8 +678,8 @@ ul[role="listbox"] li {{
 .bm-fm-card b {{ font-size:12.5px; font-weight:700; color:var(--bm-primary-dark); line-height:1.2; }}
 .bm-fm-card small {{ font-size:10.5px; color:{NEUTRAL}; line-height:1.25; }}
 .bm-fm-arrow {{ display:flex; align-items:center; justify-content:center; flex:0 0 auto;
-    padding:78px 8px 18px; color:var(--bm-accent); font-size:20px; font-weight:700; }}
-.bm-fm-fc {{ width:100%; max-width:220px; box-sizing:border-box; display:flex; flex-direction:column;
+    padding:0 12px; color:var(--bm-accent); font-size:20px; font-weight:700; }}
+.bm-fm-fc {{ width:210px; box-sizing:border-box; display:flex; flex-direction:column;
     align-items:center; gap:8px; background:linear-gradient(135deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%);
     color:#fff; border-radius:12px; padding:18px 14px; border-bottom:4px solid var(--bm-accent);
     box-shadow:0 6px 22px rgba(2,76,161,.22); }}
@@ -729,7 +729,6 @@ ul[role="listbox"] li {{
     .bm-flow-arrow {{ transform:rotate(90deg); margin:3px 0; padding-top:0; align-self:center; }}
     /* forecasting-model infographic: single column, arrows point downward */
     .bm-fm {{ flex-direction:column; align-items:center; }}
-    .bm-fm-block {{ width:100%; max-width:340px; }}
     .bm-fm-arrow {{ transform:rotate(90deg); padding:6px 0; }}
     /* engine infographic (calculators): single column, arrows point downward */
     .bm-engine {{ grid-template-columns:1fr; gap:8px 0; }}
