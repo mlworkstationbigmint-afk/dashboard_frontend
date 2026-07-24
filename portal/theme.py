@@ -264,11 +264,15 @@ div[data-testid="stHorizontalBlock"] {{ align-items: stretch; }}
     border-color:var(--bm-primary); color:var(--bm-primary); background:var(--bm-primary-soft);
 }}
 .stButton > button[kind="primary"] {{ box-shadow:0 2px 8px rgba(2,76,161,.25); }}
-/* Methodology hero — blue card wraps the intro text + manual button (button sits INSIDE the blue) */
+/* Methodology hero — blue card wraps the intro text + manual button (button sits INSIDE the blue,
+   to the RIGHT of the text: inner block is a flex row, button doesn't shrink and centres vertically) */
 div[class*="st-key-meth_hero"] {{
     background:linear-gradient(120deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%);
     border-radius:16px; padding:22px 26px; margin:2px 0 18px; box-shadow:0 6px 22px rgba(2,76,161,.20);
+    flex-direction:row; align-items:center; gap:24px;
 }}
+div[class*="st-key-meth_hero"] > [data-testid="stElementContainer"]:first-child {{ flex:1 1 auto; min-width:0; }}
+div[class*="st-key-meth_hero"] > [data-testid="stElementContainer"]:last-child {{ flex:0 0 auto; width:auto; }}
 /* white, bolder, modular download button inside the blue card */
 div[class*="st-key-meth_hero"] .stDownloadButton button {{
     background:#fff; border:0; color:var(--bm-primary); font-weight:800;
