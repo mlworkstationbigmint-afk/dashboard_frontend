@@ -1708,7 +1708,7 @@ ACC_GLOSSARY = {
             "The share of weeks in which the forecast correctly anticipated the week-over-week price direction — up, down, or flat.",
             "correct direction calls / total weeks x 100"),
     "delta": ("Delta accuracy",
-              "Forecasted price change vs actual price change — how much of the actual weekly price movement the forecast captured. 100% reflects the full move; a negative value indicates the opposite direction.",
+              "Forecasted price change vs actual price change — how much of the actual weekly price movement the forecast captured. 100% reflects the full move.",
               "mean(captured move / actual move x 100)"),
     "na": ("NA *",
            "Weeks with no data, or where the forecast price deviation stays within the acceptable limit — marked NA and dropped from the averages above.",
@@ -1791,12 +1791,9 @@ def page_performance():
     st.write("")
     theme.section_title("Actual vs Forecast Price Trend graph" + _acc_help("mapa"), theme.icon("trending"))
     perf_chart(view)
-    st.markdown(
-        "<div style='display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;'>"
-        f"<div class='bm-h' role='heading' aria-level='3' style='margin-bottom:0;'>{theme.icon('gauge')} Actual price vs Forecast Price Deviation Graph</div>"
-        "<span class='bm-footnote' style='margin:0;'>Top / positive bars = Forecast was higher than Spot; "
-        "bottom / negative bars = Forecast was lower than Spot.</span></div>",
-        unsafe_allow_html=True)
+    theme.section_title("Actual price vs Forecast Price Deviation Graph", theme.icon("gauge"))
+    st.markdown("<div class='bm-footnote' style='margin-top:-4px;'>Top / positive bars = Forecast was higher than Spot; "
+                "bottom / negative bars = Forecast was lower than Spot.</div>", unsafe_allow_html=True)
     delta_bar(view)
     theme.section_title("Weekly forecast absolute accuracy" + _acc_help("mapa"), theme.icon("target"))
     accuracy_chart(view)
