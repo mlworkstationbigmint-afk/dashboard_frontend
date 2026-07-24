@@ -1868,7 +1868,7 @@ def page_methodology():
     # "model" box. .bm-engine-wide sizes all tracks to content so the wide centre fits
     # (the plain .bm-engine grid stays narrow for the calculators). Styled in theme.py.
     engine_in = [
-        ("factory", "15+ yrs of assessed prices and values of 80+ factors", "BigMint's physical price benchmarks"),
+        ("factory", "50+ touchpoints based on 15+ yrs of global and local assessed prices", "BigMint's physical price benchmarks"),
         ("rupee",   "Cost, supply &amp; demand",     "Raw-material costs and market-balance signals"),
         ("home",    "Global &amp; macro factors",    "Import/export parity, FX, rates &amp; policy"),
     ]

@@ -1736,3 +1736,6 @@ surfaces follow the role. Acceptable for the current build.
   refs (`data_loader.py` ×3 incl. the private-repo fetch `rels`, `calc_elasticity.py` fallback path).
   CROSS-REPO: the actual `calculators/HRC - Copy.csv` in the private dashboard-data repo (and any local
   sample) must be renamed to `HRC.csv` too, or the fetch 404s. `py_compile` clean on all four files.
+- **2026-07-24 (Inputs chip copy):** First Inputs chip title (`app.py` `engine_in`) reworded "15+ yrs of
+  assessed prices and values of 80+ factors" → "50+ touchpoints based on 15+ yrs of global and local
+  assessed prices". Sub unchanged.
