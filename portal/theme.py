@@ -264,12 +264,18 @@ div[data-testid="stHorizontalBlock"] {{ align-items: stretch; }}
     border-color:var(--bm-primary); color:var(--bm-primary); background:var(--bm-primary-soft);
 }}
 .stButton > button[kind="primary"] {{ box-shadow:0 2px 8px rgba(2,76,161,.25); }}
-/* Methodology manual download — white button, blue text/border */
-div[class*="st-key-meth_manual"] .stDownloadButton button {{
-    background:#fff; border:1px solid var(--bm-primary); color:var(--bm-primary);
+/* Methodology hero — blue card wraps the intro text + manual button (button sits INSIDE the blue) */
+div[class*="st-key-meth_hero"] {{
+    background:linear-gradient(120deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%);
+    border-radius:16px; padding:22px 26px; margin:2px 0 18px; box-shadow:0 6px 22px rgba(2,76,161,.20);
 }}
-div[class*="st-key-meth_manual"] .stDownloadButton button:hover:not(:disabled) {{
-    background:var(--bm-primary-soft); border-color:var(--bm-primary); color:var(--bm-primary);
+/* white, bolder, modular download button inside the blue card */
+div[class*="st-key-meth_hero"] .stDownloadButton button {{
+    background:#fff; border:0; color:var(--bm-primary); font-weight:800;
+    border-radius:10px; padding:9px 18px; box-shadow:0 3px 10px rgba(0,0,0,.18);
+}}
+div[class*="st-key-meth_hero"] .stDownloadButton button:hover:not(:disabled) {{
+    background:#fff; color:var(--bm-primary-dark); box-shadow:0 6px 16px rgba(0,0,0,.26); transform:translateY(-1px);
 }}
 /* keyboard focus ring — brand accent, on every st.button / download / link (was relying on the
    browser default outline only). :focus-visible so mouse clicks don't show the ring, keyboard does. */
@@ -635,8 +641,7 @@ ul[role="listbox"] li {{
 }}
 
 /* ---------- methodology infographics ---------- */
-.bm-meth-hero {{ background:linear-gradient(120deg,var(--bm-primary) 0%,var(--bm-primary-dark) 100%); color:#fff;
-    border-radius:16px; padding:22px 26px; margin:2px 0 18px; box-shadow:0 6px 22px rgba(2,76,161,.20); }}
+.bm-meth-hero {{ color:#fff; }}  /* box styling now on the st-key-meth_hero container */
 .bm-meth-hero h3 {{ margin:0 0 6px; font-size:20px; color:#fff; }}
 .bm-meth-hero p {{ margin:0; font-size:14px; line-height:1.6; color:#dce8f8; max-width:860px; }}
 /* stat strip */

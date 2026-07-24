@@ -788,7 +788,7 @@ def delta_acc_bar(view):
         raw = [v * 100 if pd.notna(v) else None for v in view["DeltaAcc"]]
         ys = [None if v is None else max(-100.0, min(100.0, v)) for v in raw]
         cvals = [-100.0 if v is None else max(-100.0, min(100.0, v)) for v in raw]
-        texts = ["No prior reference / flat week" if v is None else f"Forecasted price change vs actual price change: {v:.0f}%"
+        texts = ["No prior reference / flat week" if v is None else f"Move captured: {v:.0f}%"
                  for v in raw]
         fig = go.Figure(go.Bar(
             x=view["Date"], y=ys, customdata=texts,
@@ -1708,7 +1708,7 @@ ACC_GLOSSARY = {
             "The share of weeks in which the forecast correctly anticipated the week-over-week price direction — up, down, or flat.",
             "correct direction calls / total weeks x 100"),
     "delta": ("Delta accuracy",
-              "Measures how much of the actual weekly price movement the forecast captured. 100% reflects the full move; a negative value indicates the opposite direction.",
+              "Forecasted price change vs actual price change — how much of the actual weekly price movement the forecast captured. 100% reflects the full move; a negative value indicates the opposite direction.",
               "mean(captured move / actual move x 100)"),
     "na": ("NA *",
            "Weeks with no data, or where the forecast price deviation stays within the acceptable limit — marked NA and dropped from the averages above.",
@@ -1791,9 +1791,12 @@ def page_performance():
     st.write("")
     theme.section_title("Actual vs Forecast Price Trend graph" + _acc_help("mapa"), theme.icon("trending"))
     perf_chart(view)
-    theme.section_title("Actual price vs Forecast Price Deviation Graph", theme.icon("gauge"))
-    st.markdown("<div class='bm-footnote' style='margin-top:-4px;'>Top / positive bars = Forecast was higher than Spot; "
-                "bottom / negative bars = Forecast was lower than Spot.</div>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;'>"
+        f"<div class='bm-h' role='heading' aria-level='3' style='margin-bottom:0;'>{theme.icon('gauge')} Actual price vs Forecast Price Deviation Graph</div>"
+        "<span class='bm-footnote' style='margin:0;'>Top / positive bars = Forecast was higher than Spot; "
+        "bottom / negative bars = Forecast was lower than Spot.</span></div>",
+        unsafe_allow_html=True)
     delta_bar(view)
     theme.section_title("Weekly forecast absolute accuracy" + _acc_help("mapa"), theme.icon("target"))
     accuracy_chart(view)
@@ -1851,19 +1854,20 @@ def page_calculators():
 def page_methodology():
     st.markdown("## Methodology")
 
-    st.markdown(
-        "<div class='bm-meth-hero'>"
-        "<h3>How the forecast is built</h3>"
-        "<p>BigMint AI Labs forecasts steel prices with a <b>hybrid approach</b> &mdash; machine-learning "
-        "models trained on 15+ years of BigMint-assessed price data. "
-        "Each forecast distils cost, supply&ndash;demand, global and macro signals into a single, transparent "
-        "price path with a documented rationale.</p></div>",
-        unsafe_allow_html=True,
-    )
-
+    # Hero text + manual button share ONE keyed container that carries the blue card
+    # styling, so the white button renders INSIDE the blue "How the forecast is built" panel.
     _manual = os.path.join(theme.ASSETS_DIR, "BigMint_Portal_User_Manual.pdf")
-    if os.path.exists(_manual):
-        with st.container(key="meth_manual"):
+    with st.container(key="meth_hero"):
+        st.markdown(
+            "<div class='bm-meth-hero'>"
+            "<h3>How the forecast is built</h3>"
+            "<p>BigMint AI Labs forecasts steel prices with a <b>hybrid approach</b> &mdash; machine-learning "
+            "models trained on 15+ years of BigMint-assessed price data. "
+            "Each forecast distils cost, supply&ndash;demand, global and macro signals into a single, transparent "
+            "price path with a documented rationale.</p></div>",
+            unsafe_allow_html=True,
+        )
+        if os.path.exists(_manual):
             with open(_manual, "rb") as _f:
                 st.download_button("Download user manual", _f.read(),
                                    file_name="BigMint_Portal_User_Manual.pdf",
