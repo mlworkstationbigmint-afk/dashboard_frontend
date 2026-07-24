@@ -44,12 +44,31 @@ def _data_cfg():
     return cfg if cfg else None
 
 
+@st.cache_data(ttl=25, show_spinner=False)
+def _remote_sha(owner: str, repo: str, ref: str, token: str) -> str:
+    """Current HEAD commit SHA of the data repo's ref. One cheap API call, cached ~25s
+    (just under the 30s data poll) so a fresh push is noticed within a poll cycle without
+    hammering the API on every path lookup. Returns "" on any error (degrade, don't crash)."""
+    import requests
+    try:
+        url = f"https://api.github.com/repos/{owner}/{repo}/commits/{quote(ref)}"
+        resp = requests.get(url, headers={
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github.sha",
+            "X-GitHub-Api-Version": "2022-11-28"}, timeout=15)
+        resp.raise_for_status()
+        return resp.text.strip()
+    except Exception:
+        return ""
+
+
 @st.cache_resource(show_spinner="Loading data…")
-def _fetch_private_data_dir(owner: str, repo: str, ref: str, token: str) -> str:
-    """Download the private data files from a GitHub repo into a temp dir (once per
-    deploy) and return its path. Uses the Contents API with the raw media type, so a
-    fine-grained token with read-only 'Contents' access to just that repo is enough.
-    This function body is the single swap-point for another backend (S3/GCS/etc.)."""
+def _fetch_private_data_dir(owner: str, repo: str, ref: str, token: str, sha: str) -> str:
+    """Download the private data files from a GitHub repo into a temp dir and return its
+    path. `sha` is the repo HEAD, used as a cache key: a new push changes it and forces a
+    fresh download — that's what makes edits show up without an app restart. Uses the
+    Contents API with the raw media type, so a fine-grained token with read-only 'Contents'
+    access to just that repo is enough. Single swap-point for another backend (S3/GCS/etc.)."""
     import requests
     dest = tempfile.mkdtemp(prefix="bm_data_")
     headers = {
@@ -57,12 +76,13 @@ def _fetch_private_data_dir(owner: str, repo: str, ref: str, token: str) -> str:
         "Accept": "application/vnd.github.raw",
         "X-GitHub-Api-Version": "2022-11-28",
     }
+    at = sha or ref   # pin to the exact commit when known, so content matches the cache key
     rels = (f"accuracy_tables/{FF_NAME}",
             f"accuracy_tables/{LANDED_NAME}",
             *[f"accuracy_tables/{fn}" for fn in ACC_FILES.values()],
             "calculators/HRC.csv")
     for rel in rels:
-        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{quote(rel)}?ref={ref}"
+        url = f"https://api.github.com/repos/{owner}/{repo}/contents/{quote(rel)}?ref={at}"
         resp = requests.get(url, headers=headers, timeout=30)
         resp.raise_for_status()
         out = os.path.join(dest, rel.replace("/", os.sep))
@@ -72,17 +92,19 @@ def _fetch_private_data_dir(owner: str, repo: str, ref: str, token: str) -> str:
     return dest
 
 
-@st.cache_resource(show_spinner=False)
 def _data_root() -> str:
-    """Folder that holds accuracy_tables/ and calculators/: the fetched private-repo
-    temp dir when secrets are set, else the repo root (in-repo sample). Cached so the
-    fetch (and any fallback warning) happens once per deploy."""
+    """Folder that holds accuracy_tables/ and calculators/: the fetched private-repo temp
+    dir when secrets are set, else the repo root (in-repo sample). Not cached itself — it's
+    cheap (a ~25s-cached SHA check) and MUST re-run each call so a new push re-points it at
+    a fresh fetch. The download itself stays cached per-SHA in _fetch_private_data_dir."""
     cfg = _data_cfg()
     if cfg:
         try:
+            sha = _remote_sha(cfg["github_owner"], cfg["github_repo"],
+                              cfg.get("github_ref", "main"), cfg["github_token"])
             return _fetch_private_data_dir(
                 cfg["github_owner"], cfg["github_repo"],
-                cfg.get("github_ref", "main"), cfg["github_token"])
+                cfg.get("github_ref", "main"), cfg["github_token"], sha)
         except Exception:
             st.warning("Private data fetch failed — showing the bundled sample instead.")
     return BASE
@@ -167,11 +189,15 @@ def data_files() -> tuple:
     return (ff_path(), landed_path(), *[acc_path(w) for w in ACC_FILES], calculators_csv())
 
 
-def data_signature() -> float:
-    """A single number that changes whenever ANY data file changes on disk.
-    Cheap (stat only, NOT cached) — the app polls this to auto-refresh when a
-    file in accuracy_tables/ (or the calculators CSV) is edited, so updates show
-    up on their own with no manual refresh or restart."""
+def data_signature():
+    """A value that changes whenever the data changes — polled to auto-refresh the app.
+    Private-repo mode: the repo HEAD SHA (changes on every push, so a push shows up on its
+    own within a poll cycle — no restart or manual clear). In-repo sample mode: max file
+    mtime on disk. Cheap in both cases (a ~25s-cached SHA call, or a stat)."""
+    cfg = _data_cfg()
+    if cfg:
+        return _remote_sha(cfg["github_owner"], cfg["github_repo"],
+                           cfg.get("github_ref", "main"), cfg["github_token"])
     return max((_mtime(p) for p in data_files()), default=0.0)
 
 

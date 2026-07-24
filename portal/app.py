@@ -385,6 +385,7 @@ with st.sidebar:
     if st.button("Refresh data", width="stretch", icon=":material/refresh:",
                  help="Re-read the data files from disk right now."):
         st.cache_data.clear()
+        st.cache_resource.clear()   # also drop the fetched private-repo snapshot → re-download
         st.rerun()
 
 
