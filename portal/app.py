@@ -1837,19 +1837,6 @@ def page_calculators():
 # ---------------------------------------------------------------------------
 # PAGE: METHODOLOGY  (general, infographic-led)
 # ---------------------------------------------------------------------------
-def _avg_accuracy_kpis(products):
-    """All-product averages of MAPA / directional / delta accuracy, read live from the accuracy
-    table (same source as the Performance cards). Returns (mapa, dir_acc, delta_acc) as %, each
-    None if no data for any product."""
-    acc = {"mapa": [], "dir_acc": [], "delta_acc": []}
-    for meta in products.values():
-        k = dl.accuracy_kpis(dl.load_accuracy("11-week", meta["acc"]).dropna(subset=["Actual", "Forecast"]))
-        for key in acc:
-            if k[key] is not None:
-                acc[key].append(k[key])
-    return tuple(sum(v) / len(v) if v else None for v in (acc["mapa"], acc["dir_acc"], acc["delta_acc"]))
-
-
 def page_methodology():
     st.markdown("## Methodology")
 
@@ -1863,15 +1850,11 @@ def page_methodology():
         unsafe_allow_html=True,
     )
 
-    # Headline accuracy stats: all-product averages read live from the accuracy table (same source
-    # as the Performance cards), so updating Accuracy_Table_11.xlsx moves these with no code edit.
-    _mapa, _dir, _delta = _avg_accuracy_kpis(allowed_products(user["role"]))
-    _pct = lambda v, d=0: (f"{v:.{d}f}%" if v is not None else "-")
     st.markdown(
         "<div class='bm-stat-row'>"
-        f"<div class='bm-stat'><div class='bm-stat-v'>{_pct(_mapa, 1)}</div><div class='bm-stat-l'>Average absolute price accuracy</div></div>"
-        f"<div class='bm-stat'><div class='bm-stat-v'>{_pct(_delta)}</div><div class='bm-stat-l'>Delta accuracy</div></div>"
-        f"<div class='bm-stat'><div class='bm-stat-v'>{_pct(_dir)}</div><div class='bm-stat-l'>Directional accuracy</div></div>"
+        "<div class='bm-stat'><div class='bm-stat-v'>~98%</div><div class='bm-stat-l'>Average absolute price accuracy</div></div>"
+        "<div class='bm-stat'><div class='bm-stat-v'>~60%</div><div class='bm-stat-l'>Delta accuracy</div></div>"
+        "<div class='bm-stat'><div class='bm-stat-v'>~70%</div><div class='bm-stat-l'>Directional accuracy</div></div>"
         "<div class='bm-stat'><div class='bm-stat-v'>15+ yrs</div><div class='bm-stat-l'>Historical data trained on</div></div>"
         "<div class='bm-stat'><div class='bm-stat-v'>1&ndash;2%</div><div class='bm-stat-l'>Typical absolute price difference (error band)</div></div>"
         "<div class='bm-stat'><div class='bm-stat-v'>IOSCO</div><div class='bm-stat-l'>Audited methodology</div></div>"

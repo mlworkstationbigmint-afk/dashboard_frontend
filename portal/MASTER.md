@@ -1746,10 +1746,3 @@ surfaces follow the role. Acceptable for the current build.
   light-grey backdrop drops into the page background and the blue line-art blends with the brand theme (no
   grey box); shows a caption fallback if the file is missing. ACTION: drop the image at
   `portal/assets/methodology_flowchart.png` (and commit it to the repo).
-- **2026-07-24 (Methodology hero stats linked to accuracy table):** The three hardcoded headline stats on
-  the Methodology page (`app.py` `page_methodology` `.bm-stat-row`) — Average absolute price accuracy `~98%`,
-  Delta accuracy `~60%`, Directional accuracy `~70%` — now fetch **live all-product averages** from the
-  accuracy table via new `_avg_accuracy_kpis(products)` (loops `allowed_products`, averages
-  `dl.accuracy_kpis()` MAPA / dir / delta). MAPA shown `.1f`, dir/delta `.0f`; `-` if no data. The other
-  three tiles (15+ yrs, 1–2%, IOSCO) unchanged. Performance-page KPI cards already fetched directly — left
-  as-is per user.
