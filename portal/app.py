@@ -48,6 +48,16 @@ def _ensure_db_schema():
 _ensure_db_schema()
 
 
+# On every fresh page load — a browser refresh or a new login starts with an empty
+# session_state (see the cookie note below) — re-check the private data repo's HEAD so
+# the latest push is picked up. Only the tiny SHA lookup is invalidated; the per-SHA
+# download and per-file parse caches are reused when the repo hasn't moved, so an
+# unchanged repo costs one cheap API call, not a re-download.
+if "_booted" not in st.session_state:
+    st.session_state["_booted"] = True
+    dl._remote_sha.clear()
+
+
 # ---------------------------------------------------------------------------
 # LOGIN
 # ---------------------------------------------------------------------------
