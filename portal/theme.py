@@ -264,6 +264,13 @@ div[data-testid="stHorizontalBlock"] {{ align-items: stretch; }}
     border-color:var(--bm-primary); color:var(--bm-primary); background:var(--bm-primary-soft);
 }}
 .stButton > button[kind="primary"] {{ box-shadow:0 2px 8px rgba(2,76,161,.25); }}
+/* Methodology manual download — white button, blue text/border */
+div[class*="st-key-meth_manual"] .stDownloadButton button {{
+    background:#fff; border:1px solid var(--bm-primary); color:var(--bm-primary);
+}}
+div[class*="st-key-meth_manual"] .stDownloadButton button:hover:not(:disabled) {{
+    background:var(--bm-primary-soft); border-color:var(--bm-primary); color:var(--bm-primary);
+}}
 /* keyboard focus ring — brand accent, on every st.button / download / link (was relying on the
    browser default outline only). :focus-visible so mouse clicks don't show the ring, keyboard does. */
 .stButton > button:focus-visible,

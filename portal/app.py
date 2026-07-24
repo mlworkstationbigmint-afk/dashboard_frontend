@@ -788,7 +788,7 @@ def delta_acc_bar(view):
         raw = [v * 100 if pd.notna(v) else None for v in view["DeltaAcc"]]
         ys = [None if v is None else max(-100.0, min(100.0, v)) for v in raw]
         cvals = [-100.0 if v is None else max(-100.0, min(100.0, v)) for v in raw]
-        texts = ["No prior reference / flat week" if v is None else f"Move captured: {v:.0f}%"
+        texts = ["No prior reference / flat week" if v is None else f"Forecasted price change vs actual price change: {v:.0f}%"
                  for v in raw]
         fig = go.Figure(go.Bar(
             x=view["Date"], y=ys, customdata=texts,
@@ -1789,19 +1789,19 @@ def page_performance():
                     f"{kpis['delta_acc']:.0f}%" if kpis['delta_acc'] is not None else "-", f"avg weekly move capture · {len(view)} wk", theme.icon("trending")), unsafe_allow_html=True)
 
     st.write("")
-    theme.section_title("Actual vs Forecast Price" + _acc_help("mapa"), theme.icon("trending"))
+    theme.section_title("Actual vs Forecast Price Trend graph" + _acc_help("mapa"), theme.icon("trending"))
     perf_chart(view)
-    theme.section_title("Actual price vs Forecast price", theme.icon("gauge"))
-    delta_bar(view)
-    st.markdown("<div class='bm-footnote'>Top / positive bars = Forecast was higher than Spot; "
+    theme.section_title("Actual price vs Forecast Price Deviation Graph", theme.icon("gauge"))
+    st.markdown("<div class='bm-footnote' style='margin-top:-4px;'>Top / positive bars = Forecast was higher than Spot; "
                 "bottom / negative bars = Forecast was lower than Spot.</div>", unsafe_allow_html=True)
+    delta_bar(view)
     theme.section_title("Weekly forecast absolute accuracy" + _acc_help("mapa"), theme.icon("target"))
     accuracy_chart(view)
     theme.section_title("Weekly directional hit accuracy" + _acc_help("dir"), theme.icon("gauge"))
     directional_accuracy_bar(view)
     theme.section_title("Weekly delta accuracy" + _acc_help("delta"), theme.icon("trending"))
     delta_acc_bar(view)
-    st.markdown("<div class='bm-footnote'>* Absent weeks, or weeks where the forecast price deviation stays within the acceptable limit, are marked NA and dropped from the average.</div>",
+    st.markdown("<div class='bm-footnote' style='margin-top:-2px;font-weight:700;color:var(--bm-ink);'>* Absent weeks, or weeks where the forecast price deviation stays within the acceptable limit, are marked NA and dropped from the average.</div>",
                 unsafe_allow_html=True)
 
     theme.section_title("Week-wise detail", theme.icon("calendar"))
@@ -1860,6 +1860,14 @@ def page_methodology():
         "price path with a documented rationale.</p></div>",
         unsafe_allow_html=True,
     )
+
+    _manual = os.path.join(theme.ASSETS_DIR, "BigMint_Portal_User_Manual.pdf")
+    if os.path.exists(_manual):
+        with st.container(key="meth_manual"):
+            with open(_manual, "rb") as _f:
+                st.download_button("Download user manual", _f.read(),
+                                   file_name="BigMint_Portal_User_Manual.pdf",
+                                   mime="application/pdf", icon=":material/download:")
 
     st.markdown(
         "<div class='bm-stat-row'>"
@@ -1948,9 +1956,9 @@ def page_methodology():
         # Full-bleed width; mix-blend-mode:multiply drops the image's light-grey backdrop into the
         # page background so the blue line-art blends seamlessly with the brand theme (no grey box).
         st.markdown(
-            f"<div class='bm-flowchart' style='width:100%;'>"
+            f"<div class='bm-flowchart' style='width:100%;text-align:center;'>"
             f"<img src='data:image/png;base64,{_flow_b64}' alt='Data-to-forecast flow chart' "
-            "style='width:100%;height:auto;display:block;mix-blend-mode:multiply;'/></div>",
+            "style='width:60%;max-width:600px;height:auto;display:inline-block;mix-blend-mode:multiply;'/></div>",
             unsafe_allow_html=True,
         )
     else:
@@ -2023,13 +2031,6 @@ def page_methodology():
             "events or market disruptions. Treat them as indicative, not guarantees.",
             icon=":material/info:")
 
-    _manual = os.path.join(theme.ASSETS_DIR, "BigMint_Portal_User_Manual.pdf")
-    if os.path.exists(_manual):
-        st.write("")
-        with open(_manual, "rb") as _f:
-            st.download_button("Download the portal user manual (PDF)", _f.read(),
-                               file_name="BigMint_Portal_User_Manual.pdf",
-                               mime="application/pdf", icon=":material/download:")
     theme.footer()
 
 
