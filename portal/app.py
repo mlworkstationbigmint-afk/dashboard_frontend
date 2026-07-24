@@ -1853,7 +1853,7 @@ def page_methodology():
 
     # Hero text + manual button share ONE keyed container that carries the blue card
     # styling, so the white button renders INSIDE the blue "How the forecast is built" panel.
-    _manual = os.path.join(theme.ASSETS_DIR, "BigMint_Portal_User_Manual.pdf")
+    _manual = os.path.join(theme.ASSETS_DIR, "Portal_User_Manual.pdf")
     with st.container(key="meth_hero"):
         st.markdown(
             "<div class='bm-meth-hero'>"
@@ -1867,7 +1867,7 @@ def page_methodology():
         if os.path.exists(_manual):
             with open(_manual, "rb") as _f:
                 st.download_button("Download user manual", _f.read(),
-                                   file_name="BigMint_Portal_User_Manual.pdf",
+                                   file_name="Portal_User_Manual.pdf",
                                    mime="application/pdf", icon=":material/download:")
 
     st.markdown(

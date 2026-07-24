@@ -133,6 +133,10 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ Streamlit 1.59 ONLY (react-aria) — no more baseweb (2026-07-18).** The app targets **streamlit 1.59.0** (pinned in root + `portal/requirements.txt`); the deployment runs it too. As of 2026-07-18 **all dead 1.58 `data-baseweb="…"` / `stBaseButton-…Active` selectors were removed** — the CSS keys ONLY on 1.59 markup. **Rule:** style via **Streamlit-owned markup** (testids like `[data-testid="stTabs"]` / `stTab` / `stSelectbox` / `stNumberInput`, `st-key-*` classes, `role=`/`aria-*` attributes, `.react-aria-*`). **Do NOT add `data-baseweb` selectors** — they no-op on 1.59. Inputs/dropdowns get their white-fill + single rounded orange border from the **app-wide `stSelectbox` / `stNumberInput` / `stTextInput` / `stTextArea` / `stDateInput` rules in `theme.py`** (colour-only border, never width — a forced width makes zero-width reset borders on outer wrappers show as a second box). See memory `streamlit-159-only`.
 
 ## Changelog
+### 2026-07-24 — Manual renamed → Portal_User_Manual.pdf + title trimmed
+- **Renamed** `assets/BigMint_Portal_User_Manual.pdf` → **`assets/Portal_User_Manual.pdf`** (old file deleted). Both [app.py](portal/app.py) refs updated (the `_manual` path + the download `file_name`); generator `OUT` updated too.
+- **PDF title metadata** `BigMint AI Labs x Adani — Portal User Manual` → **`BigMint x Adani — Portal User Manual`**; content-page header text trimmed to just **"Portal User Manual"**; cover date line (`… — July 2026`) removed. Co-brand now = logos only (Adani chip on cover, Adani+BigMint lock-up in headers).
+
 ### 2026-07-24 (latest+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Deviation bars-explainer moved to footnote below chart, bolder/tighter
 - **Bars explainer moved below the deviation chart as a footnote** ([app.py](portal/app.py) `page_performance`): now renders after `delta_bar(view)` instead of under the heading; `bm-footnote` with `font-weight:700` (bolder) and `margin-top:-6px` (tighter to the chart).
 
