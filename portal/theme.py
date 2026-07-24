@@ -279,8 +279,9 @@ div[class*="st-key-meth_hero"] .stDownloadButton button {{
     border-radius:10px; padding:9px 18px; box-shadow:0 3px 10px rgba(0,0,0,.18);
 }}
 div[class*="st-key-meth_hero"] .stDownloadButton button:hover:not(:disabled) {{
-    background:#fff; color:var(--bm-primary-dark); box-shadow:0 6px 16px rgba(0,0,0,.26); transform:translateY(-1px);
+    background:#F5A623; color:#fff; box-shadow:0 6px 16px rgba(245,166,35,.45); transform:translateY(-1px);
 }}
+div[class*="st-key-meth_hero"] .stDownloadButton button:hover:not(:disabled) * {{ color:#fff !important; }}
 /* keyboard focus ring — brand accent, on every st.button / download / link (was relying on the
    browser default outline only). :focus-visible so mouse clicks don't show the ring, keyboard does. */
 .stButton > button:focus-visible,
@@ -646,8 +647,8 @@ ul[role="listbox"] li {{
 
 /* ---------- methodology infographics ---------- */
 .bm-meth-hero {{ color:#fff; }}  /* box styling now on the st-key-meth_hero container */
-.bm-meth-hero h3 {{ margin:0 0 6px; font-size:20px; color:#fff; }}
-.bm-meth-hero p {{ margin:0; font-size:14px; line-height:1.6; color:#dce8f8; max-width:860px; }}
+.bm-meth-hero h3 {{ margin:0 0 4px; font-size:19px; line-height:1.2; color:#fff; }}
+.bm-meth-hero p {{ margin:0; font-size:13.5px; line-height:1.5; color:#dce8f8; max-width:860px; }}
 /* stat strip */
 .bm-stat-row {{ display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin:0 0 20px; }}
 .bm-stat {{ background:#fff; border:1px solid var(--bm-border); border-radius:14px; padding:16px 18px; text-align:center;

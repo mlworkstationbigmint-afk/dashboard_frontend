@@ -1959,7 +1959,7 @@ def page_methodology():
         st.markdown(
             f"<div class='bm-flowchart' style='width:100%;text-align:center;'>"
             f"<img src='data:image/png;base64,{_flow_b64}' alt='Data-to-forecast flow chart' "
-            "style='width:60%;max-width:600px;height:auto;display:inline-block;mix-blend-mode:multiply;'/></div>",
+            "style='width:88%;max-width:1350px;height:auto;display:inline-block;mix-blend-mode:multiply;'/></div>",
             unsafe_allow_html=True,
         )
     else:
