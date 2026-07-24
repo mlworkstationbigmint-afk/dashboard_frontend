@@ -134,7 +134,7 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 
 ## Changelog
 ### 2026-07-23 (latest++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Performance: "Weekly delta accuracy" NA footnote
-- **"Weekly delta accuracy" chart** ([app.py](portal/app.py) `page_performance`, after `delta_acc_bar(view)`): added a `bm-footnote` — "Absent weeks are marked NA and dropped from the average."
+- **"Weekly delta accuracy" chart** ([app.py](portal/app.py) `page_performance`, after `delta_acc_bar(view)`): added a `bm-footnote` — "Absent weeks, or weeks where the forecast price deviation stays within the acceptable limit, are marked NA and dropped from the average." (NA now defines both cases: absent + within-limit/flat weeks.)
 
 ### 2026-07-23 (latest+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Performance: delta-bar footnote + directional-caption wording
 - **"Actual price vs Forecast price" delta bar** ([app.py](portal/app.py) `page_performance`, after `delta_bar(view)`): added a `bm-footnote` — "Top / positive bars = Forecast was higher than Spot; bottom / negative bars = Forecast was lower than Spot."
