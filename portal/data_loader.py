@@ -21,7 +21,6 @@ import json
 import base64
 import tempfile
 from urllib.parse import quote
-import numpy as np
 import pandas as pd
 import streamlit as st
 
@@ -239,57 +238,30 @@ def _read_accuracy(path: str, acc_label: str, mtime: float) -> pd.DataFrame:
         return pd.DataFrame(columns=["Date", "Actual", "Forecast"])
     start = labels.index(acc_label)
 
+    # Each product block is 7 cols: Actual, Forecast, MAE, MAPA (%), Delta (%), Directional (%), *Ratio.
+    # The three accuracy metrics are READ STRAIGHT FROM THE SHEET — its own Excel formulas are the
+    # source of truth, so the app no longer recomputes them. All three are POINTS (0..1); the UI
+    # multiplies by 100 to show a %. Blank weeks (the sheet leaves some Delta/Directional cells empty)
+    # come through as NaN.
     dates = pd.to_datetime(raw.iloc[3:, 0], errors="coerce")
-    actual = _num(raw.iloc[3:, start])
-    forecast = _num(raw.iloc[3:, start + 1])
-    df = pd.DataFrame({"Date": dates.values, "Actual": actual.values, "Forecast": forecast.values})
+    df = pd.DataFrame({
+        "Date": dates.values,
+        "Actual":   _num(raw.iloc[3:, start]).values,
+        "Forecast": _num(raw.iloc[3:, start + 1]).values,
+        "AbsAcc":   _num(raw.iloc[3:, start + 3]).values,   # MAPA (%)
+        "DeltaAcc": _num(raw.iloc[3:, start + 4]).values,   # Delta (%)
+        "DirAcc":   _num(raw.iloc[3:, start + 5]).values,   # Directional (%)
+    })
     df = df.dropna(subset=["Date"]).dropna(subset=["Actual", "Forecast"], how="all").reset_index(drop=True)
 
     df["Delta"] = df["Forecast"] - df["Actual"]
     df["DeltaPct"] = (df["Delta"] / df["Actual"]) * 100
+    # Direction labels (Up/Down/Flat) drive only the hover text on the directional chart — not any metric.
     prev_actual = df["Actual"].shift(1)
     df["PredDir"] = (df["Forecast"] - prev_actual).map(direction_flag)   # vs prior week's spot, +/-500 => Flat
     df["ActualDir"] = (df["Actual"] - prev_actual).map(direction_flag)
-    df.loc[df.index[0], ["PredDir", "ActualDir"]] = "Flat"               # no prior reference
-
-    # ---- per-week accuracy columns, replicated EXACTLY from Accuracy_Table_11.xlsx -------------
-    # Each commodity block in the sheet carries Actual, Forecast, MAE, MAPA (%), Delta (%),
-    # Directional (%). Those metric cells are Excel FORMULAS (no cached values), so we recompute
-    # them here. All three are in POINTS (0..1); the UI multiplies by 100 to show a %. th = the
-    # +/-500 INR/ton dead-band (FLAT_THRESHOLD). am = actual week-over-week move (spot - prior spot);
-    # pm = predicted move (forecast - prior spot).
-    th = FLAT_THRESHOLD
-    am = df["Actual"] - prev_actual
-    pm = df["Forecast"] - prev_actual
-
-    # MAPA (%) = 1 - |Actual - Forecast| / Actual  (absolute price accuracy, per week)
-    df["AbsAcc"] = 1 - (df["Actual"] - df["Forecast"]).abs() / df["Actual"]
-    df.loc[df["Actual"] == 0, "AbsAcc"] = np.nan
-
-    amflat, pmflat = am.abs() < th, pm.abs() < th
-    amf, af = amflat.to_numpy(), am.to_numpy()
-
-    # Directional (%) = 1 when the predicted direction matches the actual (both inside the dead-band
-    # counts as a correct 'flat' call), else 0.
-    df["DirAcc"] = np.where(amflat, np.where(pmflat, 1.0, 0.0), np.where(am * pm > 0, 1.0, 0.0))
-
-    # Delta (%) = share of the actual move that the forecast captured (signed, capped at 1). Blank
-    # when the forecast called a move but the market stayed flat.
-    up, down = (pm >= th).to_numpy(), (pm <= -th).to_numpy()
-    with np.errstate(divide="ignore", invalid="ignore"):
-        ratio = (am.abs() / pm.abs()).to_numpy()               # |am/pm|; inf where pm==0 (unused)
-        capped = np.minimum(1.0, ratio)
-        # base = predicted-flat weeks: perfect if actual also flat, else partial credit 500/|am|
-        delta = np.where(pmflat.to_numpy(),
-                         np.where(amf, 1.0, np.minimum(1.0, th / np.abs(af))), np.nan)
-        delta = np.where(up & ~amf & (af < 0), -ratio, delta)      # predicted up, actual down
-        delta = np.where(up & ~amf & (af >= 0), capped, delta)     # predicted up, actual up
-        delta = np.where(down & ~amf & (af > 0), -ratio, delta)    # predicted down, actual up
-        delta = np.where(down & ~amf & (af <= 0), capped, delta)   # predicted down, actual down
-    df["DeltaAcc"] = delta
-
-    df.loc[df.index[0], ["DirAcc", "DeltaAcc"]] = np.nan        # first week has no prior reference
-    df["Hit"] = df["DirAcc"] == 1.0                             # drives the weekly directional chart
+    df.loc[df.index[0], ["PredDir", "ActualDir"]] = "Flat"              # no prior reference
+    df["Hit"] = df["DirAcc"] == 1.0                                     # sheet's per-week directional hit
     return df
 
 
@@ -304,22 +276,29 @@ def load_accuracy(window: str, acc_label: str) -> pd.DataFrame:
     return _read_accuracy(path, acc_label, _mtime(path))
 
 
-def accuracy_kpis(df: pd.DataFrame) -> dict:
-    """Absolute (MAPA), directional and delta accuracy — the averages of the accuracy-table's
-    MAPA (%) / Directional (%) / Delta (%) columns (points -> %), matching the sheet's AVERAGE rows
-    (blank weeks ignored)."""
-    if df.empty:
+@st.cache_data(show_spinner=False)
+def _read_accuracy_avgs(path: str, acc_label: str, mtime: float) -> dict:
+    """The product block's AVERAGE row (row 3) — MAPA / Delta / Directional — read straight from the
+    sheet's own averages (points -> %). None for a missing block or blank cell."""
+    raw = pd.read_excel(path, sheet_name=HEADLINE_SHEET, header=None)
+    labels = [str(x).strip() if pd.notna(x) else "" for x in raw.iloc[0].tolist()]
+    if acc_label not in labels:
         return {"mapa": None, "dir_acc": None, "delta_acc": None}
+    start = labels.index(acc_label)
+    row = raw.iloc[2]                                 # row 3 (0-indexed) = the sheet's AVERAGE row
 
-    def _avg_pct(col):
-        s = df[col].dropna()
-        return s.mean() * 100 if len(s) else None
+    def g(off):
+        v = pd.to_numeric(row.iloc[start + off], errors="coerce")
+        return float(v) * 100 if pd.notna(v) else None
 
-    return {
-        "mapa": _avg_pct("AbsAcc"),
-        "dir_acc": _avg_pct("DirAcc"),
-        "delta_acc": _avg_pct("DeltaAcc"),
-    }
+    return {"mapa": g(3), "delta_acc": g(4), "dir_acc": g(5)}
+
+
+def accuracy_averages(acc_label: str, window: str = "11-week") -> dict:
+    """Absolute (MAPA), directional and delta accuracy for one product — taken from the accuracy
+    table's OWN AVERAGE row (row 3 of the block), not recomputed. Re-read when the file changes."""
+    p = acc_path(window)
+    return _read_accuracy_avgs(p, acc_label, _mtime(p))
 
 
 def last_actual_date():

@@ -884,7 +884,7 @@ def page_home():
     for _, meta in products.items():
         acc = dl.load_accuracy("11-week", meta["acc"]).dropna(subset=["Actual", "Forecast"])
         n_weeks = max(n_weeks, len(acc))
-        k = dl.accuracy_kpis(acc)
+        k = dl.accuracy_averages(meta["acc"])
         if k["mapa"] is not None:
             mapas.append(k["mapa"])
     avg_mapa = sum(mapas) / len(mapas) if mapas else None
@@ -1766,7 +1766,7 @@ def page_performance():
         theme.footer()
         return
     view = df.dropna(subset=["Actual", "Forecast"]).reset_index(drop=True)   # all rows from the sheet
-    kpis = dl.accuracy_kpis(view)
+    kpis = dl.accuracy_averages(meta["acc"])   # headline KPIs = the sheet's own AVERAGE row
 
     with st.container(key="perf_kpis"):        # stable anchor for the analyst walkthrough (tour.py)
         k1, k2, k3 = st.columns(3)

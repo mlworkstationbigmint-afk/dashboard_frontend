@@ -1746,3 +1746,16 @@ surfaces follow the role. Acceptable for the current build.
   light-grey backdrop drops into the page background and the blue line-art blends with the brand theme (no
   grey box); shows a caption fallback if the file is missing. ACTION: drop the image at
   `portal/assets/methodology_flowchart.png` (and commit it to the repo).
+- **2026-07-24 (Accuracy: fetch from sheet, stop recomputing):** The Performance KPIs disagreed with
+  Accuracy_Table_11.xlsx (HRC showed 98.9 / 85 / 61 vs the sheet's 99.1 / 69.7 / 82.4) because the app
+  RE-derived MAPA/Directional/Delta in Python and averaged all rows, while the sheet's Delta formula is
+  different and its AVERAGE row spans only rows 51–135. Fix per user: **fetch, don't recompute.**
+  `data_loader._read_accuracy` now reads the block's own metric columns straight from the sheet — `AbsAcc`
+  = MAPA (col +3), `DeltaAcc` = Delta (+4), `DirAcc` = Directional (+5), points 0..1 (pandas returns the
+  cached formula values). Dropped the entire recompute block (`np.where` delta/dir logic) and the now-unused
+  `import numpy as np`; kept `Delta`/`DeltaPct` (Forecast−Actual, display only), `PredDir`/`ActualDir` (hover
+  labels) and `Hit` (= `DirAcc==1`). Removed `accuracy_kpis()`; added `accuracy_averages(acc_label)` +
+  cached `_read_accuracy_avgs` that read the block's **AVERAGE row (row 3)** directly (×100). `app.py`
+  Performance (`kpis`) and Home (avg MAPA loop) now call `dl.accuracy_averages(meta["acc"])`. Verified HRC/
+  HR Plate/Rebar KPIs equal the sheet's average row. NOTE: KPI card sub still reads "· {len(view)} wk"
+  (=132, the table span) though the sheet's averages cover its own window — label left as-is per scope.
