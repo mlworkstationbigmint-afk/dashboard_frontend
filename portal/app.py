@@ -1934,10 +1934,12 @@ def page_methodology():
     if os.path.exists(_flow_path):
         with open(_flow_path, "rb") as _fh:
             _flow_b64 = base64.b64encode(_fh.read()).decode()
+        # Full-bleed width; mix-blend-mode:multiply drops the image's light-grey backdrop into the
+        # page background so the blue line-art blends seamlessly with the brand theme (no grey box).
         st.markdown(
-            f"<div class='bm-flowchart' style='max-width:1100px;margin:0 auto;'>"
+            f"<div class='bm-flowchart' style='width:100%;'>"
             f"<img src='data:image/png;base64,{_flow_b64}' alt='Data-to-forecast flow chart' "
-            "style='width:100%;height:auto;display:block;'/></div>",
+            "style='width:100%;height:auto;display:block;mix-blend-mode:multiply;'/></div>",
             unsafe_allow_html=True,
         )
     else:

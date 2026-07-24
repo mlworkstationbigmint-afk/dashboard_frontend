@@ -1742,5 +1742,7 @@ surfaces follow the role. Acceptable for the current build.
 - **2026-07-24 (Methodology FlowChart section):** New "FlowChart" section on the Methodology page
   (`app.py` `page_methodology`), placed just below the "From data to forecast" pipeline infographic and
   above "Key factors the model weighs". Renders `assets/methodology_flowchart.png` base64-embedded in an
-  `<img>` (same pattern as the logos), max-width 1100px centred; shows a caption fallback if the file is
-  missing. ACTION: drop the image at `portal/assets/methodology_flowchart.png` (and commit it to the repo).
+  `<img>` (same pattern as the logos), **full page width** with `mix-blend-mode:multiply` so the image's
+  light-grey backdrop drops into the page background and the blue line-art blends with the brand theme (no
+  grey box); shows a caption fallback if the file is missing. ACTION: drop the image at
+  `portal/assets/methodology_flowchart.png` (and commit it to the repo).
