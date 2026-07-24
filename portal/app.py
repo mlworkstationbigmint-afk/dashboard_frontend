@@ -1695,6 +1695,9 @@ ACC_GLOSSARY = {
     "delta": ("Delta accuracy",
               "How much of the actual weekly price move the forecast captured. 100% = fully captured; negative = wrong way.",
               "mean(captured move / actual move x 100)"),
+    "na": ("NA *",
+           "Weeks with no data, or where the forecast price deviation stays within the acceptable limit — marked NA and dropped from the averages above.",
+           ""),
 }
 
 
@@ -1708,7 +1711,8 @@ def _acc_glossary_html():
     items = "".join(
         f"<div class='bm-gl-item'><span class='bm-gl-term'>{term}</span>"
         f"<div class='bm-gl-idea'>{idea}</div>"
-        f"<span class='bm-gl-formula'>{formula}</span></div>"
+        + (f"<span class='bm-gl-formula'>{formula}</span>" if formula else "")
+        + "</div>"
         for term, idea, formula in ACC_GLOSSARY.values())
     return ("<div class='bm-glossary'><div class='bm-glossary-h'>Accuracy glossary</div>"
             f"{items}</div>")
@@ -1782,7 +1786,7 @@ def page_performance():
     directional_accuracy_bar(view)
     theme.section_title("Weekly delta accuracy" + _acc_help("delta"), theme.icon("trending"))
     delta_acc_bar(view)
-    st.markdown("<div class='bm-footnote'>Absent weeks, or weeks where the forecast price deviation stays within the acceptable limit, are marked NA and dropped from the average.</div>",
+    st.markdown("<div class='bm-footnote'>* Absent weeks, or weeks where the forecast price deviation stays within the acceptable limit, are marked NA and dropped from the average.</div>",
                 unsafe_allow_html=True)
 
     theme.section_title("Week-wise detail", theme.icon("calendar"))
