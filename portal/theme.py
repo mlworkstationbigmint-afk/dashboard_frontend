@@ -279,7 +279,7 @@ div[class*="st-key-meth_hero"] .stDownloadButton button {{
     border-radius:10px; padding:9px 18px; box-shadow:0 3px 10px rgba(0,0,0,.18);
 }}
 div[class*="st-key-meth_hero"] .stDownloadButton button:hover:not(:disabled) {{
-    background:#F5A623; color:#fff; box-shadow:0 6px 16px rgba(245,166,35,.45); transform:translateY(-1px);
+    background:var(--bm-accent); color:#fff; box-shadow:0 6px 16px rgba(238,78,36,.45); transform:translateY(-1px);
 }}
 div[class*="st-key-meth_hero"] .stDownloadButton button:hover:not(:disabled) * {{ color:#fff !important; }}
 /* keyboard focus ring — brand accent, on every st.button / download / link (was relying on the

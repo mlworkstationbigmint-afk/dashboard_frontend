@@ -137,7 +137,7 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **Bars explainer moved below the deviation chart as a footnote** ([app.py](portal/app.py) `page_performance`): now renders after `delta_bar(view)` instead of under the heading; `bm-footnote` with `font-weight:700` (bolder) and `margin-top:-6px` (tighter to the chart).
 
 ### 2026-07-24 (latest++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Methodology hero button orange hover + tighter text + bigger flowchart
-- **Manual button hover now orange** ([theme.py](portal/theme.py) `div[class*="st-key-meth_hero"] .stDownloadButton button:hover`): bg `#F5A623`, white text (label + icon via `*` override), amber shadow. Idle state unchanged (white/blue).
+- **Manual button hover now orange** ([theme.py](portal/theme.py) `div[class*="st-key-meth_hero"] .stDownloadButton button:hover`): bg `var(--bm-accent)` (theme orange `#EE4E24`), white text (label + icon via `*` override), accent shadow. Idle state unchanged (white/blue).
 - **Hero heading↔text spacing/size tightened** (`.bm-meth-hero h3`/`p`): h3 `margin-bottom 6px→4px`, `font-size 20px→19px`, `line-height:1.2`; p `font-size 14px→13.5px`, `line-height 1.6→1.5`.
 - **Flowchart enlarged** ([app.py](portal/app.py) `page_methodology`): `width 60%→88%`, `max-width 600px→1350px` (~2.25×), still inset from full width.
 
