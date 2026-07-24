@@ -1792,9 +1792,9 @@ def page_performance():
     theme.section_title("Actual vs Forecast Price Trend graph" + _acc_help("mapa"), theme.icon("trending"))
     perf_chart(view)
     theme.section_title("Actual price vs Forecast Price Deviation Graph", theme.icon("gauge"))
-    st.markdown("<div class='bm-footnote' style='margin-top:-4px;'>Top / positive bars = Forecast was higher than Spot; "
-                "bottom / negative bars = Forecast was lower than Spot.</div>", unsafe_allow_html=True)
     delta_bar(view)
+    st.markdown("<div class='bm-footnote' style='margin-top:-6px;font-weight:700;'>Top / positive bars = Forecast was higher than Spot; "
+                "bottom / negative bars = Forecast was lower than Spot.</div>", unsafe_allow_html=True)
     theme.section_title("Weekly forecast absolute accuracy" + _acc_help("mapa"), theme.icon("target"))
     accuracy_chart(view)
     theme.section_title("Weekly directional hit accuracy" + _acc_help("dir"), theme.icon("gauge"))
