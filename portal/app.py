@@ -1691,13 +1691,13 @@ def page_admin():
 # hover tooltips (ⓘ) on the matching metric cards + chart titles. (term, idea, formula).
 ACC_GLOSSARY = {
     "mapa": ("Absolute accuracy (MAPA)",
-             "How close the forecast is to the actual price on average — error size only, ignoring direction.",
+             "Measures how closely forecasts track actual prices on average, based on the size of the error irrespective of direction. Higher values indicate greater accuracy.",
              "100% - mean(|Forecast - Actual| / Actual)"),
     "dir": ("Directional accuracy",
-            "Share of weeks the forecast called the week-over-week move (Up / Down / Flat) correctly.",
+            "The share of weeks in which the forecast correctly anticipated the week-over-week price direction — up, down, or flat.",
             "correct direction calls / total weeks x 100"),
     "delta": ("Delta accuracy",
-              "How much of the actual weekly price move the forecast captured. 100% = fully captured; negative = wrong way.",
+              "Measures how much of the actual weekly price movement the forecast captured. 100% reflects the full move; a negative value indicates the opposite direction.",
               "mean(captured move / actual move x 100)"),
     "na": ("NA *",
            "Weeks with no data, or where the forecast price deviation stays within the acceptable limit — marked NA and dropped from the averages above.",
@@ -1706,9 +1706,9 @@ ACC_GLOSSARY = {
 
 
 def _acc_help(key):
-    """A small ⓘ marker whose native tooltip carries the metric's idea + formula (see ACC_GLOSSARY)."""
-    _term, idea, formula = ACC_GLOSSARY[key]
-    return f" <span class='bm-help' title='{idea}  Formula: {formula}'>&#9432;</span>"
+    """A small ⓘ marker whose native tooltip carries the metric's plain-language definition (see ACC_GLOSSARY)."""
+    _term, idea, _formula = ACC_GLOSSARY[key]
+    return f" <span class='bm-help' title='{idea}'>&#9432;</span>"
 
 
 def _acc_glossary_html():

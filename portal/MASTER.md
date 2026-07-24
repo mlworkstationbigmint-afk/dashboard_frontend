@@ -136,6 +136,9 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 ### 2026-07-23 (latest++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Performance: "Weekly delta accuracy" NA footnote
 - **"Weekly delta accuracy" chart** ([app.py](portal/app.py) `page_performance`, after `delta_acc_bar(view)`): `bm-footnote` — "* Absent weeks, or weeks where the forecast price deviation stays within the acceptable limit, are marked NA and dropped from the average." (NA covers both absent + within-limit/flat weeks.) NA also added to `ACC_GLOSSARY` as term **"NA *"** (idea only, no formula); `_acc_glossary_html()` now skips the formula chip when formula is empty. `*` ties footnote ↔ glossary entry.
 
+### 2026-07-24 (latest++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Performance: accuracy hover tooltips reworded + formula dropped
+- **`_acc_help` hover tooltips** ([app.py](portal/app.py)): the `ⓘ` markers on the MAPA / Directional / Delta KPI cards + chart titles now show only a professional plain-language definition — the `Formula: …` suffix was removed from the `title=`. Formula strings stay in `ACC_GLOSSARY` (still shown in the glossary reference box). The three idea strings were also reworded to a more formal tone.
+
 ### 2026-07-23 (latest+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++) — Performance: delta-bar footnote + directional-caption wording
 - **"Actual price vs Forecast price" delta bar** ([app.py](portal/app.py) `page_performance`, after `delta_bar(view)`): added a `bm-footnote` — "Top / positive bars = Forecast was higher than Spot; bottom / negative bars = Forecast was lower than Spot."
 - **Directional-accuracy KPI caption** (same page, `k2` card): `correct up/down/flat calls · {len(view)} wk` → `correct up/down/flat calls · 12wk cycle avg over {len(view)} wk`.
