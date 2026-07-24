@@ -74,19 +74,20 @@ BF_PLANT = {
     },
 }
 
-# Org-wide IF-route cost heads: the built-in IF_ELEMENTS fallback, overridden by whatever an admin
-# saves (persisted in the DB under this key via the Admin panel). Every user's IF sandbox seeds
-# from these; their per-cell edits stay in the session only.
-IF_SETTINGS_KEY = "cost_head_if_defaults"
+# Org-wide cost heads per route: the built-in element list (BF_ELEMENTS / IF_ELEMENTS) is the
+# fallback, overridden by whatever an admin saves (persisted in the DB under the route's key via the
+# Admin panel). Every user's sandbox seeds from these; their per-cell edits stay in-session only.
+COST_HEAD_KEY = {"BF": "cost_head_bf_defaults", "IF": "cost_head_if_defaults"}
+_BUILTIN_ELEMENTS = {"BF": BF_ELEMENTS, "IF": IF_ELEMENTS}
 
 
-def _if_elements():
-    """Effective IF-route cost heads: built-in IF_ELEMENTS unless an admin has saved a replacement.
-    Returns a list of (label, unit_price, norm, unit). Never raises — a missing DB / no saved row
-    just yields the built-in fallback."""
+def _elements(route):
+    """Effective cost heads for a route ('BF'/'IF'): the built-in element list unless an admin has
+    saved a replacement. Returns a list of (label, unit_price, norm, unit). Never raises — a missing
+    DB / no saved row just yields the built-in fallback."""
     try:
         import db
-        saved = db.get_setting(IF_SETTINGS_KEY)
+        saved = db.get_setting(COST_HEAD_KEY[route])
     except Exception:
         saved = None
     if saved:
@@ -99,7 +100,7 @@ def _if_elements():
                 continue
         if out:
             return out
-    return list(IF_ELEMENTS)
+    return list(_BUILTIN_ELEMENTS[route])
 
 
 def _elem_cost(price, norm):
@@ -124,7 +125,7 @@ def _seed_df(product, is_if=False, plant=None):
     mix = IF_MIX.get(plant) if is_if else None
     bf = None if is_if else BF_PLANT.get(plant)
     rows = []
-    for label, price, norm, unit in (_if_elements() if is_if else BF_ELEMENTS):
+    for label, price, norm, unit in _elements("IF" if is_if else "BF"):
         if norm is None:                       # electricity: BF plant norm, else product-based 450/400
             n = bf["elec_norm"] if bf and "elec_norm" in bf else (450.0 if product == "HRC" else 400.0)
         elif mix and label in mix:
@@ -483,20 +484,15 @@ def render():
     _glossary()
 
 
-def render_admin_if_defaults():
-    """Admin: manage the org-wide IF-route cost heads. Add / rename / delete rows and set each
-    head's unit price + consumption norm, then save them as the default every user's IF sandbox
-    starts from (persisted in the DB). Non-admins can only edit values within their own sandbox."""
-    st.markdown(CALC_CSS, unsafe_allow_html=True)
-    st.caption("These are the **org-wide IF-route cost heads** every user's sandbox starts from. "
-               "Add, rename or delete rows (＋ to add, select + 🗑 to remove), set the unit price and "
-               "consumption norm, then **Save as default**. Plant-specific metallic-mix norms still "
-               "apply on top for the recognised metallic heads (Sponge Iron / Scrap / Pig Iron).")
-    ver = st.session_state.setdefault("cost_admin_if_ver", 0)
+def _admin_route_editor(route):
+    """One route's org-wide cost-head editor: add / rename / delete rows and set each head's unit
+    price + consumption norm, with Save-as-default / Reset persisted under the route's DB key."""
+    verkey = f"cost_admin_{route}_ver"
+    ver = st.session_state.setdefault(verkey, 0)
     df = pd.DataFrame([{"Cost element": l, "Unit": u, "Price": p, "Norm": n}
-                       for l, p, n, u in _if_elements()])
+                       for l, p, n, u in _elements(route)])
     edited = st.data_editor(
-        df, key=f"cost_admin_if_{ver}", hide_index=True, num_rows="dynamic", width="stretch",
+        df, key=f"cost_admin_{route}_{ver}", hide_index=True, num_rows="dynamic", width="stretch",
         column_order=["Cost element", "Unit", "Price", "Norm"],
         column_config={
             "Cost element": st.column_config.TextColumn("Cost element", required=False,
@@ -508,7 +504,7 @@ def render_admin_if_defaults():
         },
     )
     c1, c2 = st.columns([1, 1], vertical_alignment="center")
-    if c1.button("💾 Save as default for all users", key="cost_admin_if_save", type="primary",
+    if c1.button("💾 Save as default for all users", key=f"cost_admin_{route}_save", type="primary",
                  width="stretch"):
         out = []
         for _, r in edited.iterrows():
@@ -523,16 +519,31 @@ def render_admin_if_defaults():
             })
         try:
             import db
-            db.set_setting(IF_SETTINGS_KEY, out)
-            st.success("Saved — these are now the IF-route cost heads for all users.")
+            db.set_setting(COST_HEAD_KEY[route], out)
+            st.success(f"Saved — these are now the {route}-route cost heads for all users.")
         except Exception as e:
             st.error(f"Save failed: {e}")
-    if c2.button("↺ Reset to built-in", key="cost_admin_if_reset", width="stretch",
-                 help="Discard the saved cost heads and revert to the built-in IF-route defaults."):
+    if c2.button("↺ Reset to built-in", key=f"cost_admin_{route}_reset", width="stretch",
+                 help="Discard the saved cost heads and revert to the built-in defaults for this route."):
         try:
             import db
-            db.set_setting(IF_SETTINGS_KEY, [])            # empty -> _if_elements() falls back to built-in
+            db.set_setting(COST_HEAD_KEY[route], [])       # empty -> _elements() falls back to built-in
         except Exception as e:
             st.error(f"Reset failed: {e}")
-        st.session_state["cost_admin_if_ver"] += 1
+        st.session_state[verkey] += 1
         st.rerun()
+
+
+def render_admin_defaults():
+    """Admin: manage the org-wide cost heads for BOTH production routes (BF + IF). Add / rename /
+    delete rows and set each head's unit price + consumption norm, then save them as the default
+    every user's sandbox starts from (persisted per route in the DB). Non-admins can only edit
+    values within their own sandbox."""
+    st.markdown(CALC_CSS, unsafe_allow_html=True)
+    st.caption("These are the **org-wide cost heads** every user's sandbox starts from. Pick a route, "
+               "add / rename / delete rows (＋ to add, select + 🗑 to remove), set the unit price and "
+               "consumption norm, then **Save as default**. Plant-specific overrides still apply on top "
+               "(BF per-plant prices / electricity norm; IF metallic-mix norms).")
+    route = st.segmented_control("Route", list(COST_HEAD_KEY), default="BF",
+                                 key="cost_admin_route", label_visibility="collapsed")
+    _admin_route_editor(route or "BF")

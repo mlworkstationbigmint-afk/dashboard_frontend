@@ -1554,9 +1554,9 @@ def page_admin():
     with st.expander("Set the org-wide Landed Cost defaults (the starting point for every user)", expanded=False):
         calc_import_price.render(is_admin=True)
 
-    st.markdown("## Admin — Cost Head (IF route) defaults")
-    with st.expander("Manage the org-wide IF-route cost heads (add / rename / delete + set defaults)", expanded=False):
-        calc_cost.render_admin_if_defaults()
+    st.markdown("## Admin — Cost Head defaults")
+    with st.expander("Manage the org-wide cost heads for both routes (add / rename / delete + set defaults)", expanded=False):
+        calc_cost.render_admin_defaults()
 
     st.markdown("## Admin — Analyst calls")
     if not dl.can_admin_write():

@@ -1717,16 +1717,19 @@ surfaces follow the role. Acceptable for the current build.
   2026-01-04 + (N−1)×7d), so HRC landed now spans 2023-12-31 → 2026-07-19 (134 wks, last ≈ ₹61,519 —
   Year-2 11.5% safeguard now active). app.py: HRC overlay legend/footnote label flipped "Japan
   landed" → "China landed" (both overlays are now China-origin). Rebar sheet unchanged.
-- **2026-07-24 (Cost Head IF route + Price Sensitivity live price + HRC file rename):** Four changes.
+- **2026-07-24 (Cost Head admin defaults + Price Sensitivity live price + HRC file rename):** Four changes.
   (1) **Removed the "Non coking coal RB2" cost head from the IF route** (`calc_cost.py` `IF_ELEMENTS`) —
   IF build-up is now metallic mix → power → OpEx (9 heads). (2) **Admins can now manage the org-wide
-  IF-route cost heads**: new `calc_cost.render_admin_if_defaults()` (add / rename / delete rows + set
-  unit price + consumption norm, **💾 Save as default** / **↺ Reset to built-in**), embedded in the Admin
-  page under "Admin — Cost Head (IF route) defaults". Persisted via the generic `db.set_setting`/`get_setting`
-  under key `cost_head_if_defaults` (no schema change). New `_if_elements()` returns built-in `IF_ELEMENTS`
-  unless a saved list exists; `_seed_df` seeds every user's IF sandbox from it. Non-admins still edit values
-  only in their private sandbox (unchanged). Plant-specific metallic-mix norms (`IF_MIX`/`IF_YIELD`) still
-  apply on top for the recognised metallic heads. (3) **Price Sensitivity now shows the live current HRC
+  cost heads for BOTH routes (BF + IF)**: new `calc_cost.render_admin_defaults()` — a route picker (BF / IF)
+  over `_admin_route_editor(route)` (add / rename / delete rows + set unit price + consumption norm,
+  **💾 Save as default** / **↺ Reset to built-in**), embedded in the Admin page under "Admin — Cost Head
+  defaults". Persisted per route via the generic `db.set_setting`/`get_setting` under keys
+  `cost_head_bf_defaults` / `cost_head_if_defaults` (`COST_HEAD_KEY` map, no schema change). New
+  `_elements(route)` returns the built-in list (`BF_ELEMENTS` / `IF_ELEMENTS` via `_BUILTIN_ELEMENTS`) unless
+  a saved list exists; `_seed_df` seeds every user's sandbox from it. Non-admins still edit values only in
+  their private sandbox (unchanged). Plant-specific overrides still apply on top (BF per-plant `BF_PLANT`
+  prices / electricity norm; IF metallic-mix `IF_MIX`/`IF_YIELD` norms) — a renamed head drops its override
+  and uses the admin-set value. (3) **Price Sensitivity now shows the live current HRC
   price**: `calc_elasticity._load_model` also returns the most recent assessed HRC target price from the CSV
   (`load_model()` → `(model, columns, latest_price)`); `_hrc_spec()` uses it for `"current"` instead of the
   hardcoded 50000. (4) **Renamed the calculators dataset file `HRC - Copy.csv` → `HRC.csv`** in all code
