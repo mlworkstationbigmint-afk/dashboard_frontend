@@ -26,7 +26,7 @@ try:  # resolve the in-repo CSV path via the shared loader; fall back to a sibli
     import data_loader as _dl
     CSV_PATH = _dl.calculators_csv()
 except Exception:
-    CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HRC - Copy.csv")
+    CSV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HRC.csv")
 
 HRC_FULL_NAME = "HRC, Exy-Mumbai · 2.5-8mm / CTL · IS2062, Gr E250 Br."
 
@@ -164,7 +164,9 @@ def _load_model(mtime):   # mtime in the cache key => re-read when the CSV chang
     ]
     for col in features + [target]:
         df[col] = pd.to_numeric(df[col].astype(str).str.replace(",", ""), errors="coerce")
-    df = df.sort_values(by="Date").dropna()
+    df = df.sort_values(by="Date")
+    latest_price = float(df[target].dropna().iloc[-1])   # most recent assessed HRC price
+    df = df.dropna()
     lagged_df = pd.DataFrame()
     lagged_df[target] = df[target]
     for f in features:
@@ -177,11 +179,12 @@ def _load_model(mtime):   # mtime in the cache key => re-read when the CSV chang
     y = ret_df[target]
     model = Ridge(alpha=10)
     model.fit(X, y)
-    return model, list(X.columns)
+    return model, list(X.columns), latest_price
 
 
 def load_model():
-    """Fit the Ridge elasticity model. Re-read/re-fit when the CSV changes."""
+    """Fit the Ridge elasticity model. Re-read/re-fit when the CSV changes.
+    Returns (model, feature_columns, latest_HRC_price)."""
     return _load_model(_csv_mtime())
 
 
@@ -223,14 +226,14 @@ def _hrc_spec():
     """Build the HRC product spec from the LIVE Ridge fit (sensitivities =
     coefficients). Per-driver baselines + units come from _HRC_META so HRC also
     supports absolute (₹/$/€/unit) shock entry, same as HR Plate / Rebar."""
-    model, columns = load_model()
+    model, columns, latest_price = load_model()
     drivers = []
     for col, beta in zip(columns, model.coef_):
         name = _HRC_SHORT.get(col.split("_lag")[0], col.split("_lag")[0][:34])
         baseline, unit = _HRC_META.get(name, (_HRC_PLACEHOLDER, "unit"))
         drivers.append((name, float(baseline), float(beta), unit))
     return {
-        "label": "HRC", "full_name": HRC_FULL_NAME, "current": 50000.0,
+        "label": "HRC", "full_name": HRC_FULL_NAME, "current": latest_price,
         "model": "Ridge regression (α=10) on log-differenced weekly prices",
         "r2": None, "rmse_pct": None, "rmse_rs": None, "n_obs": None,
         "period": "15+ yrs of weekly BigMint-assessed prices", "drivers": drivers,

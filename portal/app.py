@@ -1554,6 +1554,10 @@ def page_admin():
     with st.expander("Set the org-wide Landed Cost defaults (the starting point for every user)", expanded=False):
         calc_import_price.render(is_admin=True)
 
+    st.markdown("## Admin — Cost Head (IF route) defaults")
+    with st.expander("Manage the org-wide IF-route cost heads (add / rename / delete + set defaults)", expanded=False):
+        calc_cost.render_admin_if_defaults()
+
     st.markdown("## Admin — Analyst calls")
     if not dl.can_admin_write():
         st.warning("Saving is disabled — no write credentials found. Add a **`github_write_token`** "

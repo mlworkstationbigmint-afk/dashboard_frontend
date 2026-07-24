@@ -27,14 +27,13 @@ BF_ELEMENTS = [
     ("Depreciation & Amortization",      2000.0,   1.0,  "INR/MT"),
 ]
 # IF route: metallic-mix feedstock (Sponge Iron / Scrap / Pig Iron / Ferroalloys) then
-# Non coking coal, power and OpEx. Metallic norms are plant-specific (see IF_MIX); the norms
+# power and OpEx. Metallic norms are plant-specific (see IF_MIX); the norms
 # below are only fallbacks for a plant not listed in IF_MIX.
 IF_ELEMENTS = [
     ("Sponge Iron",                     23250.0, 0.976,  "INR/MT"),
     ("Scrap HMS 80:20",                 38000.0, 0.1575, "INR/MT"),
     ("Pig Iron",                        42000.0, 0.052,  "INR/MT"),
     ("Ferroalloys (SiMn)",              85000.0, 0.012,  "INR/MT"),
-    ("Non coking coal RB2",             22000.0, 0.800,  "INR/MT"),
     ("Electricity",                         7.50, None,  "INR/kWh"),
     ("Processing Cost",                  4500.0,   1.0,  "INR/MT"),
     ("Miscellaneous Expenses",           1200.0,   1.0,  "INR/MT"),
@@ -75,6 +74,33 @@ BF_PLANT = {
     },
 }
 
+# Org-wide IF-route cost heads: the built-in IF_ELEMENTS fallback, overridden by whatever an admin
+# saves (persisted in the DB under this key via the Admin panel). Every user's IF sandbox seeds
+# from these; their per-cell edits stay in the session only.
+IF_SETTINGS_KEY = "cost_head_if_defaults"
+
+
+def _if_elements():
+    """Effective IF-route cost heads: built-in IF_ELEMENTS unless an admin has saved a replacement.
+    Returns a list of (label, unit_price, norm, unit). Never raises — a missing DB / no saved row
+    just yields the built-in fallback."""
+    try:
+        import db
+        saved = db.get_setting(IF_SETTINGS_KEY)
+    except Exception:
+        saved = None
+    if saved:
+        out = []
+        for r in saved:
+            try:
+                out.append((str(r["label"]), float(r["price"]), float(r["norm"]),
+                            str(r.get("unit") or "INR/MT")))
+            except (TypeError, ValueError, KeyError):
+                continue
+        if out:
+            return out
+    return list(IF_ELEMENTS)
+
 
 def _elem_cost(price, norm):
     """ENGINE: unit price × consumption norm (all prices in ₹)."""
@@ -98,7 +124,7 @@ def _seed_df(product, is_if=False, plant=None):
     mix = IF_MIX.get(plant) if is_if else None
     bf = None if is_if else BF_PLANT.get(plant)
     rows = []
-    for label, price, norm, unit in (IF_ELEMENTS if is_if else BF_ELEMENTS):
+    for label, price, norm, unit in (_if_elements() if is_if else BF_ELEMENTS):
         if norm is None:                       # electricity: BF plant norm, else product-based 450/400
             n = bf["elec_norm"] if bf and "elec_norm" in bf else (450.0 if product == "HRC" else 400.0)
         elif mix and label in mix:
@@ -455,3 +481,58 @@ def render():
     st.divider()
     _methodology_infographic()
     _glossary()
+
+
+def render_admin_if_defaults():
+    """Admin: manage the org-wide IF-route cost heads. Add / rename / delete rows and set each
+    head's unit price + consumption norm, then save them as the default every user's IF sandbox
+    starts from (persisted in the DB). Non-admins can only edit values within their own sandbox."""
+    st.markdown(CALC_CSS, unsafe_allow_html=True)
+    st.caption("These are the **org-wide IF-route cost heads** every user's sandbox starts from. "
+               "Add, rename or delete rows (＋ to add, select + 🗑 to remove), set the unit price and "
+               "consumption norm, then **Save as default**. Plant-specific metallic-mix norms still "
+               "apply on top for the recognised metallic heads (Sponge Iron / Scrap / Pig Iron).")
+    ver = st.session_state.setdefault("cost_admin_if_ver", 0)
+    df = pd.DataFrame([{"Cost element": l, "Unit": u, "Price": p, "Norm": n}
+                       for l, p, n, u in _if_elements()])
+    edited = st.data_editor(
+        df, key=f"cost_admin_if_{ver}", hide_index=True, num_rows="dynamic", width="stretch",
+        column_order=["Cost element", "Unit", "Price", "Norm"],
+        column_config={
+            "Cost element": st.column_config.TextColumn("Cost element", required=False,
+                        help="Add, rename or delete cost heads here. Blank rows are ignored on save."),
+            "Unit": st.column_config.TextColumn("Unit", help="INR/MT, or INR/kWh for electricity."),
+            "Price": st.column_config.NumberColumn("Unit price", format="%.2f", step=1.0, min_value=0.0),
+            "Norm": st.column_config.NumberColumn("Consumption norm", format="%.3f", step=0.05, min_value=0.0,
+                        help="Consumption per tonne of finished steel (OpEx rows use 1)."),
+        },
+    )
+    c1, c2 = st.columns([1, 1], vertical_alignment="center")
+    if c1.button("💾 Save as default for all users", key="cost_admin_if_save", type="primary",
+                 width="stretch"):
+        out = []
+        for _, r in edited.iterrows():
+            label = str(r.get("Cost element", "") or "").strip()
+            if not label:                                  # skip blank rows
+                continue
+            out.append({
+                "label": label,
+                "unit": str(r.get("Unit") or "INR/MT"),
+                "price": float(r["Price"]) if pd.notna(r["Price"]) else 0.0,
+                "norm": float(r["Norm"]) if pd.notna(r["Norm"]) else 0.0,
+            })
+        try:
+            import db
+            db.set_setting(IF_SETTINGS_KEY, out)
+            st.success("Saved — these are now the IF-route cost heads for all users.")
+        except Exception as e:
+            st.error(f"Save failed: {e}")
+    if c2.button("↺ Reset to built-in", key="cost_admin_if_reset", width="stretch",
+                 help="Discard the saved cost heads and revert to the built-in IF-route defaults."):
+        try:
+            import db
+            db.set_setting(IF_SETTINGS_KEY, [])            # empty -> _if_elements() falls back to built-in
+        except Exception as e:
+            st.error(f"Reset failed: {e}")
+        st.session_state["cost_admin_if_ver"] += 1
+        st.rerun()

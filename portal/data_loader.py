@@ -14,7 +14,7 @@ DATA SOURCE (public code, private data):
 Files (same layout in the private repo and the in-repo sample):
   accuracy_tables/forecast_forward.xlsx  - summary + 12-week forward path
   accuracy_tables/Accuracy_Table_11.xlsx - week-wise actual/forecast
-  calculators/HRC - Copy.csv             - calculators' dataset
+  calculators/HRC.csv             - calculators' dataset
 """
 import os
 import json
@@ -61,7 +61,7 @@ def _fetch_private_data_dir(owner: str, repo: str, ref: str, token: str) -> str:
     rels = (f"accuracy_tables/{FF_NAME}",
             f"accuracy_tables/{LANDED_NAME}",
             *[f"accuracy_tables/{fn}" for fn in ACC_FILES.values()],
-            "calculators/HRC - Copy.csv")
+            "calculators/HRC.csv")
     for rel in rels:
         url = f"https://api.github.com/repos/{owner}/{repo}/contents/{quote(rel)}?ref={ref}"
         resp = requests.get(url, headers=headers, timeout=30)
@@ -99,7 +99,7 @@ def calculators_csv() -> str:
     root = _data_root()
     # in-repo sample keeps the CSV under portal/calculators; the private repo puts it at calculators/
     base = PORTAL_DIR if root == BASE else root
-    return os.path.join(base, "calculators", "HRC - Copy.csv")
+    return os.path.join(base, "calculators", "HRC.csv")
 
 
 def ff_path() -> str:
