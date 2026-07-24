@@ -1739,3 +1739,8 @@ surfaces follow the role. Acceptable for the current build.
 - **2026-07-24 (Inputs chip copy):** First Inputs chip title (`app.py` `engine_in`) reworded "15+ yrs of
   assessed prices and values of 80+ factors" → "50+ touchpoints based on 15+ yrs of global and local
   assessed prices". Sub unchanged.
+- **2026-07-24 (Methodology FlowChart section):** New "FlowChart" section on the Methodology page
+  (`app.py` `page_methodology`), placed just below the "From data to forecast" pipeline infographic and
+  above "Key factors the model weighs". Renders `assets/methodology_flowchart.png` base64-embedded in an
+  `<img>` (same pattern as the logos), max-width 1100px centred; shows a caption fallback if the file is
+  missing. ACTION: drop the image at `portal/assets/methodology_flowchart.png` (and commit it to the repo).

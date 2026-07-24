@@ -1929,6 +1929,21 @@ def page_methodology():
     st.markdown(engine, unsafe_allow_html=True)
 
     st.write("")
+    theme.section_title("FlowChart", theme.icon("trending"))
+    _flow_path = os.path.join(theme.ASSETS_DIR, "methodology_flowchart.png")
+    if os.path.exists(_flow_path):
+        with open(_flow_path, "rb") as _fh:
+            _flow_b64 = base64.b64encode(_fh.read()).decode()
+        st.markdown(
+            f"<div class='bm-flowchart' style='max-width:1100px;margin:0 auto;'>"
+            f"<img src='data:image/png;base64,{_flow_b64}' alt='Data-to-forecast flow chart' "
+            "style='width:100%;height:auto;display:block;'/></div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.caption("FlowChart image not found — add `portal/assets/methodology_flowchart.png`.")
+
+    st.write("")
     theme.section_title("Key factors the model weighs", theme.icon("gauge"))
     factors = [
         ("rupee",    "Cost drivers",            "Raw-material &amp; conversion costs that set the price floor."),
