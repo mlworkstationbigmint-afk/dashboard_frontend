@@ -26,26 +26,28 @@ BF_ELEMENTS = [
     ("Finance Cost (Avg)",               1500.0,   1.0,  "INR/MT"),
     ("Depreciation & Amortization",      2000.0,   1.0,  "INR/MT"),
 ]
-# IF route: metallic-mix feedstock (Sponge Iron / Scrap / Pig Iron / Ferroalloys) then
-# power and OpEx. Metallic norms are plant-specific (see IF_MIX); the norms
-# below are only fallbacks for a plant not listed in IF_MIX.
+# IF route: metallic-mix feedstock (Pellet / Scrap / Pig Iron / Ferroalloys) then Coal, power and
+# OpEx. For a metallic row the norm below is its YIELD (MT input per MT finished steel); the actual
+# per-plant consumption norm = yield × that plant's mix share (see IF_MIX). Non-metallic rows
+# (Coal, Electricity, OpEx) use the norm directly.
 IF_ELEMENTS = [
-    ("Sponge Iron",                     23250.0, 0.976,  "INR/MT"),
-    ("Scrap HMS 80:20",                 38000.0, 0.1575, "INR/MT"),
-    ("Pig Iron",                        42000.0, 0.052,  "INR/MT"),
-    ("Ferroalloys (SiMn)",              85000.0, 0.012,  "INR/MT"),
-    ("Electricity",                         7.50, None,  "INR/kWh"),
+    ("Pellet",                          11000.0, 1.83,  "INR/MT"),   # metallic — yield × mix share
+    ("Scrap HMS 80:20",                 38000.0, 1.05,  "INR/MT"),   # metallic — yield × mix share
+    ("Pig Iron",                        42000.0, 1.04,  "INR/MT"),   # metallic — yield × mix share
+    ("Ferroalloys (SiMn)",              85000.0, 1.00,  "INR/MT"),   # metallic — yield × mix share (~1.2%)
+    ("Coal rb2",                        12000.0, 0.90,  "INR/MT"),
+    ("Electricity",                         7.50, 1030.0, "INR/kWh"),
     ("Processing Cost",                  4500.0,   1.0,  "INR/MT"),
     ("Miscellaneous Expenses",           1200.0,   1.0,  "INR/MT"),
     ("Finance Cost (Avg)",               1500.0,   1.0,  "INR/MT"),
     ("Depreciation & Amortization",      2000.0,   1.0,  "INR/MT"),
 ]
-# Metallic charge: fixed finished-tonne-per-input-tonne yields, and each IF plant's mix shares.
-# Consumption norm = yield × mix share; Ferroalloys stays a fixed 1 × 1.2% = 0.012 additive.
-IF_YIELD = {"Sponge Iron": 1.22, "Scrap HMS 80:20": 1.05, "Pig Iron": 1.04}
+# Each IF plant's metallic-mix shares (fraction of charge). Consumption norm for a metallic row =
+# its yield (the IF_ELEMENTS norm) × the share here. Admin-editable defaults (persisted under
+# IF_MIX_KEY) override these; users can further tweak the mix in their own sandbox.
 IF_MIX = {
-    "Durgapur": {"Sponge Iron": 0.80, "Scrap HMS 80:20": 0.15, "Pig Iron": 0.05},
-    "Jalna":    {"Sponge Iron": 0.20, "Scrap HMS 80:20": 0.75, "Pig Iron": 0.05},
+    "Durgapur": {"Pellet": 0.80, "Scrap HMS 80:20": 0.15, "Pig Iron": 0.05, "Ferroalloys (SiMn)": 0.012},
+    "Jalna":    {"Pellet": 0.20, "Scrap HMS 80:20": 0.75, "Pig Iron": 0.05, "Ferroalloys (SiMn)": 0.012},
 }
 # Per-plant BF default overrides: unit prices by element + a plant electricity norm (kWh/MT, replaces
 # the product-based 450/400). Elements/plants not listed fall back to the BF_ELEMENTS defaults.
@@ -79,6 +81,22 @@ BF_PLANT = {
 # Admin panel). Every user's sandbox seeds from these; their per-cell edits stay in-session only.
 COST_HEAD_KEY = {"BF": "cost_head_bf_defaults", "IF": "cost_head_if_defaults"}
 _BUILTIN_ELEMENTS = {"BF": BF_ELEMENTS, "IF": IF_ELEMENTS}
+IF_MIX_KEY = "if_mix_defaults"      # admin-saved per-plant metallic mix (overrides IF_MIX)
+
+
+def _if_mix(plant):
+    """Effective default metallic-mix shares for an IF plant: admin-saved (IF_MIX_KEY) if present,
+    else the built-in IF_MIX. Returns a {element: fraction} copy (empty for a plant with no mix).
+    Never raises — a missing DB just yields the built-in default."""
+    try:
+        import db
+        saved = db.get_setting(IF_MIX_KEY)
+    except Exception:
+        saved = None
+    mix = dict(IF_MIX)
+    if isinstance(saved, dict):
+        mix.update(saved)
+    return dict(mix.get(plant) or {})
 
 
 def _elements(route):
@@ -108,28 +126,18 @@ def _elem_cost(price, norm):
     return price * norm
 
 
-def _mix_note(plant):
-    """Per-plant metallic-mix footnote (norm = yield × mix share); None for non-IF plants."""
-    mix = IF_MIX.get(plant)
-    if not mix:
-        return None
-    parts = ", ".join(f"{m} {IF_YIELD[m]:g} × {round(share * 100):g}% = {IF_YIELD[m] * share:g}"
-                      for m, share in mix.items())
-    return f"† Metallic mix — {parts}; Ferroalloys 1 × 1.2% = 0.012 (MT/MT)."
-
-
-def _seed_df(product, is_if=False, plant=None):
+def _seed_df(product, is_if=False, plant=None, mix=None):
     """Default editable cost build-up for one plant, from the BF or IF element list. Electricity's
-    norm is product-based (450 kWh/MT for HRC, 400 for Rebar); IF metallic norms come from the
-    plant's mix (IF_MIX), falling back to the IF_ELEMENTS defaults if the plant isn't listed."""
-    mix = IF_MIX.get(plant) if is_if else None
+    BF norm is product-based (450 kWh/MT for HRC, 400 for Rebar); an IF metallic row's norm is its
+    yield (the element's norm) × the plant's mix share (`mix`, defaulting to _if_mix(plant))."""
+    mix = (mix if mix is not None else _if_mix(plant)) if is_if else None
     bf = None if is_if else BF_PLANT.get(plant)
     rows = []
     for label, price, norm, unit in _elements("IF" if is_if else "BF"):
         if norm is None:                       # electricity: BF plant norm, else product-based 450/400
             n = bf["elec_norm"] if bf and "elec_norm" in bf else (450.0 if product == "HRC" else 400.0)
-        elif mix and label in mix:
-            n = IF_YIELD[label] * mix[label]
+        elif mix and label in mix:             # IF metallic: yield × plant mix share
+            n = float(norm) * mix[label]
         else:
             n = float(norm)
         p = bf["prices"].get(label, price) if bf else price
@@ -180,13 +188,14 @@ def _sec(text, icon=""):
     st.markdown(f"<div class='bm-sec'>{ic}{text}</div>", unsafe_allow_html=True)
 
 
-def _editor(prefix, product, ver, key, is_if=False, plant=None):
+def _editor(prefix, product, ver, key, is_if=False, plant=None, mix=None):
     """One plant's editable cost table. Keyed by route+product (`key`) + reset-version so switching
     product re-seeds fresh values and Reset clears edits (fresh widget key). `product` ('HRC'/'Rebar')
-    only drives the seeded defaults; `is_if` picks the IF element list and `plant` its metallic mix.
+    only drives the seeded defaults; `is_if` picks the IF element list and `mix` its metallic-mix
+    shares (per-plant, editable in the mini table below).
     Columns: Cost element · Unit · Unit price · Consumption norm · Total cost (norm x unit price)."""
     wkey = f"cost_{prefix}_{key}_{ver}"
-    df = _seed_df(product, is_if, plant)
+    df = _seed_df(product, is_if, plant, mix)
     # Fold any stored edits back in so the read-only Total cost reflects the latest inputs.
     state = st.session_state.get(wkey)
     if state and state.get("edited_rows"):
@@ -208,6 +217,46 @@ def _editor(prefix, product, ver, key, is_if=False, plant=None):
                         help="Consumption norm x unit price."),
         },
     )
+
+
+def _mix_seed_df(base, wkey):
+    """Metallic-mix mini-table (each metallic's share of the charge as %) for one plant, with any
+    in-session edits folded back in from the widget's stored state (keeps the norms above in sync)."""
+    df = pd.DataFrame([{"Metallic": m, "Mix %": round(base[m] * 100, 3)} for m in base])
+    state = st.session_state.get(wkey)
+    if state and state.get("edited_rows"):
+        for ridx, chg in state["edited_rows"].items():
+            for c, v in chg.items():
+                df.at[int(ridx), c] = v
+    return df
+
+
+def _mix_shares(df):
+    """{element: fraction} from a mix mini-table dataframe (% -> fraction)."""
+    return {str(r["Metallic"]): float(r["Mix %"]) / 100.0 for _, r in df.iterrows()}
+
+
+def _mix_editor(mix_df, wkey, key, name):
+    """Render a plant's editable metallic-mix mini table below its cost table, plus a small Reset
+    button that restores that plant's default mix (bumps its own version so only the mix re-seeds)."""
+    def _reset():
+        vk = f"mixver_{key}_{name}"
+        st.session_state[vk] = st.session_state.get(vk, 0) + 1
+
+    st.caption("Metallic mix — each feedstock's share of the charge (%); drives the metallic norms "
+               "above (norm = yield × share). Editable per plant.")
+    st.data_editor(
+        mix_df, key=wkey, hide_index=True, num_rows="fixed", width="stretch",
+        column_order=["Metallic", "Mix %"],
+        column_config={
+            "Metallic": st.column_config.TextColumn("Metallic", disabled=True, width="medium"),
+            "Mix %": st.column_config.NumberColumn("Mix %", format="%.2f", step=0.5, min_value=0.0,
+                        help="Share of the metallic charge. Pellet + Scrap + Pig Iron ≈ 100%; "
+                             "Ferroalloys is a small addition on top."),
+        },
+    )
+    st.button("↺ Reset mix", key=f"mixreset_{key}_{name}", on_click=_reset,
+              help=f"Restore {name}'s default metallic mix.")
 
 
 def _totals_line(total, margin):
@@ -378,7 +427,7 @@ def _render_product(product, plants, key, is_if=False):
     """One product view: dual-axis chart + controls, an editable cost table per plant, and the
     headline/verdict. `key` (route+product, e.g. 'bf_rebar') namespaces every widget so the same
     product in two routes never collides; `product` drives labels + seeded defaults. `is_if`
-    selects the IF element list and shows the metallic-mix footnote. Engine unchanged."""
+    selects the IF element list and shows a per-plant editable metallic-mix mini table. Engine unchanged."""
     verkey = f"cost_ver_{key}"
     st.session_state.setdefault(verkey, 0)
 
@@ -411,13 +460,19 @@ def _render_product(product, plants, key, is_if=False):
         for j, (col, name) in enumerate(zip(cols, chunk)):
             with col:
                 st.markdown(f"**{name}**")
-                edited[name] = _editor(f"p{i + j}", product, ver, key, is_if, name)
+                # IF: a per-plant editable metallic mix drives the metallic norms (yield × mix share).
+                mix = mix_df = mix_wkey = None
+                if is_if:
+                    mixver = st.session_state.setdefault(f"mixver_{key}_{name}", 0)
+                    mix_wkey = f"mix_p{i + j}_{key}_{ver}_{mixver}"
+                    mix_df = _mix_seed_df(_if_mix(name), mix_wkey)
+                    mix = _mix_shares(mix_df)
+                edited[name] = _editor(f"p{i + j}", product, ver, key, is_if, name, mix)
                 totals[name] = _plant_costs(edited[name])
                 margins[name] = mkt_prices[name] - totals[name]
                 _totals_line(totals[name], margins[name])
-                note = _mix_note(name)
-                if note:
-                    st.caption(note)
+                if is_if:
+                    _mix_editor(mix_df, mix_wkey, key, name)
     st.caption("**Total cost = consumption norm × unit price** (auto-computed per row). **Consumption norm** = "
                "input consumed per tonne of steel; **Unit** is INR/MT (INR/kWh for electricity). Edits update the "
                "chart live; **Reset** restores the product defaults.")
@@ -534,6 +589,56 @@ def _admin_route_editor(route):
         st.rerun()
 
 
+def _admin_mix_editor():
+    """Admin: default metallic-mix (%) per IF plant, saved under IF_MIX_KEY (overrides IF_MIX for
+    every user's sandbox). One mini table per plant, with Save-as-default / Reset-to-built-in."""
+    _sec("IF metallic-mix defaults (per plant)", theme.icon("factory"))
+    st.caption("The default metallic mix each IF plant's sandbox starts from — each feedstock's share "
+               "of the charge (%). A metallic row's consumption norm = its yield (the IF cost-head norm "
+               "above) × the share here. Users can still tweak the mix in their own sandbox.")
+    ver = st.session_state.setdefault("mix_admin_ver", 0)
+    plants = list(IF_MIX)
+    edits = {}
+    for i in range(0, len(plants), 2):
+        cols = st.columns(len(plants[i:i + 2]), gap="large")
+        for col, p in zip(cols, plants[i:i + 2]):
+            cur = _if_mix(p)
+            with col:
+                st.markdown(f"**{p}**")
+                df = pd.DataFrame([{"Metallic": m, "Mix %": round(cur.get(m, 0.0) * 100, 3)}
+                                   for m in IF_MIX[p]])
+                edits[p] = st.data_editor(
+                    df, key=f"mix_admin_{p}_{ver}", hide_index=True, num_rows="fixed",
+                    width="stretch", column_order=["Metallic", "Mix %"],
+                    column_config={
+                        "Metallic": st.column_config.TextColumn("Metallic", disabled=True, width="medium"),
+                        "Mix %": st.column_config.NumberColumn("Mix %", format="%.2f", step=0.5,
+                                    min_value=0.0),
+                    },
+                )
+    c1, c2 = st.columns([1, 1], vertical_alignment="center")
+    if c1.button("💾 Save mix as default for all users", key="mix_admin_save", type="primary",
+                 width="stretch"):
+        out = {p: {str(r["Metallic"]): float(r["Mix %"]) / 100.0
+                   for _, r in df.iterrows() if pd.notna(r["Mix %"])}
+               for p, df in edits.items()}
+        try:
+            import db
+            db.set_setting(IF_MIX_KEY, out)
+            st.success("Saved — these are now the IF metallic-mix defaults for all users.")
+        except Exception as e:
+            st.error(f"Save failed: {e}")
+    if c2.button("↺ Reset mix to built-in", key="mix_admin_reset", width="stretch",
+                 help="Discard the saved mix defaults and revert to the built-in IF_MIX."):
+        try:
+            import db
+            db.set_setting(IF_MIX_KEY, {})
+        except Exception as e:
+            st.error(f"Reset failed: {e}")
+        st.session_state["mix_admin_ver"] += 1
+        st.rerun()
+
+
 def render_admin_defaults():
     """Admin: manage the org-wide cost heads for BOTH production routes (BF + IF). Add / rename /
     delete rows and set each head's unit price + consumption norm, then save them as the default
@@ -547,3 +652,5 @@ def render_admin_defaults():
     route = st.segmented_control("Route", list(COST_HEAD_KEY), default="BF",
                                  key="cost_admin_route", label_visibility="collapsed")
     _admin_route_editor(route or "BF")
+    st.divider()
+    _admin_mix_editor()
