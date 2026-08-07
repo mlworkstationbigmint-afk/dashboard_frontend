@@ -481,19 +481,22 @@ button[data-variant="segmented_control"][aria-checked="true"] p {{ color:var(--b
 /* commodity group / product tab-strips -> bold names */
 .st-key-fc_group button p, .st-key-perf_group button p,
 .st-key-fc_prod button p, .st-key-perf_prod button p {{ font-weight:800 !important; }}
-/* Forecast-forward horizon tabs (fc_horizon: 1W/4W/8W/12W) -> blue gradient, light 1W -> dark 12W.
-   Same gradient idea as the chart's historical zoom buttons (.rangebtns in app.py). The selected
-   option keeps its orange border (generic segmented rule) as the pick indicator. */
-.st-key-fc_horizon button:nth-of-type(1) {{ background:#e8f0fb !important; }}
-.st-key-fc_horizon button:nth-of-type(2) {{ background:#b9d3f2 !important; }}
-.st-key-fc_horizon button:nth-of-type(3) {{ background:#5b93da !important; }}
-.st-key-fc_horizon button:nth-of-type(4) {{ background:#024CA1 !important; }}
-.st-key-fc_horizon button:nth-of-type(1) p, .st-key-fc_horizon button:nth-of-type(2) p {{ color:#024CA1 !important; }}
-.st-key-fc_horizon button:nth-of-type(3) p, .st-key-fc_horizon button:nth-of-type(4) p {{ color:#fff !important; }}
+/* Horizon tabs (fc_horizon on Forecasting, perf_horizon on Performance: 1W/4W/8W/12W) -> blue
+   gradient, light 1W -> dark 12W. Same gradient idea as the chart's historical zoom buttons
+   (.rangebtns in app.py). The selected option keeps its orange border (generic segmented rule). */
+.st-key-fc_horizon button:nth-of-type(1), .st-key-perf_horizon button:nth-of-type(1) {{ background:#e8f0fb !important; }}
+.st-key-fc_horizon button:nth-of-type(2), .st-key-perf_horizon button:nth-of-type(2) {{ background:#b9d3f2 !important; }}
+.st-key-fc_horizon button:nth-of-type(3), .st-key-perf_horizon button:nth-of-type(3) {{ background:#5b93da !important; }}
+.st-key-fc_horizon button:nth-of-type(4), .st-key-perf_horizon button:nth-of-type(4) {{ background:#024CA1 !important; }}
+.st-key-fc_horizon button:nth-of-type(1) p, .st-key-fc_horizon button:nth-of-type(2) p,
+.st-key-perf_horizon button:nth-of-type(1) p, .st-key-perf_horizon button:nth-of-type(2) p {{ color:#024CA1 !important; }}
+.st-key-fc_horizon button:nth-of-type(3) p, .st-key-fc_horizon button:nth-of-type(4) p,
+.st-key-perf_horizon button:nth-of-type(3) p, .st-key-perf_horizon button:nth-of-type(4) p {{ color:#fff !important; }}
 /* selected horizon -> FULL orange fill (not just the border) */
-.st-key-fc_horizon button[aria-checked="true"] {{ background:var(--bm-accent) !important;
-    border-color:var(--bm-accent) !important; }}
-.st-key-fc_horizon button[aria-checked="true"] p {{ color:#fff !important; font-weight:800 !important; }}
+.st-key-fc_horizon button[aria-checked="true"], .st-key-perf_horizon button[aria-checked="true"] {{
+    background:var(--bm-accent) !important; border-color:var(--bm-accent) !important; }}
+.st-key-fc_horizon button[aria-checked="true"] p,
+.st-key-perf_horizon button[aria-checked="true"] p {{ color:#fff !important; font-weight:800 !important; }}
 /* accuracy glossary: hover-info marker on cards/titles + the reference box at the page foot */
 .bm-help {{ cursor:help; color:var(--bm-accent); font-weight:700; font-size:.82em;
     vertical-align:super; margin-left:2px; text-decoration:none; }}

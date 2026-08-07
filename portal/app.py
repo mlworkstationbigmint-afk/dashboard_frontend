@@ -893,7 +893,7 @@ def page_home():
     mapas = []
     n_weeks = 0
     for _, meta in products.items():
-        acc = dl.load_accuracy("11-week", meta["acc"]).dropna(subset=["Actual", "Forecast"])
+        acc = dl.load_accuracy(1, meta["acc"]).dropna(subset=["Actual", "Forecast"])
         n_weeks = max(n_weeks, len(acc))
         k = dl.accuracy_averages(meta["acc"])
         if k["mapa"] is not None:
@@ -1127,7 +1127,7 @@ def page_forecasting():
     summary = dl.load_summary()
     row = dl.summary_row(summary, meta["ff"])
     fwd = dl.load_forward(meta["ff"])
-    acc_hist = dl.load_accuracy("11-week", meta["acc"])   # Accuracy_Table_11 (6/16 retired)
+    acc_hist = dl.load_accuracy(1, meta["acc"])   # 1-week-ahead history (Accuracy_Table_11)
     # Rebar IF Mumbai + HRC + HR Plate also get an India duty-paid landed-cost overlay from landed_costs.xlsx
     # (Donghua China rebar / FOB-Rizhao China HRC & HR Plate, weekly, dated to week-end). {product: (sheet, label)}.
     _LANDED_OVERLAY = {"HRC": ("HRC", "China landed"), "Rebar IF Mumbai": ("Rebar", "China landed"),
@@ -1771,13 +1771,21 @@ def page_performance():
         product = product if product in products else default
     meta = products[product]
 
-    df = dl.load_accuracy("11-week", meta["acc"])   # Accuracy_Table_11 only (window toggle removed)
+    # Forecast-horizon tabs (1W/4W/8W/12W) — one accuracy table per horizon (dl.ACC_FILES); same
+    # look as the forecasting page's fc_horizon strip. Everything below reads the picked horizon.
+    horizons = list(dl.ACC_FILES)
+    horizon = st.segmented_control("Forecast horizon (weeks ahead)", horizons,
+                                   format_func=lambda n: f"{n}W", default=horizons[0],
+                                   key="perf_horizon")
+    horizon = horizon if horizon in horizons else horizons[0]
+
+    df = dl.load_accuracy(horizon, meta["acc"])
     if df.empty:
-        st.warning("No accuracy data found for this product.")
+        st.warning(f"No {horizon}-week-ahead accuracy data for this product.")
         theme.footer()
         return
     view = df.dropna(subset=["Actual", "Forecast"]).reset_index(drop=True)   # all rows from the sheet
-    kpis = dl.accuracy_averages(meta["acc"])   # headline KPIs = the sheet's own AVERAGE row
+    kpis = dl.accuracy_averages(meta["acc"], horizon)   # headline KPIs = the sheet's own AVERAGE row
 
     with st.container(key="perf_kpis"):        # stable anchor for the analyst walkthrough (tour.py)
         k1, k2, k3 = st.columns(3)

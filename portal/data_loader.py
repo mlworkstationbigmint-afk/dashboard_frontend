@@ -13,7 +13,8 @@ DATA SOURCE (public code, private data):
 
 Files (same layout in the private repo and the in-repo sample):
   accuracy_tables/forecast_forward.xlsx  - summary + 12-week forward path
-  accuracy_tables/Accuracy_Table_11.xlsx - week-wise actual/forecast
+  accuracy_tables/Accuracy_Table_11.xlsx   - week-wise actual/forecast (1 week ahead)
+  accuracy_tables/Accuracy_Table_6_{4,8,12}W.xlsx - same, 4/8/12 weeks ahead
   calculators/HRC.csv             - calculators' dataset
 """
 import os
@@ -30,7 +31,12 @@ PORTAL_DIR = os.path.dirname(os.path.abspath(__file__))              # <repo>/po
 # Data files as relative paths (identical in the private repo and the in-repo sample).
 FF_NAME = "forecast_forward.xlsx"
 LANDED_NAME = "landed_costs.xlsx"                  # weekly India duty-paid landed cost (Rebar/HRC sheets)
-ACC_FILES = {"11-week": "Accuracy_Table_11.xlsx"}   # 6/16-week retired; app runs off Table_11
+# Accuracy tables keyed by FORECAST HORIZON (weeks ahead). 1 = the original next-week table
+# (Table_11); 4/8/12 are the back-tested longer-horizon runs (6 products only — no Mundra yet).
+ACC_FILES = {1:  "Accuracy_Table_11.xlsx",
+             4:  "Accuracy_Table_6_4W.xlsx",
+             8:  "Accuracy_Table_6_8W.xlsx",
+             12: "Accuracy_Table_6_12W.xlsx"}
 HEADLINE_SHEET = "Ensemble_WgtMean"               # headline forecast line shown to Adani
 
 
@@ -77,13 +83,17 @@ def _fetch_private_data_dir(owner: str, repo: str, ref: str, token: str, sha: st
         "X-GitHub-Api-Version": "2022-11-28",
     }
     at = sha or ref   # pin to the exact commit when known, so content matches the cache key
-    rels = (f"accuracy_tables/{FF_NAME}",
-            f"accuracy_tables/{LANDED_NAME}",
-            *[f"accuracy_tables/{fn}" for fn in ACC_FILES.values()],
-            "calculators/HRC.csv")
-    for rel in rels:
+    # (path, required): the 4/8/12-week accuracy tables are optional — a data repo that hasn't
+    # got them yet just loses those horizon tabs instead of falling back to the sample wholesale.
+    rels = ((f"accuracy_tables/{FF_NAME}", True),
+            (f"accuracy_tables/{LANDED_NAME}", True),
+            *[(f"accuracy_tables/{fn}", w == 1) for w, fn in ACC_FILES.items()],
+            ("calculators/HRC.csv", True))
+    for rel, required in rels:
         url = f"https://api.github.com/repos/{owner}/{repo}/contents/{quote(rel)}?ref={at}"
         resp = requests.get(url, headers=headers, timeout=30)
+        if resp.status_code == 404 and not required:
+            continue
         resp.raise_for_status()
         out = os.path.join(dest, rel.replace("/", os.sep))
         os.makedirs(os.path.dirname(out), exist_ok=True)
@@ -133,8 +143,8 @@ def landed_path() -> str:
     return os.path.join(acc_dir(), LANDED_NAME)
 
 
-def acc_path(window: str) -> str:
-    """Absolute path to an accuracy table (private temp dir or in-repo)."""
+def acc_path(window: int) -> str:
+    """Absolute path to an accuracy table for a horizon (1/4/8/12 weeks ahead)."""
     return os.path.join(acc_dir(), ACC_FILES[window])
 
 # display name -> sheet/label used in the source files
@@ -291,15 +301,18 @@ def _read_accuracy(path: str, acc_label: str, mtime: float) -> pd.DataFrame:
     return df
 
 
-def load_accuracy(window: str, acc_label: str) -> pd.DataFrame:
-    """Week-wise Actual/Forecast for one product from an accuracy table.
+def load_accuracy(window: int, acc_label: str) -> pd.DataFrame:
+    """Week-wise Actual/Forecast for one product at a forecast horizon (1/4/8/12 weeks ahead).
 
     Returns Date, Actual, Forecast, Delta, DeltaPct, PredDir, ActualDir, Hit,
-    AbsAcc, DirAcc, DeltaAcc (the last three in points, 0..1).
-    Re-read when the file changes.
+    AbsAcc, DirAcc, DeltaAcc (the last three in points, 0..1). Empty frame when the
+    horizon's file/product block is absent. Re-read when the file changes.
     """
     path = acc_path(window)
-    return _read_accuracy(path, acc_label, _mtime(path))
+    try:
+        return _read_accuracy(path, acc_label, _mtime(path))
+    except Exception:
+        return pd.DataFrame(columns=["Date", "Actual", "Forecast"])
 
 
 @st.cache_data(show_spinner=False)
@@ -320,11 +333,14 @@ def _read_accuracy_avgs(path: str, acc_label: str, mtime: float) -> dict:
     return {"mapa": g(3), "delta_acc": g(4), "dir_acc": g(5)}
 
 
-def accuracy_averages(acc_label: str, window: str = "11-week") -> dict:
+def accuracy_averages(acc_label: str, window: int = 1) -> dict:
     """Absolute (MAPA), directional and delta accuracy for one product — taken from the accuracy
     table's OWN AVERAGE row (row 3 of the block), not recomputed. Re-read when the file changes."""
     p = acc_path(window)
-    return _read_accuracy_avgs(p, acc_label, _mtime(p))
+    try:
+        return _read_accuracy_avgs(p, acc_label, _mtime(p))
+    except Exception:
+        return {"mapa": None, "dir_acc": None, "delta_acc": None}
 
 
 def last_actual_date():
@@ -335,7 +351,7 @@ def last_actual_date():
     pandas Timestamp, or None if no actuals are present."""
     latest = None
     for meta in STEEL_PRODUCTS.values():
-        av = load_accuracy("11-week", meta["acc"]).dropna(subset=["Actual"])
+        av = load_accuracy(1, meta["acc"]).dropna(subset=["Actual"])
         if not av.empty:
             d = av["Date"].max()
             if latest is None or d > latest:
