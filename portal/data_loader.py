@@ -524,12 +524,18 @@ def _read_calls_json(sig: str):
 
 
 def load_analyst_calls() -> list:
-    """List of analyst-call dicts from the private repo, else the bundled sample."""
+    """Analyst-call dicts from the private repo (else the bundled sample), newest call first.
+
+    Sorted here rather than at the render sites so the Analyst cards and the Admin
+    picker stay in step. ISO 'date' sorts lexicographically; legacy entries carrying
+    only 'month' have no 'date' and fall to the bottom.
+    """
+    calls = SAMPLE_ANALYST_CALLS
     if _read_token_cfg():
         data = _read_calls_json(data_sig())
         if data and isinstance(data.get("calls"), list):
-            return data["calls"]
-    return SAMPLE_ANALYST_CALLS
+            calls = data["calls"]
+    return sorted(calls, key=lambda c: c.get("date") or "", reverse=True)
 
 
 @st.cache_data(show_spinner=False)
