@@ -14,7 +14,7 @@ DATA SOURCE (public code, private data):
 Files (same layout in the private repo and the in-repo sample):
   accuracy_tables/forecast_forward.xlsx  - summary + 12-week forward path
   accuracy_tables/Accuracy_Table_11.xlsx   - week-wise actual/forecast (1 week ahead)
-  accuracy_tables/Accuracy_Table_6_{4,8,12}W.xlsx - same, 4/8/12 weeks ahead
+  accuracy_tables/Accuracy_Table_11_{4,8,12}W.xlsx - same, 4/8/12 weeks ahead
   calculators/HRC.csv             - calculators' dataset
 """
 import os
@@ -32,11 +32,11 @@ PORTAL_DIR = os.path.dirname(os.path.abspath(__file__))              # <repo>/po
 FF_NAME = "forecast_forward.xlsx"
 LANDED_NAME = "landed_costs.xlsx"                  # weekly India duty-paid landed cost (Rebar/HRC sheets)
 # Accuracy tables keyed by FORECAST HORIZON (weeks ahead). 1 = the original next-week table
-# (Table_11); 4/8/12 are the back-tested longer-horizon runs (6 products only — no Mundra yet).
+# (Table_11); 4/8/12 are the back-tested longer-horizon runs. All 11 products in every one.
 ACC_FILES = {1:  "Accuracy_Table_11.xlsx",
-             4:  "Accuracy_Table_6_4W.xlsx",
-             8:  "Accuracy_Table_6_8W.xlsx",
-             12: "Accuracy_Table_6_12W.xlsx"}
+             4:  "Accuracy_Table_11_4W.xlsx",
+             8:  "Accuracy_Table_11_8W.xlsx",
+             12: "Accuracy_Table_11_12W.xlsx"}
 HEADLINE_SHEET = "Ensemble_WgtMean"               # headline forecast line shown to Adani
 
 
