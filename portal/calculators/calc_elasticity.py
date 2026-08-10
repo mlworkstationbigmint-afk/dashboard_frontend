@@ -164,7 +164,9 @@ def _load_model(mtime):   # mtime in the cache key => re-read when the CSV chang
     ]
     for col in features + [target]:
         df[col] = pd.to_numeric(df[col].astype(str).str.replace(",", ""), errors="coerce")
-    df = df.sort_values(by="Date")
+    df["Date"] = pd.to_datetime(df["Date"], format="%d-%b-%y")   # was sorted as a string (lexical,
+    df = df.sort_values(by="Date")                               # not chronological) — broke both
+    # the return-series order feeding the Ridge fit and `latest_price` below
     latest_price = float(df[target].dropna().iloc[-1])   # most recent assessed HRC price
     df = df.dropna()
     lagged_df = pd.DataFrame()
