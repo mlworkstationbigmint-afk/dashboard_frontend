@@ -890,21 +890,27 @@ def page_home():
     # table itself — so updating that file moves this date with no other edits needed.
     last_actual = dl.last_actual_date()
     last_update = _week_of_month_label(last_actual)
-    mapas = []
+    horizons = list(dl.ACC_FILES)                       # [1, 4, 8, 12] weeks-ahead
     n_weeks = 0
-    for _, meta in products.items():
-        acc = dl.load_accuracy(1, meta["acc"]).dropna(subset=["Actual", "Forecast"])
-        n_weeks = max(n_weeks, len(acc))
-        k = dl.accuracy_averages(meta["acc"])
-        if k["mapa"] is not None:
-            mapas.append(k["mapa"])
-    avg_mapa = sum(mapas) / len(mapas) if mapas else None
+    mapa_by_horizon = []
+    for w in horizons:
+        mapas = []
+        for _, meta in products.items():
+            if w == horizons[0]:
+                acc = dl.load_accuracy(w, meta["acc"]).dropna(subset=["Actual", "Forecast"])
+                n_weeks = max(n_weeks, len(acc))
+            k = dl.accuracy_averages(meta["acc"], window=w)
+            if k["mapa"] is not None:
+                mapas.append(k["mapa"])
+        mapa_by_horizon.append(sum(mapas) / len(mapas) if mapas else None)
+    mapa_str = "/".join(f"{m:.1f}" if m is not None else "-" for m in mapa_by_horizon) + "%"
+    horizon_label = "/".join(f"{w}W" for w in horizons)
 
     with st.container(key="bm_home_kpis"):     # stable anchor for the analyst walkthrough (tour.py)
         s1, s2, s3, s4 = st.columns(4)
-        s1.markdown(theme.kpi_card("Steel products", str(n_products), "tracked weekly", theme.icon("factory")), unsafe_allow_html=True)
-        s2.markdown(theme.kpi_card("Forecast horizon", "12 wk", "Ensemble Wgt-Mean", theme.icon("trending")), unsafe_allow_html=True)
-        s3.markdown(theme.kpi_card("Avg absolute accuracy", f"{avg_mapa:.1f}%" if avg_mapa else "-", f"MAPA, {n_weeks}-wk avg", theme.icon("target")), unsafe_allow_html=True)
+        s1.markdown(theme.kpi_card("Steel Products variants across locations", str(n_products), "tracked weekly", theme.icon("factory")), unsafe_allow_html=True)
+        s2.markdown(theme.kpi_card("Forecast horizon", horizon_label, "Ensemble Wgt-Mean", theme.icon("trending")), unsafe_allow_html=True)
+        s3.markdown(theme.kpi_card(f"Avg absolute accuracy [{horizon_label}]", mapa_str, f"MAPA, {n_weeks}-wk avg", theme.icon("target")), unsafe_allow_html=True)
         s4.markdown(theme.kpi_card("Last updated on", last_update, "latest actual spot date", theme.icon("calendar")), unsafe_allow_html=True)
 
     st.write("")
