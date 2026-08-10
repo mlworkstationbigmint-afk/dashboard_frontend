@@ -97,6 +97,7 @@ CALC_CSS = """
 .st-key-sens_knobwrap [data-testid="stSliderTickBar"] { display: none !important; }
 .knob-ticks { display: flex; justify-content: space-between; font-size: 9.5px; color: #a3adbb;
     letter-spacing: .2px; margin: -16px 3px 2px; }
+.knob-asof { text-align: center; font-size: 10px; color: #a3adbb; margin: -2px 0 6px; }
 /* baseline -> shocked result line (coloured delta) */
 .knob-res { text-align: center; font-size: 12px; color: #334155; line-height: 1.45; margin: 8px 0 3px; }
 .knob-res b { color: var(--bm-primary-dark); }
@@ -168,6 +169,8 @@ def _load_model(mtime):   # mtime in the cache key => re-read when the CSV chang
     df = df.sort_values(by="Date")                               # not chronological) — broke both
     # the return-series order feeding the Ridge fit and `latest_price` below
     latest_price = float(df[target].dropna().iloc[-1])   # most recent assessed HRC price
+    _lp = df["Date"].max()
+    latest_date = f"{_lp.day} {_lp:%b %Y}"                # e.g. "9 Aug 2026" (no platform-specific %-d/%#d)
     df = df.dropna()
     lagged_df = pd.DataFrame()
     lagged_df[target] = df[target]
@@ -181,12 +184,12 @@ def _load_model(mtime):   # mtime in the cache key => re-read when the CSV chang
     y = ret_df[target]
     model = Ridge(alpha=10)
     model.fit(X, y)
-    return model, list(X.columns), latest_price
+    return model, list(X.columns), latest_price, latest_date
 
 
 def load_model():
     """Fit the Ridge elasticity model. Re-read/re-fit when the CSV changes.
-    Returns (model, feature_columns, latest_HRC_price)."""
+    Returns (model, feature_columns, latest_HRC_price, latest_date_str)."""
     return _load_model(_csv_mtime())
 
 
@@ -228,7 +231,7 @@ def _hrc_spec():
     """Build the HRC product spec from the LIVE Ridge fit (sensitivities =
     coefficients). Per-driver baselines + units come from _HRC_META so HRC also
     supports absolute (₹/$/€/unit) shock entry, same as HR Plate / Rebar."""
-    model, columns, latest_price = load_model()
+    model, columns, latest_price, latest_date = load_model()
     drivers = []
     for col, beta in zip(columns, model.coef_):
         name = _HRC_SHORT.get(col.split("_lag")[0], col.split("_lag")[0][:34])
@@ -239,6 +242,7 @@ def _hrc_spec():
         "model": "Ridge regression (α=10) on log-differenced weekly prices",
         "r2": None, "rmse_pct": None, "rmse_rs": None, "n_obs": None,
         "period": "15+ yrs of weekly BigMint-assessed prices", "drivers": drivers,
+        "as_of": latest_date,
     }
 
 
@@ -316,8 +320,10 @@ def _cb_slider(did):
     st.session_state[f"shock_{did}"] = _snap(st.session_state[f"sl_{did}"])
 
 
-def _cb_number(did):
-    st.session_state[f"shock_{did}"] = _snap(st.session_state[f"num_{did}"])
+def _cb_number(did, baseline):
+    val = st.session_state[f"num_{did}"]                        # absolute value the user typed
+    pct = (val - baseline) / baseline * 100.0 if baseline else 0.0
+    st.session_state[f"shock_{did}"] = _snap(pct)
 
 
 def _cb_preset(did, val):
@@ -376,20 +382,23 @@ def _result_html(baseline, pct, unit):
             f"<span class='dl'>({sign}{_fmt_val(abs(dabs), unit)}, {pct:+.1f}%)</span></div>")
 
 
-def driver_control(driver_id, label, baseline, unit):
-    """One driver card: coupled slider + number_input (two-way synced via the
-    shared shock state), a tick scale, ±50/±25/0 presets, a baseline→shocked
-    readout, and a per-driver reset. Adding a driver is a single call."""
+def driver_control(driver_id, label, baseline, unit, as_of=None):
+    """One driver card: coupled slider (%) + number_input (absolute value, two-way
+    synced via the shared %-shock state), a tick scale, ±50/±25/0 presets, a
+    baseline→shocked readout, and a per-driver reset. Adding a driver is a single call."""
     ss = st.session_state
     sk = f"shock_{driver_id}"
     ss.setdefault(sk, 0.0)
     # push the canonical value into both widgets BEFORE they render (this is what
     # keeps slider⇄number in sync and carries shocks across modes/presets/resets)
     ss[f"sl_{driver_id}"] = ss[sk]
-    ss[f"num_{driver_id}"] = ss[sk]
+    ss[f"num_{driver_id}"] = baseline * (1 + ss[sk] / 100.0)   # number box shows the absolute
+    # value (e.g. ₹6,500), not the %  — converted back to % on entry by _cb_number
 
     with st.container(border=True):
         st.markdown(f"<div class='knob-label'>{label}</div>", unsafe_allow_html=True)
+        if as_of:
+            st.markdown(f"<div class='knob-asof'>Prices as of {as_of}</div>", unsafe_allow_html=True)
         c_sl, c_num = st.columns([2, 1], vertical_alignment="center")
         with c_sl:
             st.slider(label, -50.0, 50.0, step=0.5, key=f"sl_{driver_id}",
@@ -397,8 +406,10 @@ def driver_control(driver_id, label, baseline, unit):
             st.markdown("<div class='knob-ticks'><span>-50</span><span>-25</span>"
                         "<span>0</span><span>+25</span><span>+50</span></div>", unsafe_allow_html=True)
         with c_num:
-            st.number_input(label, -50.0, 50.0, step=0.5, key=f"num_{driver_id}", format="%.1f",
-                            on_change=_cb_number, args=(driver_id,), label_visibility="collapsed")
+            lo, hi = baseline * 0.5, baseline * 1.5             # mirrors the slider's ±50% range
+            step = round(baseline * 0.005, 2) or 0.01           # ~0.5% per step, like the old % box
+            st.number_input(label, lo, hi, step=step, key=f"num_{driver_id}", format="%.2f",
+                            on_change=_cb_number, args=(driver_id, baseline), label_visibility="collapsed")
         for c, val in zip(st.columns(5), (-50, -25, 0, 25, 50)):
             c.button("0" if val == 0 else f"{val:+d}", key=f"pre_{driver_id}_{val}",
                      on_click=_cb_preset, args=(driver_id, float(val)), width="stretch")
@@ -481,7 +492,7 @@ def _render_product(spec, key):
                     if i >= n:
                         continue               # leave the trailing cell empty (keeps widths equal)
                     with cols[j]:
-                        driver_control(f"{key}_{i}", names[i], drivers[i][1], drivers[i][3])
+                        driver_control(f"{key}_{i}", names[i], drivers[i][1], drivers[i][3], spec.get("as_of"))
         st.caption("Drag a knob or type a %, or use the ±20 / ±10 / 0 presets. Values within ±0.75% snap "
                    "to no-change. Switch to **Table** to type exact values or absolute unit changes — "
                    "shocks carry across both modes.")
