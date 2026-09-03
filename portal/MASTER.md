@@ -134,6 +134,9 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ Streamlit 1.59 ONLY (react-aria) — no more baseweb (2026-07-18).** The app targets **streamlit 1.59.0** (pinned in root + `portal/requirements.txt`); the deployment runs it too. As of 2026-07-18 **all dead 1.58 `data-baseweb="…"` / `stBaseButton-…Active` selectors were removed** — the CSS keys ONLY on 1.59 markup. **Rule:** style via **Streamlit-owned markup** (testids like `[data-testid="stTabs"]` / `stTab` / `stSelectbox` / `stNumberInput`, `st-key-*` classes, `role=`/`aria-*` attributes, `.react-aria-*`). **Do NOT add `data-baseweb` selectors** — they no-op on 1.59. Inputs/dropdowns get their white-fill + single rounded orange border from the **app-wide `stSelectbox` / `stNumberInput` / `stTextInput` / `stTextArea` / `stDateInput` rules in `theme.py`** (colour-only border, never width — a forced width makes zero-width reset borders on outer wrappers show as a second box). See memory `streamlit-159-only`.
 
 ## Changelog
+### 2026-09-03 — Home "Avg absolute accuracy" KPI rounded to whole percent
+- `page_home()` ([app.py](portal/app.py) `mapa_str`): `f"{m:.1f}"` → **`f"{m:.0f}"`**, so the card reads `99/97/95/94%` instead of `98.7/97.1/95.3/94.3%`. Display only — the per-horizon MAPA averages themselves are unchanged.
+
 ### 2026-09-03 — Accuracy tables rolled to Wk 2026-08-30; Mundra completed; single sheet per workbook
 *Data-repo only (`dashboard-data` `e5100e7`) — no frontend code changed. `HEADLINE_SHEET` /
 `ACC_FILES` / `_read_accuracy` all keep working as-is.*

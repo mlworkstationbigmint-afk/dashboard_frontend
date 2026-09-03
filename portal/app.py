@@ -903,7 +903,7 @@ def page_home():
             if k["mapa"] is not None:
                 mapas.append(k["mapa"])
         mapa_by_horizon.append(sum(mapas) / len(mapas) if mapas else None)
-    mapa_str = "/".join(f"{m:.1f}" if m is not None else "-" for m in mapa_by_horizon) + "%"
+    mapa_str = "/".join(f"{m:.0f}" if m is not None else "-" for m in mapa_by_horizon) + "%"
     horizon_label = "/".join(f"{w}W" for w in horizons)
 
     with st.container(key="bm_home_kpis"):     # stable anchor for the analyst walkthrough (tour.py)
