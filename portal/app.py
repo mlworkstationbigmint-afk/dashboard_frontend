@@ -947,6 +947,9 @@ def page_home():
 
 # Per-product forecast rationales (Momentum / Call / Rationale), keyed by the product name as in
 # dl.STEEL_PRODUCTS. Products without an entry fall back to "_default".
+# Written against forecast_forward.xlsx as of the 2026-09-06 actual (12-week path to 2026-11-29) and
+# BigMint's Sep-Nov 2026 monthly forecast rationale (data cutoff 31 Aug 2026). Refresh the quoted
+# levels whenever the forward file rolls to a new week.
 RATIONALES = {
     "_default": (
         "<b>Demand</b> &mdash; <i>placeholder.</i> End-use demand drivers (construction, auto, infra "
@@ -957,59 +960,143 @@ RATIONALES = {
         "market sentiment.<br>"
         "<b>Net view</b> &mdash; <i>placeholder.</i> How the above nets out into the 12-week direction shown above."
     ),
-    "Rebar BF Mumbai": (
-        "<b>₹52,000 &rarr; dips to ~₹48,200, rebounds to ₹53,122.</b><br>"
-        "<b>Pulling down (near-term)</b> &mdash; Sharp ₹8,000 correction still working through; monsoon "
-        "construction lull caps site demand and keeps trade buyers destocking rather than restocking.<br>"
-        "<b>Holding up / recovery (late horizon)</b> &mdash; Blast-furnace cost floor (iron ore + coking coal) "
-        "limits how far it can fall; as monsoon eases and pre-festive restocking begins in September, demand "
-        "firms → the model's rebound into wk12.<br>"
-        "<b>Net</b> &mdash; Correction extends a few more weeks, bottoms mid-monsoon, then recovers with "
-        "seasonal demand. High conviction on the fall, lower on the timing of the bounce."
-    ),
-    "Rebar IF Mumbai": (
-        "<b>₹45,896 &rarr; flat, then up to ₹47,262.</b><br>"
-        "<b>Pulling down</b> &mdash; Same monsoon demand softness; the down-move that ran through Q2 is still "
-        "the dominant backdrop.<br>"
-        "<b>Holding up</b> &mdash; The fall has already flattened (last three weeks near-flat) — scrap-linked "
-        "(induction-route) cost floor is holding; mild post-monsoon demand pickup supports the gentle "
-        "late-horizon lift.<br>"
-        "<b>Net</b> &mdash; Basing near ₹46k, then a soft ~3% recovery. Near-term flat is well-supported; the "
-        "size of the rebound is the soft part."
-    ),
-    "Rebar IF Raipur": (
-        "<b>₹42,175 &rarr; range-bound ₹42,000–42,900.</b><br>"
-        "<b>Pulling down</b> &mdash; Monsoon caps construction demand in the central region; no fresh demand "
-        "trigger.<br>"
-        "<b>Holding up</b> &mdash; Prices have found a floor ~₹42k — sponge/scrap input costs underpin it and "
-        "prevent further slide.<br>"
-        "<b>Net</b> &mdash; Consolidation, slight early up-bias fading to flat. This is the &quot;nothing "
-        "moves&quot; call — cost floor and weak demand roughly balance."
-    ),
-    "Structure (IF Raipur)": (
-        "<b>₹47,767 &rarr; steady climb to ₹49,680.</b><br>"
-        "<b>Pulling down (near-term)</b> &mdash; Monsoon weakness on structurals (infra/fabrication) keeps the "
-        "first few weeks flat.<br>"
-        "<b>Holding up</b> &mdash; The correction is clearly decelerating; cost floor plus early pre-festive "
-        "infra/fabrication restocking drives a steady ~4% recovery through September.<br>"
-        "<b>Net</b> &mdash; Bottoming then a slow, well-supported climb — the most consistent up-call in the "
-        "set."
-    ),
     "HRC": (
-        "<b>₹58,250 &rarr; gentle grind up to ₹60,324.</b><br>"
-        "<b>Pulling down</b> &mdash; Very little — a soft ₹450 drift; flats are less exposed to the monsoon "
-        "construction cycle.<br>"
-        "<b>Holding up</b> &mdash; Stable auto/manufacturing/appliance demand plus firm import-parity levels "
-        "support a slow grind higher.<br>"
-        "<b>Net</b> &mdash; Direction up is reasonable off a very stable base (~+3.6%); magnitude is the less "
-        "certain part."
+        "<b>₹62,000 &rarr; slow grind up to ₹63,500.</b><br>"
+        "<b>Holding up</b> &mdash; A hard cost floor: premium hard coking coal at $280/t CNF Paradip and met "
+        "coke at ₹37,000/t ex-Jajpur, a two-year high. Mills raised HRC and CRC by ₹500-750/t through August "
+        "while filling only about three-quarters of traders' booked volumes, so spot firmed on allocation "
+        "rather than on consumption.<br>"
+        "<b>Pulling down</b> &mdash; Imports. Monthly HRC arrivals of 340,000 t (+31% m-o-m) with a further "
+        "~138,000 t of bulk due by end-September, while the EU Oct-Dec quota is fully booked and the export "
+        "valve narrows. Rizhao is flat at $495/t FOB and the Black Sea at $530/t, so every rupee of domestic "
+        "gain widens the gap that arriving cargo exists to close.<br>"
+        "<b>Net</b> &mdash; Up ₹1,500 over 12 weeks. The cost-led direction is well supported; the mid-horizon "
+        "plateau is the soft part of the call."
     ),
     "HR Plate": (
-        "<b>₹57,600 &rarr; sideways, ends ~₹57,567.</b><br>"
-        "<b>Pulling down</b> &mdash; Mild demand softness (project/fabrication) keeps a lid on any rally.<br>"
-        "<b>Holding up</b> &mdash; Import parity and stable manufacturing offtake put a floor under it.<br>"
-        "<b>Net</b> &mdash; Balanced — supply, demand and cost roughly offset, so it stays range-bound with no "
-        "net move over 12 weeks."
+        "<b>₹62,400 &rarr; peaks ₹63,900 (wk2), fades back to ₹62,600.</b><br>"
+        "<b>Holding up</b> &mdash; Coil pass-through. Plate assessments rose ₹1,000/t week-on-week into "
+        "end-August as mills lifted offers for new bookings and material reached traders more slowly than it "
+        "was dispatched, leaving commonly traded grades and thicknesses short and sellers with pricing power.<br>"
+        "<b>Pulling down</b> &mdash; That tightness is distribution timing, not capacity, and it unwinds once "
+        "the pipeline refills. Finished-flat imports at 0.29 mnt have doubled in six months and China supplies "
+        "~79% of plate arrivals, which caps rather than drives the price.<br>"
+        "<b>Net</b> &mdash; Front-loaded firmness, then flat: +₹200 over the full 12 weeks. The near-term rise "
+        "is evidenced; the fade assumes HRC stalls, which is the weaker half."
+    ),
+    "Rebar BF Mumbai": (
+        "<b>₹57,000 &rarr; spikes to ₹59,350 (wk2), then slides to ₹55,250.</b><br>"
+        "<b>Holding up (near-term)</b> &mdash; Coking coal ran $236 &rarr; $282/t CNF Paradip inside three "
+        "weeks and settled at $280/t, a record for the index; met coke reached ₹37,000/t. Mills on maintenance "
+        "refused fresh bookings and raised rebar by up to ₹1,000/t.<br>"
+        "<b>Pulling down (late horizon)</b> &mdash; The BF-over-IF premium widened from ₹5,600/t to ₹6,400/t "
+        "through August, and IF supplies 65-70% of the Indian rebar market &mdash; at that gap demand migrates. "
+        "The back half of the path assumes coal relief and diverted capacity returning.<br>"
+        "<b>Net</b> &mdash; Cost-led spike, then give-back to ₹1,750 below spot. Near-term direction is secure; "
+        "the reversal fights a seasonal record that is positive in 6 of the last 10 Octobers."
+    ),
+    "Rebar IF Mumbai": (
+        "<b>₹49,862 &rarr; flat three weeks, then drifts to ₹47,550.</b><br>"
+        "<b>Holding up</b> &mdash; Metallics repriced hard in August: Raipur sponge +11.9% to ₹26,813/t (spot "
+        "₹29,700/t, a two-year high), Mumbai HMS +5.7% to ₹33,533/t, billet and ingot both up ~5%. Imported "
+        "scrap at a ₹1,000-1,500/t premium is unviable, so mills are bidding for domestic feed. Mill stocks are "
+        "~8 days with 3-5 days of order visibility.<br>"
+        "<b>Pulling down</b> &mdash; Buyer resistance is already visible upstream &mdash; sponge trade fell to "
+        "~8,000 t from 22,000 t a session earlier. With no inventory cushion, a demand pause transmits into "
+        "price within days.<br>"
+        "<b>Net</b> &mdash; The August cost push is in the price; from here a slow 4.6% give-back. Flat "
+        "near-term is well supported, the size of the fall less so."
+    ),
+    "Rebar IF Raipur": (
+        "<b>₹44,692 &rarr; dips to ₹43,550 (wk6), recovers to ₹45,850.</b><br>"
+        "<b>Holding up</b> &mdash; The steepest cost floor in the country: non-coking coal ex-Bilaspur went "
+        "from ₹5,650/t in July to ₹7,400/t on 27 August, washed coal to ₹7,600/t FOR Raipur, SECL G8 premiums "
+        "from 112.7% to 119.5% on allocated volumes cut from 72,000 t to 43,000 t, and PELLEX to ₹10,800/t.<br>"
+        "<b>Pulling down</b> &mdash; Central India is the weakest region: the discount to Mumbai widened to "
+        "₹5,342/t in August, and Raipur's own semis complex (billet and ingot, correlating 0.99) is forecast "
+        "lower into October.<br>"
+        "<b>Net</b> &mdash; A shallow V ending ₹1,158 above spot. The October dip follows the semis; the "
+        "November recovery runs against a record where only 4 of the last 10 Novembers rose."
+    ),
+    "Structure (IF Raipur)": (
+        "<b>₹52,033 &rarr; ₹53,250 (wk2), holds ~₹52,550, ends ₹53,250.</b><br>"
+        "<b>Holding up</b> &mdash; The same Raipur cost floor as rebar, plus a project-led order book. Heavy "
+        "structural trade references jumped to ₹47,000-47,500/t exw in the week to 29 August from "
+        "₹45,000-45,500/t a week earlier, and late-August awards &mdash; Adani Energy Solutions' ₹4,700 cr "
+        "Satara transmission project, L&amp;T's AIIMS Madurai order, Afcons at ₹1,918 cr &mdash; are "
+        "section-intensive and execute post-monsoon.<br>"
+        "<b>Pulling down</b> &mdash; The buyer is a project buyer and can wait; there is no retail absorption "
+        "to lean on. The structure-over-rebar premium at ₹6,867/t is the widest of the year and stopped "
+        "widening in August.<br>"
+        "<b>Net</b> &mdash; The flattest path in the set, +₹1,217 over 12 weeks. Cost floor and patient demand "
+        "roughly offset. The risk is November: only 2 up-years in the last 10."
+    ),
+    "HRC Mundra": (
+        "<b>₹62,450 &rarr; slow grind up to ₹63,950.</b><br>"
+        "<b>Mundra basis</b> &mdash; Tracks Mumbai HRC one-for-one at a flat +₹450/t delivered west-coast "
+        "premium; there is no separate price discovery at Mundra, so the direction is entirely the coil call.<br>"
+        "<b>Holding up</b> &mdash; Coking coal at $280/t CNF Paradip and met coke at ₹37,000/t floor the coil "
+        "price; mills raised HRC and CRC by ₹500-750/t in August while filling only ~75% of traders' bookings. "
+        "Locally, Kutch absorbs coil through the Khavda renewable park (15.5 GW built of 37.35 GW planned) and "
+        "continuing Mundra port and SEZ capex.<br>"
+        "<b>Pulling down</b> &mdash; Mundra is a first-landfall import gateway: ~138,000 t of bulk HRC due by "
+        "end-September lands here first, against a flat Rizhao at $495/t FOB, and AM/NS Hazira's 9&rarr;15 mt "
+        "expansion keeps Gujarat structurally long flats.<br>"
+        "<b>Net</b> &mdash; Up ₹1,500, direction inherited from Mumbai. The Mundra-specific risk is basis "
+        "compression from import arrivals, not price direction."
+    ),
+    "HR Plate Mundra": (
+        "<b>₹63,150 &rarr; peaks ₹64,650 (wk2), fades back to ₹63,350.</b><br>"
+        "<b>Mundra basis</b> &mdash; Heavy plate 20-40mm at a flat +₹750/t over the Mumbai assessment &mdash; "
+        "freight into Kutch plus the thickness premium, not an independent market.<br>"
+        "<b>Holding up</b> &mdash; BigMint assessed 20-40mm Mumbai at ₹62,500/t for the week to 26 August, up "
+        "₹1,000/t week-on-week, as mills lifted offers and slow mill-to-trader movement left common thicknesses "
+        "short. Heavy plate is a fabrication and project grade, and Kutch's transmission, wind-tower and port "
+        "work sits squarely in that demand.<br>"
+        "<b>Pulling down</b> &mdash; The tightness is distribution timing, not capacity. Finished-flat imports "
+        "have doubled in six months with China at ~79% of plate arrivals, and Mundra sees that cargo first.<br>"
+        "<b>Net</b> &mdash; Front-loaded, then flat: +₹200 net. DMISP melt-and-pour rules on HS 7208-7212 "
+        "support domestic realisations in publicly funded work."
+    ),
+    "Rebar BF Mundra": (
+        "<b>₹59,025 &rarr; spikes to ₹61,450 (wk2), then slides to ₹57,200.</b><br>"
+        "<b>Mundra basis</b> &mdash; Mumbai BF rebar &times;1.0355, a ~3.6% delivered premium for the haul into "
+        "Kutch, where there is no local blast-furnace supply.<br>"
+        "<b>Holding up</b> &mdash; Coking coal ran $236 &rarr; $282/t CNF Paradip in three weeks and settled at "
+        "$280/t, a record for the index; met coke reached ₹37,000/t ex-Jajpur. Mills on maintenance refused "
+        "fresh bookings and raised rebar by up to ₹1,000/t. Kutch's renewable, transmission and port pipeline "
+        "is the firmest regional demand in the set.<br>"
+        "<b>Pulling down</b> &mdash; Delivered Mundra, BF sits only ₹5,800/t over IF against ₹7,138/t in "
+        "Mumbai, because IF carries the wider freight premium &mdash; so BF is relatively competitive here, but "
+        "the late-horizon path still assumes coal relief and diverted capacity returning.<br>"
+        "<b>Net</b> &mdash; Cost-led spike, then give-back to ₹1,800 below spot. A coal turn is the downside; "
+        "the Kutch project pipeline is the upside."
+    ),
+    "Rebar IF Mundra": (
+        "<b>₹53,225 &rarr; flat three weeks, then drifts to ₹50,750.</b><br>"
+        "<b>Mundra basis</b> &mdash; Mumbai IF rebar &times;1.0674, the widest delivered premium in the Mundra "
+        "set at ~6.7%, because Kutch has no induction capacity and material is railed in from Mumbai and "
+        "central India. Freight is the one genuinely Mundra-specific driver.<br>"
+        "<b>Holding up</b> &mdash; Metallics repriced hard in August: Raipur sponge +11.9% to ₹26,813/t (spot "
+        "₹29,700/t, a two-year high), Mumbai HMS +5.7% to ₹33,533/t, billet and ingot both up ~5%. Imported "
+        "scrap at a ₹1,000-1,500/t premium keeps mills on domestic feed; mill stocks are ~8 days.<br>"
+        "<b>Pulling down</b> &mdash; Buyer resistance is showing upstream (sponge trade ~8,000 t against "
+        "22,000 t a session earlier), and at ₹53,225/t delivered, IF sits only ₹5,800/t under BF Mundra against "
+        "₹7,138/t in Mumbai &mdash; the cheap-alternative argument is weaker here than on the west coast.<br>"
+        "<b>Net</b> &mdash; Flat, then a 4.6% give-back. The basis widens if road and rail costs rise."
+    ),
+    "Structure Mundra": (
+        "<b>₹53,333 &rarr; ₹54,550 (wk2), holds ~₹53,850, ends ₹54,550.</b><br>"
+        "<b>Mundra basis</b> &mdash; Raipur IF angle plus a flat ₹1,300/t &mdash; essentially the "
+        "central-India-to-Kutch freight; no local section rolling.<br>"
+        "<b>Holding up</b> &mdash; Raipur's cost floor (coal ex-Bilaspur ₹7,400/t, washed ₹7,600/t FOR, PELLEX "
+        "₹10,800/t) meets the most section-intensive demand in the country at this end: the Khavda park's "
+        "37.35 GW plan (15.5 GW built, Kutch wind alone 8.2 GW), transmission awards including Adani Energy "
+        "Solutions' ₹4,700 cr Satara project, and continuing Mundra port and SEZ work.<br>"
+        "<b>Pulling down</b> &mdash; Project buyers can defer, and the structure-over-rebar premium at "
+        "₹6,867/t in Raipur is the widest of the year and stopped widening in August.<br>"
+        "<b>Net</b> &mdash; The flattest path in the set, +₹1,217. Best-supported demand story of the eleven; "
+        "the risk is seasonal &mdash; only 2 of the last 10 Novembers rose."
     ),
 }
 

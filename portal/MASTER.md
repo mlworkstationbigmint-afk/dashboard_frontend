@@ -47,7 +47,7 @@ Users live in the **Neon `users` table**, not in code. Passwords are **argon2id*
 
 ## Steel products (catalog — 11)
 Mumbai/Raipur: HRC · HR Plate · Rebar BF Mumbai · Rebar IF Mumbai · Rebar IF Raipur · Structure (IF Raipur)
-Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · Rebar IF Mundra · Structure Mundra
+Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · Rebar IF Mundra · Structure Mundra — all five are **derived** in `forecast_forward.xlsx` from a Mumbai/Raipur parent (flat ₹ offset or a ratio); see the 2026-09-11 rationale entry for the exact bases.
 > Full catalog in `data_loader.STEEL_PRODUCTS`. Since 2026-07-07 each **role** sees an admin-chosen subset (Admin tab → Commodity access); a role with nothing saved sees all. Admins always see all. Products group (HRC / HR Plate / Rebar / Structure) with a per-group location dropdown via `app.py` `_product_group` + `FORECAST_LOCATION_LABELS`.
 
 ## File map  (everything under `dashboard/portal/`)
@@ -134,6 +134,13 @@ Mundra (added 2026-07-10): HRC Mundra · HR Plate Mundra · Rebar BF Mundra · R
 - **⚠ Streamlit 1.59 ONLY (react-aria) — no more baseweb (2026-07-18).** The app targets **streamlit 1.59.0** (pinned in root + `portal/requirements.txt`); the deployment runs it too. As of 2026-07-18 **all dead 1.58 `data-baseweb="…"` / `stBaseButton-…Active` selectors were removed** — the CSS keys ONLY on 1.59 markup. **Rule:** style via **Streamlit-owned markup** (testids like `[data-testid="stTabs"]` / `stTab` / `stSelectbox` / `stNumberInput`, `st-key-*` classes, `role=`/`aria-*` attributes, `.react-aria-*`). **Do NOT add `data-baseweb` selectors** — they no-op on 1.59. Inputs/dropdowns get their white-fill + single rounded orange border from the **app-wide `stSelectbox` / `stNumberInput` / `stTextInput` / `stTextArea` / `stDateInput` rules in `theme.py`** (colour-only border, never width — a forced width makes zero-width reset borders on outer wrappers show as a second box). See memory `streamlit-159-only`.
 
 ## Changelog
+### 2026-09-11 — Forecast rationales rewritten for Sep-Nov 2026; all 11 products covered (Mundra no longer `_default`)
+- `RATIONALES` in [app.py](portal/app.py) (~L948) rewritten against **`forecast_forward.xlsx` as of the 2026-09-06 actual** (12-week path to 2026-11-29) and **BigMint's Sep-Nov 2026 monthly forecast rationale** (`MONTHLY_FORECAST_GENERATION/rationale/BigMint_Forecast_Rationales_Sep-Nov2026.md`, cutoff 31 Aug 2026). Every quoted level is the dashboard's own last-actual / wk1 / wk12 (rounded as the cards round, nearest ₹50); drivers, spreads and seasonal counts come from the monthly document.
+- **The six Mumbai/Raipur entries were replaced** (the old ones quoted July levels — ₹52,000 BF Mumbai etc.). Same `Pulling down / Holding up / Net` shape, same bold `₹price → path` lead line.
+- **The five Mundra products now have their own entries** — they no longer fall back to `_default`. Each opens with a `Mundra basis` line stating the derivation carried in `forecast_forward.xlsx`: HRC Mundra = HRC **+₹450/t**, HR Plate Mundra (20-40mm) = HR Plate **+₹750/t**, Rebar BF Mundra = Rebar BF Mumbai **×1.03553**, Rebar IF Mundra = Rebar IF Mumbai **×1.06744**, Structure Mundra = Structure IF Raipur **+₹1,300/t**. Mundra-specific content (Khavda/Kutch renewable + transmission pipeline, Mundra as a first-landfall import gateway, AM/NS Hazira 9→15 mt) is from web research, not from the monthly document, which has no Mundra series.
+- `_default` kept as the fallback for any product added later. Entries run 115-151 words (the old set was ~90); they render in the rail card (`_rationale_card_html`) and the full-width section (`render_rationale`) unchanged.
+- **Refresh trigger:** the quoted levels are week-stamped. When `forecast_forward.xlsx` rolls, re-read the Summary + per-product sheets and restate the lead lines.
+
 ### 2026-09-03 — Home "Avg absolute accuracy" KPI rounded to whole percent
 - `page_home()` ([app.py](portal/app.py) `mapa_str`): `f"{m:.1f}"` → **`f"{m:.0f}"`**, so the card reads `99/97/95/94%` instead of `98.7/97.1/95.3/94.3%`. Display only — the per-horizon MAPA averages themselves are unchanged.
 
@@ -495,7 +502,7 @@ Batch of UI edits ([app.py](portal/app.py) / [theme.py](portal/theme.py) / [tour
 
 ### 2026-07-16 (latest++++++++++++++++++++++) — Forecast rationales: real per-product commentary replaces the placeholder
 - `RATIONALES` in [app.py](portal/app.py) (~L789) now has real **Pulling down / Holding up / Net** entries (with a bold `₹price → descriptor` lead line) for the six Mumbai/Raipur products: **Rebar BF Mumbai, Rebar IF Mumbai, Rebar IF Raipur, Structure (IF Raipur), HRC, HR Plate**. Keyed by the `dl.STEEL_PRODUCTS` name. Framing is demand/cost-driver narrative (monsoon lull, cost floor, pre-festive restocking, import parity), not model-ensemble mechanics.
-- The Mundra products + anything unlisted still fall back to `_default` (still the old Demand/Supply/Trade/Net-view placeholder). Rendered as-is in the rationale card/section (`render_rationale` / `_rationale_card_html`).
+- The Mundra products + anything unlisted still fall back to `_default` (still the old Demand/Supply/Trade/Net-view placeholder). Rendered as-is in the rationale card/section (`render_rationale` / `_rationale_card_html`). ***Superseded 2026-09-11 — all 11 products now have real entries; see that changelog entry.***
 
 ### 2026-07-16 (latest+++++++++++++++++++++) — Cost Head BF: element rename + per-plant Southern/Eastern defaults
 - **Renamed** BF element "Coking Coal / Met Coke / PCI" → **"Coking Coal(PHCC inc PCI)"** (`BF_ELEMENTS`, [calc_cost.py](portal/calculators/calc_cost.py)).
