@@ -2112,6 +2112,17 @@ def page_methodology():
         st.markdown(hz, unsafe_allow_html=True)
         st.markdown("<div class='bm-footnote'>This dashboard surfaces the <b>12-week</b> horizon on the "
                     "headline Ensemble (Weighted Mean) line.</div>", unsafe_allow_html=True)
+    # How weeks are counted — shown to every role. Dashboard data rows are dated by the week-ending Sunday.
+    st.markdown(
+        "<div class='bm-footnote'><b>How weeks are counted.</b> A week runs <b>Monday to Sunday</b>; its price "
+        "is the average of BigMint's daily assessments in that week, and tables and charts date it by its "
+        "<b>ending Sunday</b>. Only completed weeks are used as history and to score accuracy &mdash; the "
+        "current week's spot is a running average until Sunday, so it can still change. A new 12-week "
+        "forecast is issued every <b>Monday</b>, and week 1 is the week that has just started: on Monday "
+        "19 Oct 2026 the last actual is 12&ndash;18 Oct (dated 18 Oct) and the forecast starts with "
+        "19&ndash;25 Oct (dated 25 Oct).</div>",
+        unsafe_allow_html=True,
+    )
 
     st.write("")
     theme.section_title("Transparency &amp; governance", theme.icon("notes"))
