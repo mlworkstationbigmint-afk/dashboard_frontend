@@ -937,21 +937,21 @@ def page_home():
                     st.session_state.page = target
                     st.rerun()
 
-    # one row under the module cards: Methodology banner (if visible to this role) + the Flat / Long
-    # forecast report downloads (PDFs in the private repo, dl.REPORT_FILES; disabled when absent).
-    show_meth = "Methodology" in allowed_pages
-    row = st.columns([2.2, 1, 1] if show_meth else [1, 1], gap="small")
-    if show_meth:
-        with row[0]:
-            if st.button("**Methodology** — how the forecasts are built: data, models, ensemble & accuracy. *View →*",
-                         key="home_methodology", icon=":material/schema:", width="stretch"):
-                st.session_state.page = "Methodology"
-                st.rerun()
+    # Flat / Long forecast report downloads: two equal wide buttons in one row under the module cards
+    # (PDFs in the private repo, dl.REPORT_FILES; disabled when absent).
     sig = dl.data_signature()          # repo HEAD: a replaced PDF is re-fetched after the push
-    for col, (kind, sub) in zip(row[-2:], (("Flat", "HRC · HR Plate · CRC · GP · PPGI"),
-                                           ("Long", "Rebar · BF & IF routes"))):
-        _deck_button(col, f"**{kind} Products Report** {sub} *Download ↓*", dl.REPORT_FILES[kind], sig,
-                     "application/pdf", ":material/download:", f"home_report_{kind.lower()}")
+    for col, (kind, sub) in zip(st.columns(2, gap="small"), (("Flat", "HRC · HR Plate · CRC · GP · PPGI"),
+                                                             ("Long", "Rebar · BF & IF routes"))):
+        _deck_button(col, f"**{kind} Products Forecast Report** — {sub} *Download ↓*", dl.REPORT_FILES[kind],
+                     sig, "application/pdf", ":material/download:", f"home_report_{kind.lower()}",
+                     width="stretch")
+
+    # full-width banner button spanning the module cards -> Methodology (if visible to this role)
+    if "Methodology" in allowed_pages:
+        if st.button("**Methodology** — how the forecasts are built: data, models, ensemble & accuracy. *View →*",
+                     key="home_methodology", icon=":material/schema:", width="stretch"):
+            st.session_state.page = "Methodology"
+            st.rerun()
     theme.footer()
 
 
@@ -1428,17 +1428,17 @@ def page_forecasting():
 _PPT_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
 
-def _deck_button(col, label, path, sig, mime, icon, key):
+def _deck_button(col, label, path, sig, mime, icon, key, width="content"):
     """A live download button for an uploaded deck, or a disabled button when absent."""
     if not path:
-        col.button(label, key=key, disabled=True, icon=icon)
+        col.button(label, key=key, disabled=True, icon=icon, width=width)
         return
     data = dl.fetch_call_file(path, sig)
     if data is None:
-        col.button(label, key=key, disabled=True, icon=icon, help="File unavailable")
+        col.button(label, key=key, disabled=True, icon=icon, help="File unavailable", width=width)
         return
     col.download_button(label, data=data, file_name=os.path.basename(path),
-                        mime=mime, key=key, icon=icon)
+                        mime=mime, key=key, icon=icon, width=width)
 
 
 def _call_date_label(call) -> str:
