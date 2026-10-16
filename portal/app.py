@@ -2215,9 +2215,12 @@ def sentiment_chart(weeks, sel, t):
         fig.add_hline(y=y, line=dict(color="#94a3b8", width=1, dash="dot"))
     _style_fig(fig, height=380, money=False)
     lim = min(1.0, max(0.5, max(abs(w["net"]) for w in weeks) + 0.1))   # symmetric, zero centred
+    # Explicit ticks: plotly's auto ticks drifted (0 rendered as -8.88e-17) and tickformat wasn't applied.
+    ticks = [round(i * 0.2, 2) for i in range(-5, 6) if abs(i * 0.2) <= lim + 1e-9]
     fig.update_layout(
         bargap=0.25, showlegend=True,
-        yaxis=dict(range=[-lim, lim], tickformat="+.1f", zeroline=True, zerolinecolor="#cbd5e1",
+        yaxis=dict(range=[-lim, lim], tickvals=ticks, ticktext=[f"{v:+.2f}" if v else "0.00" for v in ticks],
+                   zeroline=True, zerolinecolor="#cbd5e1",
                    title_text="Net sentiment", title_font=dict(size=11, color="#64748b")),
         yaxis2=dict(overlaying="y", side="right", showgrid=False, tickprefix="INR ", tickformat=",.0f",
                     title_text="HRC Mumbai, per MT", title_font=dict(size=11, color="#64748b"),
