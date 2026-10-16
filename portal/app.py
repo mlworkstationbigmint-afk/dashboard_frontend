@@ -937,12 +937,21 @@ def page_home():
                     st.session_state.page = target
                     st.rerun()
 
-    # full-width banner button spanning the module cards -> Methodology (if visible to this role)
-    if "Methodology" in allowed_pages:
-        if st.button("**Methodology** — how the forecasts are built: data, models, ensemble & accuracy. *View →*",
-                     key="home_methodology", icon=":material/schema:", width="stretch"):
-            st.session_state.page = "Methodology"
-            st.rerun()
+    # one row under the module cards: Methodology banner (if visible to this role) + the Flat / Long
+    # forecast report downloads (PDFs in the private repo, dl.REPORT_FILES; disabled when absent).
+    show_meth = "Methodology" in allowed_pages
+    row = st.columns([2.2, 1, 1] if show_meth else [1, 1], gap="small")
+    if show_meth:
+        with row[0]:
+            if st.button("**Methodology** — how the forecasts are built: data, models, ensemble & accuracy. *View →*",
+                         key="home_methodology", icon=":material/schema:", width="stretch"):
+                st.session_state.page = "Methodology"
+                st.rerun()
+    sig = dl.data_signature()          # repo HEAD: a replaced PDF is re-fetched after the push
+    for col, (kind, sub) in zip(row[-2:], (("Flat", "HRC · HR Plate · CRC · GP · PPGI"),
+                                           ("Long", "Rebar · BF & IF routes"))):
+        _deck_button(col, f"**{kind} Products Report** {sub} *Download ↓*", dl.REPORT_FILES[kind], sig,
+                     "application/pdf", ":material/download:", f"home_report_{kind.lower()}")
     theme.footer()
 
 

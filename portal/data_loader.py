@@ -427,6 +427,9 @@ def summary_row(summary: pd.DataFrame, ff_label: str):
 # ===========================================================================
 ANALYST_JSON = "analyst_calls/calls.json"
 ANALYST_FILES_DIR = "analyst_calls/files"
+# Home-page forecast report downloads (private repo; replace the PDF at the same path each cycle).
+REPORT_FILES = {"Flat": "reports/BigMint_Forecast_Report_Flat_Product.pdf",
+                "Long": "reports/BigMint_Forecast_Report_Long_Product.pdf"}
 ANALYST_SECTIONS = ["Flats", "Longs", "Raw materials", "Imports & exports", "Outlook"]
 
 # Shown when no private store is configured/reachable (plain text — escaped at render).
