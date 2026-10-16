@@ -608,6 +608,25 @@ def save_analyst_calls(calls: list) -> None:
     fetch_call_file.clear()
 
 
+# --- Sentiment Meter (admin-only test tab) ----------------------------------------------------
+# Written by the sentiment project's hrc_sentiment.py: weekly HRC news sentiment for one year +
+# each week's top headlines. ponytail: read from the sibling dashboard-data checkout on THIS machine
+# only (admin testing, not deployed); fetch it from the private repo (_gh_get_bytes) before deploying.
+SENTIMENT_JSON = os.path.join(os.path.dirname(BASE), "dashboard-data", "sentiment", "hrc_sentiment_meter.json")
+
+
+@st.cache_data(show_spinner=False)
+def _read_sentiment(path: str, mtime: float) -> dict:
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_sentiment_meter():
+    """{'market','year','net_threshold','last_news','weeks':[...],'articles':{week_start:[...]}} or None."""
+    p = SENTIMENT_JSON
+    return _read_sentiment(p, _mtime(p)) if os.path.exists(p) else None
+
+
 if __name__ == "__main__":
     # Self-check for _sheet_metrics — one row per branch of the sheet's Delta/Directional formulas.
     # Run: python portal/data_loader.py

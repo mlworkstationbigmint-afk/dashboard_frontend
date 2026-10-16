@@ -433,7 +433,8 @@ NAV = [
 def top_nav():
     allowed = set(theme.profile_for(user.get("role"))["pages"])   # role-visible pages
     items = [it for it in NAV if it[0] in allowed]
-    if user.get("role") == "Admin":                       # Admin tab is admin-only
+    if user.get("role") == "Admin":                       # Sentiment + Admin tabs are admin-only
+        items.append(("Sentiment Meter", "Sentiment", "speed"))
         items.append(("Admin", "Admin", "admin_panel_settings"))
     widths = [1] * len(items)                             # equal-width buttons -> equal gaps, centred
     cols = st.columns(widths)
@@ -2149,6 +2150,141 @@ def page_methodology():
 
 
 # ---------------------------------------------------------------------------
+# SENTIMENT METER (admin-only, testing — data from dl.load_sentiment_meter())
+# ---------------------------------------------------------------------------
+SENT_COLORS = {"Positive": theme.SUCCESS, "Negative": theme.DANGER, "Neutral/Stable": "#94A3B8", "Neutral": "#94A3B8"}
+
+SENT_CSS = """
+<style>
+.bm-sent-head { font-weight:700; font-size:15px; margin:4px 0 8px; padding-bottom:6px; border-bottom:3px solid; }
+.bm-sent-item { background:#fff; border:1px solid #e6ebf3; border-radius:10px; padding:10px 12px; margin-bottom:8px; }
+.bm-sent-item .meta { font-size:11.5px; color:#64748b; margin-bottom:3px; }
+.bm-sent-item .t { font-size:13.5px; font-weight:600; color:#0f172a; line-height:1.35; }
+.bm-sent-item a { font-size:12px; font-weight:600; text-decoration:none; }
+.bm-sent-verdict { text-align:center; font-size:13px; color:#475569; margin-top:-6px; }
+.bm-sent-verdict b { font-size:18px; }
+</style>
+"""
+
+
+def _short_range(start, end):
+    a, b = dt.date.fromisoformat(start), dt.date.fromisoformat(end)
+    return f"{a.day} {a:%b} – {b.day} {b:%b}"
+
+
+def sentiment_gauge(net, t):
+    """Half-dial meter, -1 (left, red) .. 0 (top, neutral) .. +1 (right, green); the needle is the
+    week's net score = avg P(positive) − avg P(negative). ±t is the Positive/Negative verdict line."""
+    import plotly.graph_objects as go
+    fig = go.Figure(go.Indicator(
+        mode="gauge+number", value=net,
+        number=dict(valueformat="+.2f", font=dict(size=34, color=SENT_COLORS[
+            "Positive" if net > t else "Negative" if net < -t else "Neutral"])),
+        gauge=dict(axis=dict(range=[-1, 1], tickvals=[-1, -t, 0, t, 1],
+                             ticktext=["−1", f"−{t:g}", "0", f"+{t:g}", "+1"], tickfont=dict(size=11)),
+                   bar=dict(color="rgba(0,0,0,0)"),               # no fill bar: the threshold line is the needle
+                   steps=[dict(range=[-1, -0.5], color=theme.DANGER), dict(range=[-0.5, -t], color="#F2A39C"),
+                          dict(range=[-t, t], color="#E2E8F0"),
+                          dict(range=[t, 0.5], color="#9FD8B4"), dict(range=[0.5, 1], color=theme.SUCCESS)],
+                   threshold=dict(line=dict(color="#0f172a", width=5), thickness=1, value=net))))
+    for x, txt, c in ((0.06, "Negative", theme.DANGER), (0.5, "Neutral", "#64748b"), (0.94, "Positive", theme.SUCCESS)):
+        fig.add_annotation(x=x, y=1.02 if txt == "Neutral" else -0.08, xref="paper", yref="paper",
+                           text=f"<b>{txt}</b>", showarrow=False, font=dict(size=12, color=c))
+    fig.update_layout(height=270, margin=dict(l=28, r=28, t=36, b=26), paper_bgcolor="rgba(0,0,0,0)")
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+
+
+def sentiment_chart(weeks, sel, t):
+    """Dual axis: weekly net-score bars (left axis), coloured by verdict, selected week outlined, plus the
+    HRC Mumbai weekly price line (right axis; gaps where the price isn't out yet)."""
+    import plotly.graph_objects as go
+    x = [w["start"] for w in weeks]
+    fig = go.Figure(go.Bar(
+        x=x, y=[w["net"] for w in weeks], name="Net sentiment",
+        marker=dict(color=[SENT_COLORS[w["verdict"]] for w in weeks],
+                    opacity=[1 if w["start"] == sel else 0.55 for w in weeks],
+                    line=dict(color=["#0f172a" if w["start"] == sel else "rgba(0,0,0,0)" for w in weeks], width=2)),
+        customdata=[[w["week"], _short_range(w["start"], w["end"]), w["verdict"], w["count"]] for w in weeks],
+        hovertemplate="Week %{customdata[0]} (%{customdata[1]})<br>Net %{y:+.2f} · %{customdata[2]}"
+                      "<br>%{customdata[3]} news<extra></extra>"))
+    fig.add_trace(go.Scatter(
+        x=x, y=[w.get("hrc_mumbai") for w in weeks], name="HRC Mumbai (INR/t)", yaxis="y2", mode="lines+markers",
+        line=dict(color=theme.PRIMARY, width=2.5), marker=dict(size=5),
+        hovertemplate="HRC Mumbai INR %{y:,.0f}/t<extra></extra>"))
+    for y in (t, -t):
+        fig.add_hline(y=y, line=dict(color="#94a3b8", width=1, dash="dot"))
+    _style_fig(fig, height=380, money=False)
+    lim = min(1.0, max(0.5, max(abs(w["net"]) for w in weeks) + 0.1))   # symmetric, zero centred
+    fig.update_layout(
+        bargap=0.25, showlegend=True,
+        yaxis=dict(range=[-lim, lim], tickformat="+.1f", zeroline=True, zerolinecolor="#cbd5e1",
+                   title_text="Net sentiment", title_font=dict(size=11, color="#64748b")),
+        yaxis2=dict(overlaying="y", side="right", showgrid=False, tickprefix="INR ", tickformat=",.0f",
+                    title_text="HRC Mumbai, per MT", title_font=dict(size=11, color="#64748b"),
+                    automargin=True))
+    st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
+
+
+def _headline_list(items, title, color):
+    rows = [f"<div class='bm-sent-head' style='color:{color};border-color:{color}'>{title} ({len(items)})</div>"]
+    for a in items:
+        link = (f"<a href='{html.escape(a['url'])}' target='_blank' style='color:{color}'>Read more &rarr;</a>"
+                if a.get("url") else "")
+        p = a[{"Positive": "pos", "Negative": "neg", "Neutral": "neu"}[a["label"]]]
+        rows.append(f"<div class='bm-sent-item'><div class='meta'>{dt.date.fromisoformat(a['date']):%d %b %Y}"
+                    f" &middot; {html.escape(str(a.get('country') or ''))} &middot; {p:.0%} {a['label'].lower()}</div>"
+                    f"<div class='t'>{html.escape(a['title'])}</div>{link}</div>")
+    if not items:
+        rows.append("<div class='bm-sent-item'><div class='meta'>None this week.</div></div>")
+    st.markdown("".join(rows), unsafe_allow_html=True)
+
+
+def page_sentiment():
+    if user["role"] != "Admin":
+        st.error("This page is for admins only.")
+        theme.footer()
+        return
+    data = dl.load_sentiment_meter()
+    if not data or not data.get("weeks"):
+        st.info(f"No sentiment data found at `{dl.SENTIMENT_JSON}` — run `python hrc_sentiment.py` in the "
+                "sentiment project to write it.", icon=":material/info:")
+        theme.footer()
+        return
+    st.markdown(SENT_CSS, unsafe_allow_html=True)
+    weeks, t = data["weeks"], data["net_threshold"]
+    st.markdown(f"## {data['market']} market sentiment — {data['year']}")
+    st.caption(f"Every {data['market']} news item on BigMint is scored by two local LLMs for its likely effect on "
+               f"{data['market']} prices. A week's net score is the average P(positive) − P(negative): above "
+               f"+{t:g} is Positive, below −{t:g} Negative, otherwise Neutral. News up to {data['last_news']}.")
+
+    newest_first = weeks[::-1]
+    labels = [f"Week {w['week']} ({_short_range(w['start'], w['end'])})" for w in newest_first]
+    gcol, mcol = st.columns([2.1, 1], gap="large")
+    with mcol:
+        w = newest_first[labels.index(st.selectbox("Week", labels, key="sent_week"))]
+        sentiment_gauge(w["net"], t)
+        st.markdown(f"<div class='bm-sent-verdict'><b style='color:{SENT_COLORS[w['verdict']]}'>{w['verdict']}</b>"
+                    f"<br>{w['count']} news &middot; avg P(pos) {w['pos']:.0%} &middot; avg P(neg) {w['neg']:.0%}</div>",
+                    unsafe_allow_html=True)
+        if w["end"] > data["last_news"]:
+            st.caption(f"Week in progress — news up to {data['last_news']}.")
+    with gcol:
+        sentiment_chart(weeks, w["start"], t)
+
+    st.write("")
+    theme.section_title(f"Headlines — Week {w['week']} ({_short_range(w['start'], w['end'])})")
+    arts = data["articles"].get(w["start"], [])
+    neg_c, neu_c, pos_c = st.columns(3, gap="medium")
+    with neg_c:
+        _headline_list([a for a in arts if a["label"] == "Negative"], "Most negative", theme.DANGER)
+    with neu_c:
+        _headline_list([a for a in arts if a["label"] == "Neutral"], "Neutral", "#64748b")
+    with pos_c:
+        _headline_list([a for a in arts if a["label"] == "Positive"], "Most positive", theme.SUCCESS)
+    theme.footer()
+
+
+# ---------------------------------------------------------------------------
 # DISPATCH
 # ---------------------------------------------------------------------------
 PAGES = {
@@ -2159,12 +2295,13 @@ PAGES = {
     "Calculators": page_calculators,
     "Methodology": page_methodology,
     "Admin": page_admin,
+    "Sentiment Meter": page_sentiment,
 }
 # Gate the current page by the role's profile (fall back to Home for a hidden page,
 # e.g. a stale st.session_state.page after a role change). Home is in every profile.
 _allowed_pages = set(theme.profile_for(user.get("role"))["pages"])
 if user.get("role") == "Admin":
-    _allowed_pages.add("Admin")
+    _allowed_pages.update(("Admin", "Sentiment Meter"))
 if st.session_state.page not in _allowed_pages:
     st.session_state.page = "Home"
 PAGES.get(st.session_state.page, page_home)()
