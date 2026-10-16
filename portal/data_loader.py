@@ -31,6 +31,7 @@ PORTAL_DIR = os.path.dirname(os.path.abspath(__file__))              # <repo>/po
 # Data files as relative paths (identical in the private repo and the in-repo sample).
 FF_NAME = "forecast_forward.xlsx"
 LANDED_NAME = "landed_costs.xlsx"                  # weekly India duty-paid landed cost (Rebar/HRC sheets)
+SENTIMENT_REL = "sentiment/hrc_sentiment_meter.json"   # admin Sentiment tab (hrc_sentiment.py export_meter)
 # Accuracy tables keyed by FORECAST HORIZON (weeks ahead). 1 = the original next-week table
 # (Table_11); 4/8/12 are the back-tested longer-horizon runs. All 11 products in every one.
 ACC_FILES = {1:  "Accuracy_Table_11.xlsx",
@@ -88,7 +89,8 @@ def _fetch_private_data_dir(owner: str, repo: str, ref: str, token: str, sha: st
     rels = ((f"accuracy_tables/{FF_NAME}", True),
             (f"accuracy_tables/{LANDED_NAME}", True),
             *[(f"accuracy_tables/{fn}", w == 1) for w, fn in ACC_FILES.items()],
-            ("calculators/HRC.csv", True))
+            ("calculators/HRC.csv", True),
+            (SENTIMENT_REL, False))           # admin Sentiment tab; optional
     for rel, required in rels:
         url = f"https://api.github.com/repos/{owner}/{repo}/contents/{quote(rel)}?ref={at}"
         resp = requests.get(url, headers=headers, timeout=30)
@@ -608,13 +610,10 @@ def save_analyst_calls(calls: list) -> None:
     fetch_call_file.clear()
 
 
-# --- Sentiment Meter (admin-only test tab) ----------------------------------------------------
+# --- Sentiment Meter (admin-only tab) ---------------------------------------------------------
 # Written by the sentiment project's hrc_sentiment.py: weekly HRC news sentiment for one year +
-# each week's top headlines. ponytail: read from the sibling dashboard-data checkout on THIS machine
-# only (admin testing, not deployed); fetch it from the private repo (_gh_get_bytes) before deploying.
-SENTIMENT_JSON = os.path.join(os.path.dirname(BASE), "dashboard-data", "sentiment", "hrc_sentiment_meter.json")
-
-
+# each week's top headlines. Fetched with the other private-repo files by _fetch_private_data_dir
+# (optional there), so a push to the data repo shows up like any other data change.
 @st.cache_data(show_spinner=False)
 def _read_sentiment(path: str, mtime: float) -> dict:
     with open(path, encoding="utf-8") as f:
@@ -623,7 +622,7 @@ def _read_sentiment(path: str, mtime: float) -> dict:
 
 def load_sentiment_meter():
     """{'market','year','net_threshold','last_news','weeks':[...],'articles':{week_start:[...]}} or None."""
-    p = SENTIMENT_JSON
+    p = os.path.join(_data_root(), SENTIMENT_REL.replace("/", os.sep))
     return _read_sentiment(p, _mtime(p)) if os.path.exists(p) else None
 
 

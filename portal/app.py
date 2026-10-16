@@ -2246,8 +2246,8 @@ def page_sentiment():
         return
     data = dl.load_sentiment_meter()
     if not data or not data.get("weeks"):
-        st.info(f"No sentiment data found at `{dl.SENTIMENT_JSON}` — run `python hrc_sentiment.py` in the "
-                "sentiment project to write it.", icon=":material/info:")
+        st.info(f"No sentiment data found (`{dl.SENTIMENT_REL}` in the data repo) — run `python hrc_sentiment.py` "
+                "in the sentiment project and push the file.", icon=":material/info:")
         theme.footer()
         return
     st.markdown(SENT_CSS, unsafe_allow_html=True)
