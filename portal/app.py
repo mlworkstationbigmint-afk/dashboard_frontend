@@ -940,9 +940,8 @@ def page_home():
     # Flat / Long forecast report downloads: two equal wide buttons in one row under the module cards
     # (PDFs in the private repo, dl.REPORT_FILES; disabled when absent).
     sig = dl.data_signature()          # repo HEAD: a replaced PDF is re-fetched after the push
-    for col, (kind, sub) in zip(st.columns(2, gap="small"), (("Flat", "HRC · HR Plate · CRC · GP · PPGI"),
-                                                             ("Long", "Rebar · BF & IF routes"))):
-        _deck_button(col, f"**{kind} Products Forecast Report** — {sub} *Download ↓*", dl.REPORT_FILES[kind],
+    for col, kind in zip(st.columns(2, gap="small"), ("Flat", "Long")):
+        _deck_button(col, f"Download {kind} Products Forecast Report", dl.REPORT_FILES[kind],
                      sig, "application/pdf", ":material/download:", f"home_report_{kind.lower()}",
                      width="stretch")
 

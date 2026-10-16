@@ -363,37 +363,26 @@ div[class*="st-key-home_methodology"] button em {{
 }}
 div[class*="st-key-home_methodology"] button:hover em {{ filter:brightness(.97); }}
 
-/* ---------- home forecast-report downloads (Flat / Long): two equal wide buttons in one row, same
-   look as the Methodology banner (icon left, bold title + grey line, orange CTA pill pushed right) ---------- */
+/* ---------- home forecast-report downloads (Flat / Long): two equal solid ORANGE buttons in one row;
+   hover flips to white with orange text + border ---------- */
 div[class*="st-key-home_report_"] {{ margin-top:16px; }}
 div[class*="st-key-home_report_"] button {{
-    width:100%; min-height:92px; flex-direction:row; align-items:center; justify-content:flex-start;
-    gap:16px; text-align:left; white-space:normal; padding:20px 24px; border-radius:18px;
-    border:1px solid var(--bm-border) !important; color:var(--bm-primary-dark) !important; font-weight:400;
-    background:#fff !important; box-shadow:0 1px 2px rgba(16,24,40,.05);
-    transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
+    width:100%; min-height:58px; gap:10px; padding:12px 22px; border-radius:14px;
+    background:var(--bm-accent) !important; border:2px solid var(--bm-accent) !important; color:#fff !important;
+    box-shadow:0 4px 14px rgba(238,78,36,.28);
+    transition:transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease;
 }}
-div[class*="st-key-home_report_"] button:hover {{
-    border-color:var(--bm-primary) !important; background:var(--bm-primary-soft) !important;
-    transform:translateY(-2px); box-shadow:0 10px 26px rgba(2,76,161,.12);
-}}
+div[class*="st-key-home_report_"] button p,
 div[class*="st-key-home_report_"] button [data-testid="stIconMaterial"] {{
-    font-size:30px !important; width:30px; height:30px; color:var(--bm-primary);
+    color:#fff !important; font-size:16px; font-weight:800; letter-spacing:.2px; margin:0;
 }}
-div[class*="st-key-home_report_"] button [data-testid="stMarkdownContainer"] {{ flex:1 1 auto; }}
-div[class*="st-key-home_report_"] button [data-testid="stMarkdownContainer"] p {{
-    display:flex; align-items:center; flex-wrap:wrap; gap:4px 10px; margin:0;
+div[class*="st-key-home_report_"] button [data-testid="stIconMaterial"] {{ font-size:22px !important; }}
+div[class*="st-key-home_report_"] button:hover {{
+    background:#fff !important; transform:translateY(-2px); box-shadow:0 10px 24px rgba(238,78,36,.22);
 }}
-div[class*="st-key-home_report_"] button p {{ font-size:13.5px; color:{NEUTRAL}; font-weight:400; }}
-div[class*="st-key-home_report_"] button strong {{
-    font-size:18px; color:var(--bm-primary-dark); font-weight:800; letter-spacing:.2px;
-}}
-div[class*="st-key-home_report_"] button em {{
-    margin-left:auto; font-style:normal; font-weight:800; color:#fff;
-    background:var(--bm-accent); padding:9px 18px; border-radius:10px; font-size:14px; white-space:nowrap;
-    box-shadow:0 2px 8px rgba(238,78,36,.30);
-}}
-div[class*="st-key-home_report_"] button:hover em {{ filter:brightness(.97); }}
+div[class*="st-key-home_report_"] button:hover p,
+div[class*="st-key-home_report_"] button:hover [data-testid="stIconMaterial"] {{ color:var(--bm-accent) !important; }}
+div[class*="st-key-home_report_"] button:disabled {{ opacity:.5; transform:none; box-shadow:none; cursor:not-allowed; }}
 
 /* ---------- direction chips ---------- */
 .dir-chip {{ font-size:12px; font-weight:600; padding:3px 10px; border-radius:20px; white-space:nowrap; display:inline-block; }}
