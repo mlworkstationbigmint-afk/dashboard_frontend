@@ -2172,25 +2172,54 @@ def _short_range(start, end):
     return f"{a.day} {a:%b} – {b.day} {b:%b}"
 
 
+def _gauge_angle(v):
+    """Net score -1..+1 -> dial angle in radians: -1 = left (pi), 0 = top (pi/2), +1 = right (0)."""
+    import math
+    return math.pi * (1 - (max(-1.0, min(1.0, v)) + 1) / 2)
+
+
 def sentiment_gauge(net, t):
-    """Half-dial meter, -1 (left, red) .. 0 (top, neutral) .. +1 (right, green); the needle is the
-    week's net score = avg P(positive) − avg P(negative). ±t is the Positive/Negative verdict line."""
+    """Speedometer: coloured half-dial -1 (left, red) .. 0 (top, neutral) .. +1 (right, green), a needle
+    from the centre hub to the week's net score (= avg P(positive) − avg P(negative)) and a black tick on
+    the arc at that value. Drawn as plain shapes on equal-scaled axes (go.Indicator has no needle), so
+    the needle angle stays right at any width. ±t is the Positive/Negative verdict line."""
+    import math
     import plotly.graph_objects as go
-    fig = go.Figure(go.Indicator(
-        mode="gauge+number", value=net,
-        number=dict(valueformat="+.2f", font=dict(size=34, color=SENT_COLORS[
-            "Positive" if net > t else "Negative" if net < -t else "Neutral"])),
-        gauge=dict(axis=dict(range=[-1, 1], tickvals=[-1, -t, 0, t, 1],
-                             ticktext=["−1", f"−{t:g}", "0", f"+{t:g}", "+1"], tickfont=dict(size=11)),
-                   bar=dict(color="rgba(0,0,0,0)"),               # no fill bar: the threshold line is the needle
-                   steps=[dict(range=[-1, -0.5], color=theme.DANGER), dict(range=[-0.5, -t], color="#F2A39C"),
-                          dict(range=[-t, t], color="#E2E8F0"),
-                          dict(range=[t, 0.5], color="#9FD8B4"), dict(range=[0.5, 1], color=theme.SUCCESS)],
-                   threshold=dict(line=dict(color="#0f172a", width=5), thickness=1, value=net))))
-    for x, txt, c in ((0.06, "Negative", theme.DANGER), (0.5, "Neutral", "#64748b"), (0.94, "Positive", theme.SUCCESS)):
-        fig.add_annotation(x=x, y=1.02 if txt == "Neutral" else -0.08, xref="paper", yref="paper",
-                           text=f"<b>{txt}</b>", showarrow=False, font=dict(size=12, color=c))
-    fig.update_layout(height=270, margin=dict(l=28, r=28, t=36, b=26), paper_bgcolor="rgba(0,0,0,0)")
+    R, r = 1.0, 0.64                                         # outer / inner arc radius
+    pol = lambda rad, a: (rad * math.cos(a), rad * math.sin(a))
+    fig = go.Figure()
+    for lo, hi, c in ((-1, -0.5, theme.DANGER), (-0.5, -t, "#F2A39C"), (-t, t, "#E2E8F0"),
+                      (t, 0.5, "#9FD8B4"), (0.5, 1, theme.SUCCESS)):
+        a = [_gauge_angle(lo + (hi - lo) * k / 24) for k in range(25)]
+        pts = [pol(R, x) for x in a] + [pol(r, x) for x in a[::-1]]
+        fig.add_trace(go.Scatter(x=[p[0] for p in pts], y=[p[1] for p in pts], fill="toself", fillcolor=c,
+                                 mode="lines", line=dict(width=1, color="white"), hoverinfo="skip"))
+    for v in (-1, -t, 0, t, 1):                              # scale labels outside the arc
+        x, y = pol(R + 0.13, _gauge_angle(v))
+        fig.add_annotation(x=x, y=y, text="0" if v == 0 else f"{v:+g}".replace("-", "−"), showarrow=False,
+                           font=dict(size=11, color="#64748b"))
+    a = _gauge_angle(net)
+    x0, y0 = pol(r - 0.02, a)                                # black value tick across the arc band
+    x1, y1 = pol(R + 0.02, a)
+    fig.add_shape(type="line", x0=x0, y0=y0, x1=x1, y1=y1, line=dict(color="#0f172a", width=5))
+    tip, side = pol(R - 0.06, a), (0.055 * math.cos(a + math.pi / 2), 0.055 * math.sin(a + math.pi / 2))
+    tail = pol(-0.12, a)                                     # short counterweight behind the hub
+    fig.add_trace(go.Scatter(x=[tip[0], side[0], tail[0], -side[0], tip[0]],
+                             y=[tip[1], side[1], tail[1], -side[1], tip[1]],
+                             fill="toself", fillcolor="#0f172a", mode="lines",
+                             line=dict(color="#0f172a", width=1), hoverinfo="skip"))
+    fig.add_shape(type="circle", x0=-0.09, y0=-0.09, x1=0.09, y1=0.09, fillcolor="#0f172a", line_color="white",
+                  line_width=2)
+    tone = "Positive" if net > t else "Negative" if net < -t else "Neutral"
+    fig.add_annotation(x=0, y=-0.27, text=f"<b>{net:+.2f}</b>", showarrow=False,
+                       font=dict(size=30, color=SENT_COLORS[tone]))
+    for x, y, txt, c in ((-0.82, -0.12, "Negative", theme.DANGER), (0, R + 0.27, "Neutral", "#64748b"),
+                         (0.82, -0.12, "Positive", theme.SUCCESS)):
+        fig.add_annotation(x=x, y=y, text=f"<b>{txt}</b>", showarrow=False, font=dict(size=12, color=c))
+    fig.update_xaxes(range=[-1.3, 1.3], visible=False, fixedrange=True)
+    fig.update_yaxes(range=[-0.45, 1.42], visible=False, fixedrange=True, scaleanchor="x", scaleratio=1)
+    fig.update_layout(height=290, margin=dict(l=4, r=4, t=4, b=4), showlegend=False, dragmode=False,
+                      plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
 
 
