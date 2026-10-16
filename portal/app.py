@@ -2161,6 +2161,8 @@ SENT_CSS = """
 .bm-sent-item .meta { font-size:11.5px; color:#64748b; margin-bottom:3px; }
 .bm-sent-item .t { font-size:13.5px; font-weight:600; color:#0f172a; line-height:1.35; }
 .bm-sent-item a { font-size:12px; font-weight:600; text-decoration:none; }
+.bm-sent-tag { display:inline-block; margin-left:6px; padding:1px 8px; border-radius:999px; font-size:10.5px;
+               font-weight:700; background:var(--bm-primary-soft); color:var(--bm-primary); white-space:nowrap; }
 .bm-sent-verdict { text-align:center; font-size:13px; color:#475569; margin-top:-6px; }
 .bm-sent-verdict b { font-size:18px; }
 </style>
@@ -2264,7 +2266,9 @@ def _headline_list(items, title, color):
                 if a.get("url") else "")
         p = a[{"Positive": "pos", "Negative": "neg", "Neutral": "neu"}[a["label"]]]
         rows.append(f"<div class='bm-sent-item'><div class='meta'>{dt.date.fromisoformat(a['date']):%d %b %Y}"
-                    f" &middot; {html.escape(str(a.get('country') or ''))} &middot; {p:.0%} {a['label'].lower()}</div>"
+                    f" &middot; {html.escape(str(a.get('country') or ''))} &middot; {p:.0%} {a['label'].lower()}"
+                    + (f"<span class='bm-sent-tag'>{html.escape(a['bucket'])}</span>" if a.get("bucket") else "")
+                    + "</div>"
                     f"<div class='t'>{html.escape(a['title'])}</div>{link}</div>")
     if not items:
         rows.append("<div class='bm-sent-item'><div class='meta'>None this week.</div></div>")
